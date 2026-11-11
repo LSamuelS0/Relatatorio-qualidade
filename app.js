@@ -1,8 +1,32 @@
 (() => {
   "use strict";
 
-  const machines = window.QUALITY_REPORT_DATA.machines;
+  const DATA = window.QUALITY_REPORT_DATA;
+  const machines = DATA.machines;
+  const partsByCode = new Map(DATA.parts.map(part => [part.code, part]));
   const selections = new Map();
+
+  /* Confere o cadastro ao abrir o app. Problemas aparecem no console. */
+  function validateData() {
+    const problems = [];
+    machines.forEach(machine => {
+      machine.items.forEach(label => {
+        if (!(label in DATA.items)) problems.push("Máquina " + machine.id + ": item sem cadastro → " + label);
+      });
+    });
+    Object.entries(DATA.items).forEach(([label, codes]) => {
+      codes.forEach(code => {
+        if (code !== null && !partsByCode.has(code)) problems.push(label + ": código inexistente no catálogo → " + code);
+      });
+      // Regra da barra: "580/601" só vale para UMA peça física (um código).
+      if (/\d\/\d/.test(label) && new Set(codes).size !== 1) {
+        problems.push(label + ": usa barra, mas aponta para mais de um código (deveriam ser itens separados)");
+      }
+    });
+    problems.forEach(problem => console.warn("[Cadastro] " + problem));
+    return problems;
+  }
+  validateData();
   let reportStartedAt = new Date();
 
   const machineList = document.getElementById("machine-list");
@@ -13,12 +37,6 @@
   const formatTime = date => new Intl.DateTimeFormat("pt-BR", {
     hour: "2-digit", minute: "2-digit", hour12: false
   }).format(date);
-
-  function optionLabels(part) {
-    if (!part.models || part.models.length === 0) return [part.name];
-    // Cada modelo individual vira uma opção; modelos unidos por "/" continuam juntos.
-    return part.models.map(model => part.name + " " + model);
-  }
 
   function renderMachines() {
     machineList.innerHTML = "";
@@ -41,10 +59,8 @@
       select.add(new Option("SETUP", "SETUP"));
       select.add(new Option("MÁQUINA PARADA", "MÁQUINA PARADA"));
 
-      machine.parts.forEach(part => {
-        optionLabels(part).forEach(labelText => {
-          select.add(new Option(labelText, labelText));
-        });
+      machine.items.forEach(labelText => {
+        select.add(new Option(labelText, labelText));
       });
 
       select.value = selections.get(machine.id) || "";

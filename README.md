@@ -33,13 +33,25 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 
 ## Cadastro inicial e regras importantes
 
-- O **Balancer** é apresentado como um único item, representando Ring Up + Ring Down.
-- Tampa Superior / Moldura aparece como uma única peça.
-- Dispenser Case A é uma peça distinta.
-- Agitador / Conjunto do Agitador é a mesma família de peça.
-- A notação `580/601` indica uma peça compartilhada entre os dois modelos; modelos separados por vírgula representam versões distintas.
-- O modelo **640** continua em desenvolvimento e não recebe compatibilidades presumidas. Ele aparece apenas nas situações explicitamente confirmadas no cadastro inicial (Cesto Externo das máquinas 1 e 2 e Proteção do Motor).
-- Códigos completos de peças ainda não são exibidos neste relatório de início de turno. Eles serão necessários nos módulos de Bloqueio de máquina, Scrap e Liberação de peças.
+O `data.js` tem três partes:
+
+1. **`parts`** — catálogo oficial copiado da tabela CTQ (BOM Injection Parts): código, nome e instrução de trabalho. Um código = uma peça física.
+2. **`items`** — o texto que aparece na lista da máquina e no relatório, apontando para o(s) código(s) do catálogo.
+3. **`machines`** — as 19 máquinas, na ordem fixa, com os itens que cada uma roda.
+
+**Regra da vírgula e da barra**
+
+- `580/601` = **uma** peça compartilhada pelos dois modelos (um código só). Ex.: Pulsador 580/601, Agitador 580/601.
+- Modelos separados por vírgula = peças **diferentes**, cada uma com seu código. Ex.: Tub D 580, Tub D 601.
+- O app confere isso ao abrir: um item com barra que aponte para mais de um código gera aviso no console.
+
+**Outras regras**
+
+- **Balancer** = Ring Up + Ring Down do mesmo modelo (por isso aponta para dois códigos).
+- Tampa Superior / Moldura aparece como uma única peça por modelo.
+- **Proteção do Motor** tem um único código, então aparece como um item só.
+- O modelo **640** está em desenvolvimento e não tem código na CTQ; aparece só onde foi confirmado (Cesto Externo das máquinas 1 e 2).
+- Os códigos ainda não aparecem no relatório de início de turno; serão usados em Bloqueio, Scrap e Liberação de peças.
 
 ## Próximas etapas previstas
 
