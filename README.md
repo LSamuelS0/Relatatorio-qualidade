@@ -26,6 +26,8 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 
 ## Arquivos
 
+- `CLAUDE.md`: contexto completo do projeto (regras, cadastro, pendências). Leia antes de mudar algo.
+
 - `index.html`: estrutura da interface.
 - `styles.css`: aparência e adaptação para telas menores.
 - `data.js`: cadastro inicial das 19 máquinas e peças.
