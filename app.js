@@ -14,9 +14,10 @@
     hour: "2-digit", minute: "2-digit", hour12: false
   }).format(date);
 
-  function optionLabel(part) {
-    if (!part.models || part.models.length === 0) return part.name;
-    return part.name + " — " + part.models.join(", ");
+  function optionLabels(part) {
+    if (!part.models || part.models.length === 0) return [part.name];
+    // Cada modelo individual vira uma opção; modelos unidos por "/" continuam juntos.
+    return part.models.map(model => part.name + " " + model);
   }
 
   function renderMachines() {
@@ -41,8 +42,9 @@
       select.add(new Option("MÁQUINA PARADA", "MÁQUINA PARADA"));
 
       machine.parts.forEach(part => {
-        const labelText = optionLabel(part);
-        select.add(new Option(labelText, labelText));
+        optionLabels(part).forEach(labelText => {
+          select.add(new Option(labelText, labelText));
+        });
       });
 
       select.value = selections.get(machine.id) || "";
