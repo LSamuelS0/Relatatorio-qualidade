@@ -94,8 +94,11 @@ window.QUALITY_REPORT_DATA = {
     "Body-B 580": ["L2138000A00024"],
     "Body-B 601": ["L2138000A00009"],
 
-    // Uma peça só (mesmo código para todos os modelos). Ver pendência no README.
-    "Proteção do Motor": ["L2138000A00029"],
+    // Mesmo código na CTQ para 550/580/601; 640 ainda sem código.
+    "Proteção do Motor 550": ["L2138000A00029"],
+    "Proteção do Motor 580": ["L2138000A00029"],
+    "Proteção do Motor 601": ["L2138000A00029"],
+    "Proteção do Motor 640": [null],
 
     "Dispenser Case A": ["L2138000000281"],
     "Gaveta do Dispenser": ["L2138000000263"],
@@ -127,7 +130,7 @@ window.QUALITY_REPORT_DATA = {
     { id: 3,  items: ["Conjunto do Agitador 580/601"] },
     { id: 4,  items: ["Balancer 550", "Body-B 550", "Body-B 580", "Body-B 601"] },
     { id: 5,  items: ["Body-B 550", "Body-B 580", "Body-B 601"] },
-    { id: 6,  items: ["Proteção do Motor"] },
+    { id: 6,  items: ["Proteção do Motor 550", "Proteção do Motor 580", "Proteção do Motor 601", "Proteção do Motor 640"] },
     { id: 7,  items: ["Balancer 580", "Dispenser Case A", "Tub D 580", "Tub D 601"] },
     { id: 8,  items: ["Pulsador 580/601"] },
     { id: 9,  items: ["Pulsador 580/601"] },

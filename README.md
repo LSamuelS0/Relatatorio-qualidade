@@ -43,14 +43,15 @@ O `data.js` tem três partes:
 
 - `580/601` = **uma** peça compartilhada pelos dois modelos (um código só). Ex.: Pulsador 580/601, Agitador 580/601.
 - Modelos separados por vírgula = peças **diferentes**, cada uma com seu código. Ex.: Tub D 580, Tub D 601.
+- A lista de cada máquina muda quando um molde vai para outra máquina: basta editar `machines` no `data.js`.
 - O app confere isso ao abrir: um item com barra que aponte para mais de um código gera aviso no console.
 
 **Outras regras**
 
 - **Balancer** = Ring Up + Ring Down do mesmo modelo (por isso aponta para dois códigos).
 - Tampa Superior / Moldura aparece como uma única peça por modelo.
-- **Proteção do Motor** tem um único código, então aparece como um item só.
-- O modelo **640** está em desenvolvimento e não tem código na CTQ; aparece só onde foi confirmado (Cesto Externo das máquinas 1 e 2).
+- **Proteção do Motor** aparece por modelo (550, 580, 601 e 640); na CTQ, 550/580/601 usam o mesmo código.
+- O modelo **640** está em desenvolvimento e não tem código na CTQ; aparece só onde foi confirmado (Cesto Externo das máquinas 1 e 2 e Proteção do Motor da máquina 6).
 - Os códigos ainda não aparecem no relatório de início de turno; serão usados em Bloqueio, Scrap e Liberação de peças.
 
 ## Próximas etapas previstas
