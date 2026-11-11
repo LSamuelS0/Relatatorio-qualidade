@@ -124,6 +124,10 @@ window.QUALITY_REPORT_DATA = {
     "Capa do Cesto 601": ["L2138000A00036"]
   },
 
+  /* Help chain: nomes que já vêm preenchidos em todo bloqueio novo (a pessoa marca no Meixin).
+     Deixe vazio ([]) para o campo começar em branco. */
+  helpChainDefault: [],
+
   machines: [
     { id: 1,  items: ["Cesto Externo 550", "Cesto Externo 580", "Cesto Externo 601", "Cesto Externo 640"] },
     { id: 2,  items: ["Cesto Externo 550", "Cesto Externo 580", "Cesto Externo 601", "Cesto Externo 640"] },

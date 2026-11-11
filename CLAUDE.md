@@ -138,11 +138,11 @@ RESPONSÁVEL 责任部门: <texto>
 
 CRITICIDADE 关键性: <ALTA | MÉDIA | BAIXA>
 
-SCRAP 废料: <texto>
+SCRAP 废料: <SIM | NÃO | EM ANÁLISE>
 
 POSIÇÃO 物料所在位置: <texto>
 
-HELP CHAIN帮助链: <texto>
+HELP CHAIN帮助链: <em branco ou nomes padrão>
 ```
 
 Depois do texto vêm 3 blocos, cada um com **um título fixo e uma foto (no máximo 1 por espaço)**:
@@ -152,8 +152,10 @@ Depois do texto vêm 3 blocos, cada um com **um título fixo e uma foto (no máx
 3. `LOCALIZAÇÃO: 📍` + foto da localização
 
 - Data da produção: escolhida pela pessoa (começa com a data de hoje).
-- Código do material: campo com sugestões do catálogo da CTQ (`CÓDIGO - NOME`); aceita digitar outro.
-- Motivo é caixa de texto (padrão "- TEXTO"); os outros campos são de uma linha, sempre em maiúsculas, sem traço.
+- Código do material: botão **Escolher produto** que abre a lista do catálogo da CTQ; escrevendo, a lista filtra (código ou nome, sem precisar de acento). Grava `CÓDIGO - NOME`. Se não achar, a opção "Usar o que escrevi" grava o texto digitado.
+- Motivo é caixa de texto (padrão "- TEXTO"); Quantidade, Responsável e Posição são de uma linha, sempre em maiúsculas, sem traço.
+- Scrap: botões **Sim / Não / Em análise** (definido pelo dono).
+- Help chain: começa **em branco**; as pessoas são marcadas manualmente no Meixin. Nomes padrão (o dono vai passar) entram em `helpChainDefault` no `data.js` e já vêm preenchidos em todo bloqueio novo.
 - Criticidade: botões Alta / Média / Baixa (opções definidas pelo Claude; confirmar com o dono).
 - Fotos: reduzidas para no máx. 1600 px (JPEG) e guardadas no IndexedDB do aparelho; nova foto substitui a anterior no mesmo espaço. Fotos que nenhum rascunho/relatório usa são apagadas (`cleanPhotos()`).
 - Relatório pronto e Meus relatórios mostram o texto e os 3 blocos. Cada bloco tem **Copiar título**, **Copiar foto** (área de transferência; onde o aparelho não deixa, baixa a foto) e **Enviar foto**. O botão Enviar geral manda o texto + as fotos pelo compartilhamento do celular.

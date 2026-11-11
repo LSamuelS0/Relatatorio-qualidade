@@ -414,6 +414,7 @@
     const fields = {};
     BLOCK_FIELDS.forEach(field => { fields[field.key] = ""; });
     fields.dataProducao = todayKey();
+    fields.helpChain = (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
     block = { id: newId(), line: "injetora", type: "bloqueio", startedAt: new Date().toISOString(), fields,
       photos: { conforme: null, naoConforme: null, localizacao: null }, savedId: null };
   }
@@ -441,27 +442,86 @@
   }
 
   function isEmptyBlock(item) {
-    const fields = Object.entries(item.fields || {}).some(([key, value]) => key !== "dataProducao" && (value || "").trim());
+    const defaultHelp = (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
+    const fields = Object.entries(item.fields || {}).some(([key, value]) =>
+      key !== "dataProducao" && (value || "").trim() && !(key === "helpChain" && value === defaultHelp));
     const photos = Object.values(item.photos || {}).some(Boolean);
     return !fields && !photos;
   }
 
-  // Sugestões do código do material: catálogo da CTQ
-  $("part-codes").innerHTML = "";
-  DATA.parts.forEach(part => {
-    const option = document.createElement("option");
-    option.value = part.code + " - " + part.name.toLocaleUpperCase("pt-BR");
-    $("part-codes").appendChild(option);
+  /* Escolher produto: lista do catálogo da CTQ que filtra enquanto a pessoa escreve.
+     Valor gravado: "CÓDIGO - NOME" (ou o texto que a pessoa escreveu). */
+  const PRODUCTS = DATA.parts.map(part => ({ code: part.code, name: part.name.toLocaleUpperCase("pt-BR"),
+    label: part.code + " - " + part.name.toLocaleUpperCase("pt-BR") }));
+  const plain = text => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+  const productSheet = $("product-sheet");
+
+  function renderProductPick() {
+    const label = $("pick-product-label");
+    label.textContent = block.fields.codigo || "Escolher produto";
+    label.classList.toggle("pick-empty", !block.fields.codigo);
+  }
+
+  function setProduct(value) {
+    block.fields.codigo = value;
+    keepDraft(block);
+    renderProductPick();
+    productSheet.close();
+  }
+
+  function renderProductList() {
+    const query = plain($("product-search").value.trim());
+    const words = query.split(/\s+/).filter(Boolean);
+    const list = $("product-list");
+    list.innerHTML = "";
+    const found = PRODUCTS.filter(item => words.every(word => plain(item.label).includes(word)));
+    found.forEach(item => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "product-option";
+      option.setAttribute("role", "option");
+      option.setAttribute("aria-selected", String(block.fields.codigo === item.label));
+      const name = document.createElement("strong");
+      name.textContent = item.name;
+      const code = document.createElement("small");
+      code.textContent = item.code;
+      option.append(name, code);
+      option.addEventListener("click", () => setProduct(item.label));
+      list.appendChild(option);
+    });
+    const typed = $("product-search").value.trim().toLocaleUpperCase("pt-BR");
+    if (typed && !found.some(item => item.label === typed)) {
+      const custom = document.createElement("button");
+      custom.type = "button";
+      custom.className = "product-option custom";
+      const title = document.createElement("strong");
+      title.textContent = "Usar o que escrevi: " + typed;
+      const hint = document.createElement("small");
+      hint.textContent = found.length ? "Se o produto não está na lista" : "Nenhum produto encontrado na lista";
+      custom.append(title, hint);
+      custom.addEventListener("click", () => setProduct(typed));
+      list.appendChild(custom);
+    }
+  }
+
+  $("pick-product").addEventListener("click", () => {
+    $("product-search").value = "";
+    renderProductList();
+    if (typeof productSheet.showModal === "function") productSheet.showModal();
+    else productSheet.setAttribute("open", "");
+    $("product-search").focus();
   });
+  $("product-search").addEventListener("input", renderProductList);
+  $("product-close").addEventListener("click", () => productSheet.close());
+  productSheet.addEventListener("click", event => { if (event.target === productSheet) productSheet.close(); });
 
   async function renderBlock() {
     document.querySelectorAll("[data-bfield]").forEach(input => {
       input.value = block.fields[input.dataset.bfield] || "";
       if (input.tagName === "TEXTAREA") fit(input);
     });
-    document.querySelectorAll("[data-crit]").forEach(button => {
-      button.setAttribute("aria-checked", String(button.dataset.crit === block.fields.criticidade));
-    });
+    paintChoices();
+    renderProductPick();
     for (const slot of PHOTO_BLOCKS) await renderPhotoSlot(slot.key);
   }
 
@@ -491,13 +551,18 @@
     });
   });
 
-  document.querySelectorAll("[data-crit]").forEach(button => {
+  /* Botões de escolha (Criticidade, Scrap): tocar de novo desmarca. */
+  function paintChoices() {
+    document.querySelectorAll("[data-choice]").forEach(button => {
+      button.setAttribute("aria-checked", String(block.fields[button.dataset.choice] === button.dataset.value));
+    });
+  }
+  document.querySelectorAll("[data-choice]").forEach(button => {
     button.addEventListener("click", () => {
-      block.fields.criticidade = block.fields.criticidade === button.dataset.crit ? "" : button.dataset.crit;
+      const key = button.dataset.choice;
+      block.fields[key] = block.fields[key] === button.dataset.value ? "" : button.dataset.value;
       keepDraft(block);
-      document.querySelectorAll("[data-crit]").forEach(other => {
-        other.setAttribute("aria-checked", String(other.dataset.crit === block.fields.criticidade));
-      });
+      paintChoices();
     });
   });
 

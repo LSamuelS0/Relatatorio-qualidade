@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=2.8">
+  <link rel="stylesheet" href="styles.css?v=2.9">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -35,6 +35,7 @@
       <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
       <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
       <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     </defs>
   </svg>
@@ -190,11 +191,14 @@
         <span class="field-label">Data da produção <small>生产日期</small></span>
         <input class="text-input" type="date" id="b-dataProducao" data-bfield="dataProducao">
       </label>
-      <label class="field" for="b-codigo">
+      <div class="field">
         <span class="field-label">Código do material <small>物料编码</small></span>
-        <input class="text-input" id="b-codigo" data-bfield="codigo" autocapitalize="characters" autocomplete="off" spellcheck="false" list="part-codes" placeholder="DIGITE O CÓDIGO OU O NOME DA PEÇA">
-      </label>
-      <datalist id="part-codes"></datalist>
+        <button type="button" class="pick-btn" id="pick-product">
+          <svg><use href="#i-search"/></svg>
+          <span id="pick-product-label" class="pick-empty">Escolher produto</span>
+          <svg class="chev"><use href="#i-next"/></svg>
+        </button>
+      </div>
       <label class="field" for="b-motivo">
         <span class="field-label">Motivo <small>问题描述</small></span>
         <textarea id="b-motivo" data-bfield="motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- O QUE ESTÁ ERRADO NA PEÇA?"></textarea>
@@ -210,22 +214,27 @@
       <div class="field">
         <span class="field-label">Criticidade <small>关键性</small></span>
         <div class="turno-pick" role="radiogroup" aria-label="Criticidade">
-          <button type="button" class="turno crit" data-crit="ALTA" role="radio">Alta</button>
-          <button type="button" class="turno crit" data-crit="MÉDIA" role="radio">Média</button>
-          <button type="button" class="turno crit" data-crit="BAIXA" role="radio">Baixa</button>
+          <button type="button" class="turno crit" data-choice="criticidade" data-value="ALTA" role="radio">Alta</button>
+          <button type="button" class="turno crit" data-choice="criticidade" data-value="MÉDIA" role="radio">Média</button>
+          <button type="button" class="turno crit" data-choice="criticidade" data-value="BAIXA" role="radio">Baixa</button>
         </div>
       </div>
-      <label class="field" for="b-scrap">
+      <div class="field">
         <span class="field-label">Scrap <small>废料</small></span>
-        <input class="text-input" id="b-scrap" data-bfield="scrap" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="EX.: SIM, 10 PÇS / NÃO">
-      </label>
+        <div class="turno-pick" role="radiogroup" aria-label="Scrap">
+          <button type="button" class="turno crit" data-choice="scrap" data-value="SIM" role="radio">Sim</button>
+          <button type="button" class="turno crit" data-choice="scrap" data-value="NÃO" role="radio">Não</button>
+          <button type="button" class="turno crit small-text" data-choice="scrap" data-value="EM ANÁLISE" role="radio">Em análise</button>
+        </div>
+      </div>
       <label class="field" for="b-posicao">
         <span class="field-label">Posição <small>物料所在位置</small></span>
         <input class="text-input" id="b-posicao" data-bfield="posicao" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ONDE O MATERIAL ESTÁ">
       </label>
       <label class="field" for="b-helpChain">
         <span class="field-label">Help chain <small>帮助链</small></span>
-        <input class="text-input" id="b-helpChain" data-bfield="helpChain" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="QUEM FOI ACIONADO">
+        <input class="text-input" id="b-helpChain" data-bfield="helpChain" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="PODE DEIXAR EM BRANCO">
+        <span class="muted small">As pessoas são marcadas no Meixin, depois de colar o texto.</span>
       </label>
 
       <h2 class="subtitle photo-title">Fotos</h2>
@@ -319,6 +328,22 @@
     </section>
   </main>
 
+  <!-- Janela: escolher produto (código do material) -->
+  <dialog id="product-sheet" class="sheet product-sheet" aria-labelledby="product-title">
+    <div class="sheet-body">
+      <span class="grip" aria-hidden="true"></span>
+      <div class="sheet-head">
+        <div><h2 id="product-title">Escolher produto</h2><p class="muted">Toque no produto ou escreva para filtrar</p></div>
+      </div>
+      <label class="search-box" for="product-search">
+        <svg><use href="#i-search"/></svg>
+        <input id="product-search" type="search" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="CÓDIGO OU NOME">
+      </label>
+      <div class="product-list" id="product-list" role="listbox" aria-label="Produtos"></div>
+      <button class="btn btn-quiet" type="button" id="product-close">Fechar</button>
+    </div>
+  </dialog>
+
   <!-- Janela: o que a máquina roda -->
   <dialog id="machine-sheet" class="sheet" aria-labelledby="sheet-title">
     <form method="dialog" class="sheet-body" id="sheet-form">
@@ -338,7 +363,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=2.8"></script>
-  <script src="app.js?v=2.8"></script>
+  <script src="data.js?v=2.9"></script>
+  <script src="app.js?v=2.9"></script>
 </body>
 </html>
