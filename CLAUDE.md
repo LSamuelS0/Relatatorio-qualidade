@@ -51,12 +51,14 @@ Telas (versão 2.0, visual simplificado):
 4. **Janela da máquina** — botões grandes com as peças daquela máquina + Setup / Parada + Confirmar.
 4b. **Troca de turno** — máscara "Alinhamento PQC Injetora" (detalhes abaixo).
 5. **Relatório pronto** — texto gerado, Salvar relatório, Copiar, Enviar e Novo relatório (após salvar).
-6. **Meus relatórios** — lista dos salvos; ao abrir: Copiar para o Meixin, Enviar, Apagar. No computador, lista e texto lado a lado.
+6. **Meus relatórios** — lista dos salvos; ao abrir: Copiar para o Meixin, Enviar, Editar (vira rascunho), Apagar. No computador, lista e texto lado a lado.
 
 Regras de funcionamento:
 - **Toda máquina começa como `MÁQUINA PARADA`** em cada relatório novo.
 - Data e horário ficam fixos a partir do início do relatório.
 - **Rascunhos:** todo relatório começado e não salvo, de qualquer tipo, vai para a lista Rascunhos da tela inicial. É gravado a cada alteração e também automaticamente ao voltar para o início, sair do relatório, fechar o app ou atualizar a página (troca de turno totalmente vazia não vira rascunho). Tocar abre de onde parou; a lixeira descarta. Ao salvar, sai dos rascunhos e vai para Meus relatórios.
+- **Depois de salvar:** o relatório vai para Meus relatórios e o formulário fica **limpo**. A tela "Relatório pronto" mostra o que foi salvo, sem botão de voltar; "Novo relatório" abre o formulário limpo. Um formulário limpo só vira rascunho depois de alterado.
+- **Editar um salvo:** em Meus relatórios, "Editar (vira rascunho)" cria uma cópia em Rascunhos; o salvo original não muda. Ao salvar a cópia, ela vira um relatório novo.
 - Tocar num bloco de relatório (Início de turno, Troca de turno) sempre começa um relatório **novo**; para continuar um anterior, usa-se Rascunhos. "Recomeçar"/"Limpar" descartam o rascunho atual.
 - **Sem barra de rolagem (regra geral, todos os relatórios):** o texto do relatório aparece inteiro e toda caixa de texto cresce sozinha com o que é escrito. Máscaras novas devem seguir isso (o `app.js` aplica a qualquer `textarea`).
 - **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.drafts.v1` e `rq.reports.v1`). A sincronização celular → computador entra com o Firebase.

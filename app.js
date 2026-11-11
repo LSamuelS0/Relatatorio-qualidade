@@ -60,6 +60,7 @@
   }
   function keepDraft(item) {
     item.savedId = null;
+    delete item.pristine;
     item.updatedAt = new Date().toISOString();
     const all = listDrafts().filter(other => other.id !== item.id);
     all.unshift(item);
@@ -260,7 +261,7 @@
   function persistOpen() {
     if (!["machines", "shift", "done"].includes(screenNow)) return;
     const item = screenNow === "machines" ? draft : screenNow === "shift" ? shift : current();
-    if (!item || item.savedId) return;
+    if (!item || item.savedId || item.pristine) return; // salvo, ou limpo depois de salvar
     if (item.type === "troca" && isEmptyShift(item)) return; // nada escrito ainda
     keepDraft(item);
   }
@@ -274,6 +275,7 @@
   function go(name) {
     const editing = ["machines", "shift", "done"];
     if (editing.includes(screenNow) && !editing.includes(name)) persistOpen();
+    if (name !== "done") justSaved = null;
     screenNow = name;
     if (name === "machines" && !draft) newDraft();
     if (name === "machines") active = "inicio";
@@ -495,13 +497,16 @@
   const textOf = report => (report.type === "troca" ? buildShiftText(report) : buildText(report));
   const titleOf = report => (report.type === "troca" ? "Troca de turno" : "Início de turno") + " · Injetora";
 
+  let justSaved = null; // relatório recém-salvo mostrado na tela "Relatório pronto"
+
   $("done-back").addEventListener("click", () => go(active === "troca" ? "shift" : "machines"));
 
   function renderDone() {
     const report = current();
     $("done-back-label").textContent = active === "troca" ? "Corrigir relatório" : "Corrigir máquinas";
-    $("done-text").textContent = textOf(report);
-    const saved = Boolean(report.savedId);
+    $("done-back").hidden = Boolean(justSaved);
+    $("done-text").textContent = justSaved ? justSaved.text : textOf(report);
+    const saved = Boolean(justSaved);
     $("save-label").textContent = saved ? "Relatório salvo" : "Salvar relatório";
     $("save-report").disabled = saved;
     $("new-after-save").hidden = !saved;
@@ -532,15 +537,32 @@
     }
     dropDraft(source.id);
     source.savedId = report.id;
+    // Depois de salvar, o formulário fica limpo para o próximo relatório.
+    justSaved = report;
+    if (source.type === "troca") { newShift(); shift.pristine = true; }
+    else { newDraft(); draft.pristine = true; }
     renderDone();
     toast("Relatório salvo");
   });
 
   $("new-after-save").addEventListener("click", () => {
-    if (active === "troca") { newShift(); go("shift"); return; }
-    newDraft();
-    go("machines");
+    go(active === "troca" ? "shift" : "machines");
   });
+
+  /* Editar um relatório salvo: vira um rascunho novo; o salvo original não muda. */
+  function editSaved(report) {
+    const copy = { id: newId(), line: report.line, type: report.type, startedAt: report.startedAt, savedId: null, fromReport: report.id };
+    if (report.type === "troca") {
+      copy.date = report.date;
+      copy.turno = report.turno || null;
+      copy.fields = { relatorio: "", atencao: "", pendencias: "", bloqueio: "", ...(report.fields || {}) };
+    } else {
+      copy.selections = { ...(report.selections || {}) };
+    }
+    keepDraft(copy);
+    toast("Cópia aberta como rascunho. O salvo não muda.");
+    openDraft(copy);
+  }
 
   /* ---------- Meus relatórios ---------- */
   let viewing = null;
@@ -588,8 +610,15 @@
       $("view-sub").textContent = whenLabel(new Date(shown.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup · " + total.stop + " paradas";
     }
     $("view-text").textContent = shown.text;
+    const editable = shown.type === "troca" ? Boolean(shown.fields) : Boolean(shown.selections);
+    $("edit-report").hidden = !editable;
     $("report-view").hidden = false;
   }
+
+  $("edit-report").addEventListener("click", () => {
+    const shown = load(KEY_REPORTS, []).find(report => report.id === viewing);
+    if (shown) editSaved(shown);
+  });
 
   $("delete-report").addEventListener("click", () => {
     if (!viewing || !confirm("Apagar este relatório deste aparelho?")) return;
