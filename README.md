@@ -16,7 +16,7 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 ## Funcionalidades da versão 1.0
 
 - 19 máquinas fixas, sempre na ordem de 1 a 19.
-- Uma lista de seleção na frente de cada máquina.
+- Uma lista de seleção na frente de cada máquina, que começa em `MÁQUINA PARADA` a cada novo relatório.
 - Opções iniciais: `SETUP`, `MÁQUINA PARADA` e peças cadastradas para aquela máquina.
 - Data e horário preenchidos automaticamente quando o relatório é iniciado.
 - Data e horário permanecem fixos durante o preenchimento. O botão **Novo relatório** inicia um novo registro e atualiza a data/hora.

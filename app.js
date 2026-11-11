@@ -5,6 +5,13 @@
   const machines = DATA.machines;
   const partsByCode = new Map(DATA.parts.map(part => [part.code, part]));
   const selections = new Map();
+  const DEFAULT_STATUS = "MÁQUINA PARADA";
+
+  /* Todo relatório começa com as 19 máquinas como paradas. */
+  function resetSelections() {
+    selections.clear();
+    machines.forEach(machine => selections.set(machine.id, DEFAULT_STATUS));
+  }
 
   /* Confere o cadastro ao abrir o app. Problemas aparecem no console. */
   function validateData() {
@@ -104,7 +111,7 @@
 
   function startNewReport() {
     reportStartedAt = new Date();
-    selections.clear();
+    resetSelections();
     renderMachines();
     updateReport();
     feedback.textContent = "Novo relatório iniciado. Data e horário atualizados.";
@@ -163,6 +170,7 @@
     document.querySelector('[data-area="injetora"]').click();
   });
 
+  resetSelections();
   renderMachines();
   updateReport();
 })();
