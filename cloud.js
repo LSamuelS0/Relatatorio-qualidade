@@ -18,7 +18,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs
+  getFirestore, doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -106,6 +106,14 @@ const Cloud = {
     const snapshot = await getDocs(query(collection(db, kind), where("owner", "==", owner)));
     return snapshot.docs.map(item => item.data());
   },
+  /* Tempo real: avisa sempre que um relatório/rascunho da pessoa muda em qualquer aparelho. */
+  watchMine(kind, onData, onError) {
+    const owner = needUser();
+    return onSnapshot(query(collection(db, kind), where("owner", "==", owner)),
+      snapshot => onData(snapshot.docs.map(item => item.data())),
+      error => onError && onError(error));
+  },
+
   /* Só o administrador: todos os itens, de todas as pessoas. */
   async listAll(kind) {
     needUser();

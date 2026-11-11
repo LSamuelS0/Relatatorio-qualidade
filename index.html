@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=3.3">
+  <link rel="stylesheet" href="styles.css?v=3.4">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -48,7 +48,7 @@
       </button>
       <div class="user-chip" id="user-chip" hidden>
         <span id="user-name">—</span>
-        <span class="sync-dot" id="sync-dot" title="Sincronização"></span>
+        <button type="button" class="sync-dot" id="sync-dot" title="Sincronização" aria-label="Situação da sincronização"></button>
         <button type="button" class="text-btn" id="logout">Sair</button>
       </div>
     </div>
@@ -389,8 +389,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=3.3"></script>
-  <script src="app.js?v=3.3"></script>
-  <script type="module" src="cloud.js?v=3.3"></script>
+  <script src="data.js?v=3.4"></script>
+  <script src="app.js?v=3.4"></script>
+  <script type="module" src="cloud.js?v=3.4"></script>
 </body>
 </html>

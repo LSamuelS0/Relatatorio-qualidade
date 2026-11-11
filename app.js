@@ -1322,6 +1322,23 @@
     }
   }
 
+  /* Último erro da nuvem: aparece na bolinha (vermelha) e ao tocar nela. */
+  let syncError = null;
+  const SYNC_ERRORS = {
+    "permission-denied": "O banco recusou o acesso. Confira se as regras (firestore.rules) foram publicadas no Firebase.",
+    "not-found": "Banco de dados não encontrado. Confira se o Firestore foi criado com o ID (default).",
+    "failed-precondition": "Banco de dados não está pronto. Confira se o Firestore foi criado no Firebase.",
+    "unavailable": "Sem conexão com o servidor. Vai tentar de novo sozinho.",
+    "unauthenticated": "A sessão expirou. Saia e entre de novo."
+  };
+  function reportSync(error) {
+    if (!error) { syncError = null; paintSync(); return; }
+    const code = String(error.code || "").replace("firestore/", "");
+    syncError = (SYNC_ERRORS[code] || "Erro ao sincronizar.") + (code ? " (" + code + ")" : "");
+    console.warn("[Nuvem]", error);
+    paintSync();
+  }
+
   let flushing = false, flushAgain = false;
   async function flush() {
     if (!cloudOk() || !navigator.onLine) { paintSync(); return; }
@@ -1342,9 +1359,10 @@
             }
           }
           setPending(key, false);
+          if (syncError && !syncError.includes("unavailable")) reportSync(null);
         } catch (error) {
-          console.warn("[Nuvem] não enviado:", key, error);
-          if (error && (error.code === "unavailable" || error.code === "permission-denied")) break;
+          reportSync(error);
+          if (error && ["unavailable", "permission-denied", "not-found", "failed-precondition", "unauthenticated"].includes(error.code)) break;
         }
       }
     } finally {
@@ -1356,21 +1374,51 @@
 
   /* Baixa os relatórios e rascunhos da conta. O que ainda não foi enviado
      (pendente) continua valendo a versão do aparelho. */
+  function mergeRemote(kind, remote) {
+    const pending = load(KEY_PENDING, {});
+    const local = kind === "r" ? load(KEY_REPORTS, []) : listDrafts();
+    const keep = local.filter(item => pending[kind + ":" + item.id]);
+    const ids = new Set(keep.map(item => String(item.id)));
+    remote.forEach(item => {
+      if (!ids.has(String(item.id)) && !pending["x:" + kind + ":" + item.id]) { delete item.owner; keep.push(item); }
+    });
+    const dateKey = kind === "r" ? "savedAt" : "updatedAt";
+    keep.sort((a, b) => String(b[dateKey] || "").localeCompare(String(a[dateKey] || "")));
+    store(kind === "r" ? KEY_REPORTS : KEY_DRAFTS, keep);
+  }
+
   async function pull() {
     if (!cloudOk()) return;
     const [reports, drafts] = await Promise.all([Cloud.listMine("relatorios"), Cloud.listMine("rascunhos")]);
-    const pending = load(KEY_PENDING, {});
-    const merge = (local, remote, kind, dateKey) => {
-      const keep = local.filter(item => pending[kind + ":" + item.id]);
-      const ids = new Set(keep.map(item => String(item.id)));
-      remote.forEach(item => {
-        if (!ids.has(String(item.id)) && !pending["x:" + kind + ":" + item.id]) { delete item.owner; keep.push(item); }
-      });
-      return keep.sort((a, b) => String(b[dateKey] || "").localeCompare(String(a[dateKey] || "")));
-    };
-    store(KEY_REPORTS, merge(load(KEY_REPORTS, []), reports, "r", "savedAt"));
-    store(KEY_DRAFTS, merge(listDrafts(), drafts, "d", "updatedAt"));
+    mergeRemote("r", reports);
+    mergeRemote("d", drafts);
+    await fetchMissingPhotos();
+  }
 
+  /* Tempo real: o que for salvo em outro aparelho aparece aqui sem recarregar. */
+  let unwatch = [];
+  function startWatching() {
+    stopWatching();
+    [["r", "relatorios"], ["d", "rascunhos"]].forEach(([kind, name]) => {
+      unwatch.push(Cloud.watchMine(name, async remote => {
+        mergeRemote(kind, remote);
+        if (screenNow === "home") renderHome();
+        if (screenNow === "reports") renderReports();
+        await fetchMissingPhotos();
+        if (screenNow === "reports") renderReports();
+      }, reportSync));
+    });
+  }
+  function stopWatching() {
+    unwatch.forEach(stop => { try { stop(); } catch (error) { /* já parado */ } });
+    unwatch = [];
+  }
+
+  let fetchingPhotos = false;
+  async function fetchMissingPhotos() {
+    if (fetchingPhotos) return;
+    fetchingPhotos = true;
+    try {
     // fotos que este aparelho ainda não tem
     const uploaded = load(KEY_UPLOADED, {});
     const needed = new Set();
@@ -1384,18 +1432,31 @@
       } catch (error) { console.warn("[Nuvem] foto", id, error); }
     }
     store(KEY_UPLOADED, uploaded);
+    } finally { fetchingPhotos = false; }
   }
 
   function paintSync() {
     const dot = $("sync-dot");
     if (!dot) return;
     const count = Object.keys(load(KEY_PENDING, {})).length;
-    dot.className = "sync-dot" + (!navigator.onLine ? " offline" : count ? " pending" : "");
-    dot.title = !navigator.onLine ? "Sem internet: salvo no aparelho" : count ? "Enviando " + count + "…" : "Tudo salvo na nuvem";
+    const failed = syncError && navigator.onLine;
+    dot.className = "sync-dot" + (!navigator.onLine ? " offline" : failed ? " error" : count ? " pending" : "");
+    dot.title = !navigator.onLine ? "Sem internet: salvo no aparelho" : failed ? syncError : count ? "Enviando " + count + "…" : "Tudo salvo na nuvem";
   }
   window.addEventListener("online", () => { paintSync(); flush(); });
   window.addEventListener("offline", paintSync);
-  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") flush(); });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !cloudOk()) return;
+    flush();
+    pull().then(() => { if (screenNow === "home") renderHome(); if (screenNow === "reports") renderReports(); }).catch(reportSync);
+  });
+  $("sync-dot").addEventListener("click", () => {
+    const count = Object.keys(load(KEY_PENDING, {})).length;
+    alert(!navigator.onLine ? "Sem internet. O que você salvar fica no aparelho e é enviado quando a conexão voltar."
+      : syncError ? "Problema na nuvem:\n\n" + syncError + (count ? "\n\nItens esperando envio: " + count : "")
+      : count ? "Enviando " + count + " item(ns) para a nuvem…" : "Tudo salvo na nuvem.");
+    flush();
+  });
 
   async function onLogin(account) {
     const owner = load(KEY_OWNER, null);
@@ -1419,15 +1480,18 @@
     try {
       await flush();
       await pull();
+      startWatching();
     } catch (error) {
-      console.warn("[Nuvem] sincronização", error);
-      toast(navigator.onLine ? "Não deu para buscar os dados da nuvem agora" : "Sem internet: mostrando o que está no aparelho");
+      reportSync(error);
+      toast(navigator.onLine ? "Problema na nuvem: toque na bolinha ao lado do seu nome" : "Sem internet: mostrando o que está no aparelho");
     }
     if (screenNow === "home") renderHome();
     cleanPhotos();
   }
 
   function onLogout() {
+    stopWatching();
+    syncError = null;
     user = null;
     draft = null; shift = null; block = null;
     $("user-chip").hidden = true;

@@ -29,7 +29,8 @@ h1,h2,p{margin:0}
 .topbar-row .brand{flex:1;min-width:0;margin:0;max-width:none}
 .user-chip{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:700;color:var(--muted);flex:none}
 .user-chip .text-btn{min-height:36px;padding:0 6px;font-size:14px}
-.sync-dot{width:9px;height:9px;border-radius:50%;background:var(--green)}
+.sync-dot{width:22px;height:22px;padding:0;border:6.5px solid var(--card);border-radius:50%;background:var(--green);box-sizing:border-box;cursor:pointer}
+.sync-dot.error{background:var(--danger)}
 .sync-dot.pending{background:var(--orange)}
 .sync-dot.offline{background:#9AA5A0}
 .screen-login{max-width:420px;margin:0 auto;width:100%;padding-top:16px}
