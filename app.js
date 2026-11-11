@@ -166,7 +166,8 @@
     ];
     SHIFT_FIELDS.forEach((field, index) => {
       lines.push(field.title);
-      const value = standardize(report.fields[field.key] || "").replace(/\s+$/, "");
+      const value = standardize(report.fields[field.key] || "").split("\n")
+        .filter(line => line.trim() !== "-").join("\n").replace(/\s+$/, "").replace(/^\s*\n/, "");
       if (value) lines.push(value);
       if (index < SHIFT_FIELDS.length - 1) lines.push("");
     });
@@ -221,9 +222,13 @@
      - tudo em MAIÚSCULAS;
      - toda linha com texto começa com traço "-".
      Roda antes dos outros "input" (captura), para o rascunho já guardar o texto padronizado. */
+  // Padrão: "- TEXTO EM MAIÚSCULAS" (traço, espaço, texto). Acentos mantidos.
+  const contentStart = line => { const m = line.match(/^\s*(-\s*)?/); return m ? m[0].length : 0; };
   function standardLine(line) {
     const upper = line.toLocaleUpperCase("pt-BR");
-    return upper.trim() === "" || upper.trimStart().startsWith("-") ? upper : "-" + upper.trimStart();
+    const content = upper.slice(contentStart(upper));
+    if (content.trim() === "") return upper; // linha vazia ou só o traço: deixa como está
+    return "- " + content;
   }
   function standardize(text) {
     return text.split("\n").map(standardLine).join("\n");
@@ -241,13 +246,13 @@
     let position = 0;
     for (let i = 0; i < row; i++) position += standardLine(lines[i]).length + 1;
     const line = lines[row];
+    const fixed = standardLine(line);
     const column = prefix[row].length;
-    const addsDash = standardLine(line).length !== line.length || (line.trim() !== "" && !line.trimStart().startsWith("-"));
-    if (addsDash) {
-      const leading = line.length - line.trimStart().length;
-      position += 1 + Math.max(0, column - leading);
-    } else {
+    if (fixed === line.toLocaleUpperCase("pt-BR")) {
       position += column;
+    } else {
+      const oldStart = contentStart(line);
+      position += 2 + Math.max(0, column - oldStart);
     }
     area.value = after;
     area.setSelectionRange(position, position);
