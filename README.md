@@ -22,6 +22,7 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 - Contadores de máquinas rodando, em setup e paradas.
 - Data e horário registrados ao iniciar o relatório.
 - Salvar relatório, Copiar e Enviar; lista **Meus relatórios** (por enquanto salvos no próprio aparelho).
+- Login com matrícula e senha; relatórios, rascunhos e fotos salvos no Firebase (celular e computador com a mesma conta).
 - **Rascunhos** na tela inicial: tudo o que foi começado e não salvo, de qualquer tipo.
 - Textos e caixas de texto crescem com o conteúdo, sem barra de rolagem.
 - Padrão de escrita: tudo em maiúsculas e cada linha começando com traço e espaço (`- `).

@@ -65,9 +65,11 @@
     const all = listDrafts().filter(other => other.id !== item.id);
     all.unshift(item);
     store(KEY_DRAFTS, all.slice(0, 50));
+    queuePush("d", item.id);
   }
   function dropDraft(id) {
     store(KEY_DRAFTS, listDrafts().filter(item => item.id !== id));
+    queueDelete("d", id);
   }
 
   function newDraft() {
@@ -307,8 +309,14 @@
       .sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)))[0] || null;
   }
 
-  $("pull-block").addEventListener("click", () => {
-    const last = lastBlockStatus();
+  $("pull-block").addEventListener("click", async () => {
+    let last = lastBlockStatus();
+    if (cloudOk()) {
+      try {
+        const shared = await Cloud.getLastBlock();
+        if (shared && shared.fields && (!last || String(shared.savedAt) > String(last.savedAt))) last = shared;
+      } catch (error) { /* sem internet: usa o do aparelho */ }
+    }
     if (!last) { toast("Nenhum status de bloqueio salvo ainda"); return; }
     const area = $("f-bloqueio");
     if (area.value.trim() && area.value.trim() !== last.fields.bloqueio.trim() &&
@@ -393,7 +401,17 @@
     canvas.width = Math.round(width * scale);
     canvas.height = Math.round(height * scale);
     canvas.getContext("2d").drawImage(source, 0, 0, canvas.width, canvas.height);
-    return new Promise(resolve => canvas.toBlob(blob => resolve(blob || file), "image/jpeg", 0.82));
+    const encode = quality => new Promise(resolve => canvas.toBlob(blob => resolve(blob), "image/jpeg", quality));
+    // cada foto precisa caber num documento do banco: abaixo de ~700 KB
+    for (const quality of [0.82, 0.7, 0.55, 0.4]) {
+      const blob = await encode(quality);
+      if (blob && blob.size <= 700000) return blob;
+    }
+    const small = document.createElement("canvas");
+    small.width = Math.round(canvas.width * 0.6);
+    small.height = Math.round(canvas.height * 0.6);
+    small.getContext("2d").drawImage(canvas, 0, 0, small.width, small.height);
+    return new Promise(resolve => small.toBlob(blob => resolve(blob || file), "image/jpeg", 0.6));
   }
 
   /* Localização aceita várias fotos (lista); Conforme e Não conforme, uma só. */
@@ -812,9 +830,10 @@
 
   /* ---------- Navegação ---------- */
   let active = "inicio"; // qual relatório a tela "Relatório pronto" mostra
-  let screenNow = "home";
+  let screenNow = "login";
   const screens = Array.from(document.querySelectorAll("[data-screen]"));
   function go(name) {
+    if (!user) name = "login";
     const editing = ["machines", "shift", "block", "done"];
     if (editing.includes(screenNow) && !editing.includes(name)) persistOpen();
     if (name !== "done") justSaved = null;
@@ -1094,6 +1113,11 @@
       toast("Não foi possível salvar neste aparelho");
       return;
     }
+    queuePush("r", report.id);
+    if (report.type === "troca" && (report.fields.bloqueio || "").trim() && cloudOk()) {
+      Cloud.setLastBlock({ fields: { bloqueio: report.fields.bloqueio }, date: report.date, turno: report.turno, savedAt: report.savedAt })
+        .catch(error => console.warn("[Nuvem] último bloqueio", error));
+    }
     dropDraft(source.id);
     source.savedId = report.id;
     // Depois de salvar, o formulário fica limpo para o próximo relatório.
@@ -1187,8 +1211,9 @@
   });
 
   $("delete-report").addEventListener("click", () => {
-    if (!viewing || !confirm("Apagar este relatório deste aparelho?")) return;
+    if (!viewing || !confirm("Apagar este relatório? Ele some de todos os aparelhos.")) return;
     store(KEY_REPORTS, load(KEY_REPORTS, []).filter(report => report.id !== viewing));
+    queueDelete("r", viewing);
     viewing = null;
     renderReports();
     cleanPhotos();
@@ -1256,7 +1281,218 @@
   }
 
   /* ---------- Começo ---------- */
+  /* ---------- Nuvem (Firebase): login e sincronização ----------
+     O aparelho guarda uma cópia (funciona sem internet) e tudo é enviado para o
+     Firebase assim que possível. Ao entrar, o app baixa os relatórios, rascunhos
+     e fotos da conta. Pendências de envio ficam em rq.pending.v1. */
+  const KEY_PENDING = "rq.pending.v1";
+  const KEY_OWNER = "rq.owner.v1";
+  const KEY_UPLOADED = "rq.photosUp.v1";
+  let user = null;
+  const cloudOk = () => Boolean(window.Cloud && user);
+  const KIND = { d: "rascunhos", r: "relatorios" };
+
+  function setPending(key, on) {
+    const pending = load(KEY_PENDING, {});
+    if (on) pending[key] = true; else delete pending[key];
+    store(KEY_PENDING, pending);
+    paintSync();
+  }
+  const pushTimers = new Map();
+  function queuePush(kind, id) {
+    setPending(kind + ":" + id, true);
+    clearTimeout(pushTimers.get(kind + id));
+    pushTimers.set(kind + id, setTimeout(flush, 1200));
+  }
+  function queueDelete(kind, id) {
+    setPending(kind + ":" + id, false);
+    setPending("x:" + kind + ":" + id, true);
+    setTimeout(flush, 300);
+  }
+
+  async function uploadPhotosOf(item) {
+    const uploaded = load(KEY_UPLOADED, {});
+    for (const id of allIdsOf(item)) {
+      if (uploaded[id]) continue;
+      const blob = await getPhoto(id);
+      if (!blob) continue;
+      await Cloud.putPhoto(id, blob);
+      uploaded[id] = true;
+      store(KEY_UPLOADED, uploaded);
+    }
+  }
+
+  let flushing = false, flushAgain = false;
+  async function flush() {
+    if (!cloudOk() || !navigator.onLine) { paintSync(); return; }
+    if (flushing) { flushAgain = true; return; }
+    flushing = true;
+    try {
+      for (const key of Object.keys(load(KEY_PENDING, {}))) {
+        const parts = key.split(":");
+        try {
+          if (parts[0] === "x") {
+            await Cloud.remove(KIND[parts[1]], parts[2]);
+          } else {
+            const list = parts[0] === "d" ? listDrafts() : load(KEY_REPORTS, []);
+            const item = list.find(other => String(other.id) === parts[1]);
+            if (item) {
+              await uploadPhotosOf(item);
+              await Cloud.put(KIND[parts[0]], item);
+            }
+          }
+          setPending(key, false);
+        } catch (error) {
+          console.warn("[Nuvem] não enviado:", key, error);
+          if (error && (error.code === "unavailable" || error.code === "permission-denied")) break;
+        }
+      }
+    } finally {
+      flushing = false;
+      paintSync();
+      if (flushAgain) { flushAgain = false; flush(); }
+    }
+  }
+
+  /* Baixa os relatórios e rascunhos da conta. O que ainda não foi enviado
+     (pendente) continua valendo a versão do aparelho. */
+  async function pull() {
+    if (!cloudOk()) return;
+    const [reports, drafts] = await Promise.all([Cloud.listMine("relatorios"), Cloud.listMine("rascunhos")]);
+    const pending = load(KEY_PENDING, {});
+    const merge = (local, remote, kind, dateKey) => {
+      const keep = local.filter(item => pending[kind + ":" + item.id]);
+      const ids = new Set(keep.map(item => String(item.id)));
+      remote.forEach(item => {
+        if (!ids.has(String(item.id)) && !pending["x:" + kind + ":" + item.id]) { delete item.owner; keep.push(item); }
+      });
+      return keep.sort((a, b) => String(b[dateKey] || "").localeCompare(String(a[dateKey] || "")));
+    };
+    store(KEY_REPORTS, merge(load(KEY_REPORTS, []), reports, "r", "savedAt"));
+    store(KEY_DRAFTS, merge(listDrafts(), drafts, "d", "updatedAt"));
+
+    // fotos que este aparelho ainda não tem
+    const uploaded = load(KEY_UPLOADED, {});
+    const needed = new Set();
+    load(KEY_REPORTS, []).concat(listDrafts()).forEach(item => allIdsOf(item).forEach(id => needed.add(id)));
+    for (const id of needed) {
+      const local = await getPhoto(id).catch(() => null);
+      if (local) continue;
+      try {
+        const blob = await Cloud.getPhoto(id);
+        if (blob) { await putPhoto(id, blob); uploaded[id] = true; }
+      } catch (error) { console.warn("[Nuvem] foto", id, error); }
+    }
+    store(KEY_UPLOADED, uploaded);
+  }
+
+  function paintSync() {
+    const dot = $("sync-dot");
+    if (!dot) return;
+    const count = Object.keys(load(KEY_PENDING, {})).length;
+    dot.className = "sync-dot" + (!navigator.onLine ? " offline" : count ? " pending" : "");
+    dot.title = !navigator.onLine ? "Sem internet: salvo no aparelho" : count ? "Enviando " + count + "…" : "Tudo salvo na nuvem";
+  }
+  window.addEventListener("online", () => { paintSync(); flush(); });
+  window.addEventListener("offline", paintSync);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") flush(); });
+
+  async function onLogin(account) {
+    const owner = load(KEY_OWNER, null);
+    if (owner && owner !== account.uid) {
+      // outra pessoa entrou neste aparelho: limpa a cópia local da conta anterior
+      [KEY_REPORTS, KEY_DRAFTS].forEach(key => store(key, []));
+      store(KEY_PENDING, {});
+      store(KEY_UPLOADED, {});
+    } else if (!owner) {
+      // o que foi feito antes do login vai para esta conta
+      load(KEY_REPORTS, []).forEach(item => setPending("r:" + item.id, true));
+      listDrafts().forEach(item => setPending("d:" + item.id, true));
+    }
+    store(KEY_OWNER, account.uid);
+    user = account;
+    draft = null; shift = null; block = null;
+    $("user-name").textContent = account.admin ? "ADM" : account.login;
+    $("user-chip").hidden = false;
+    paintSync();
+    go("home");
+    try {
+      await flush();
+      await pull();
+    } catch (error) {
+      console.warn("[Nuvem] sincronização", error);
+      toast(navigator.onLine ? "Não deu para buscar os dados da nuvem agora" : "Sem internet: mostrando o que está no aparelho");
+    }
+    if (screenNow === "home") renderHome();
+    cleanPhotos();
+  }
+
+  function onLogout() {
+    user = null;
+    draft = null; shift = null; block = null;
+    $("user-chip").hidden = true;
+    $("login-pass").value = "";
+    go("login");
+  }
+
+  /* Tela de entrar */
+  const LOGIN_ERRORS = {
+    "login-invalido": "Digite os 6 números da matrícula.",
+    "auth/invalid-credential": "Matrícula ou senha incorretas.",
+    "auth/invalid-login-credentials": "Matrícula ou senha incorretas.",
+    "auth/wrong-password": "Matrícula ou senha incorretas.",
+    "auth/user-not-found": "Matrícula ou senha incorretas.",
+    "auth/user-disabled": "Este acesso foi desativado. Fale com o responsável da qualidade.",
+    "auth/too-many-requests": "Muitas tentativas. Espere alguns minutos e tente de novo.",
+    "auth/network-request-failed": "Sem internet. Verifique a conexão e tente de novo."
+  };
+  function loginState(text, busy) {
+    $("login-btn").disabled = busy;
+    $("login-btn").firstChild.textContent = text;
+  }
+  function loginError(message) {
+    $("login-error").textContent = message || "";
+    $("login-error").hidden = !message;
+  }
+  $("login-user").addEventListener("input", event => {
+    const input = event.target;
+    const caret = input.selectionStart;
+    const upper = input.value.toUpperCase();
+    if (upper !== input.value) { input.value = upper; input.setSelectionRange(caret, caret); }
+  });
+  $("login-form").addEventListener("submit", async event => {
+    event.preventDefault();
+    if (!window.Cloud) { loginError("Ainda conectando ao servidor. Tente de novo em instantes."); return; }
+    loginError("");
+    loginState("Entrando…", true);
+    try {
+      await Cloud.signIn($("login-user").value, $("login-pass").value);
+    } catch (error) {
+      loginError(LOGIN_ERRORS[error.code] || "Não deu para entrar. Tente de novo.");
+      loginState("Entrar", false);
+    }
+  });
+  $("logout").addEventListener("click", async () => {
+    const count = Object.keys(load(KEY_PENDING, {})).length;
+    if (count && !confirm("Ainda há " + count + " item(ns) sem enviar para a nuvem. Sair mesmo assim? Eles continuam guardados neste aparelho.")) return;
+    if (window.Cloud) await Cloud.signOut();
+  });
+
+  function startCloud() {
+    loginState("Entrar", false);
+    Cloud.onUser(account => (account ? onLogin(account) : (onLogout(), loginState("Entrar", false))));
+  }
+
+  /* ---------- Começo ---------- */
   migrateOldDrafts();
-  go("home");
-  cleanPhotos();
+  go("login");
+  loginState("Conectando…", true);
+  if (window.Cloud) startCloud();
+  else window.addEventListener("cloud-ready", startCloud, { once: true });
+  setTimeout(() => {
+    if (!window.Cloud) {
+      loginState("Entrar", false);
+      loginError("Não foi possível conectar ao servidor. Verifique a internet e recarregue a página.");
+    }
+  }, 12000);
 })();

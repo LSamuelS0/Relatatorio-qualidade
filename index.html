@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=3.2">
+  <link rel="stylesheet" href="styles.css?v=3.3">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -41,16 +41,45 @@
   </svg>
 
   <header class="topbar">
-    <button class="brand" type="button" data-go="home" aria-label="Ir para o início">
-      <span class="brand-mark"><svg><use href="#i-clip"/></svg></span>
-      <span class="brand-name">Relatório da Qualidade</span>
-    </button>
+    <div class="topbar-row">
+      <button class="brand" type="button" data-go="home" aria-label="Ir para o início">
+        <span class="brand-mark"><svg><use href="#i-clip"/></svg></span>
+        <span class="brand-name">Relatório da Qualidade</span>
+      </button>
+      <div class="user-chip" id="user-chip" hidden>
+        <span id="user-name">—</span>
+        <span class="sync-dot" id="sync-dot" title="Sincronização"></span>
+        <button type="button" class="text-btn" id="logout">Sair</button>
+      </div>
+    </div>
   </header>
 
   <main id="app" class="app">
 
+    <!-- 0. Entrar -->
+    <section class="screen screen-login" id="screen-login" data-screen="login">
+      <div class="login-head">
+        <span class="login-mark"><svg><use href="#i-clip"/></svg></span>
+        <h1 class="title">Entrar</h1>
+        <p class="muted">Use sua matrícula e senha</p>
+      </div>
+      <form id="login-form" class="login-form" novalidate>
+        <label class="field" for="login-user">
+          <span class="field-label">Matrícula</span>
+          <input class="text-input login-input" id="login-user" autocomplete="username" autocapitalize="characters" spellcheck="false" placeholder="6 NÚMEROS">
+        </label>
+        <label class="field" for="login-pass">
+          <span class="field-label">Senha</span>
+          <input class="text-input login-input" id="login-pass" type="password" autocomplete="current-password">
+        </label>
+        <p class="login-error" id="login-error" role="alert" hidden></p>
+        <button class="btn btn-primary" type="submit" id="login-btn">Entrar<svg><use href="#i-arrow"/></svg></button>
+        <p class="muted small center">Esqueceu a senha? Fale com o responsável da qualidade.</p>
+      </form>
+    </section>
+
     <!-- 1. Escolher a linha -->
-    <section class="screen" id="screen-home" data-screen="home">
+    <section class="screen" id="screen-home" data-screen="home" hidden>
       <h1 class="title">Em qual linha você está?</h1>
 
       <button class="big-card" type="button" data-go="type">
@@ -360,7 +389,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=3.2"></script>
-  <script src="app.js?v=3.2"></script>
+  <script src="data.js?v=3.3"></script>
+  <script src="app.js?v=3.3"></script>
+  <script type="module" src="cloud.js?v=3.3"></script>
 </body>
 </html>

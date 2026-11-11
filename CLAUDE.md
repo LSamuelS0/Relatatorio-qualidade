@@ -32,7 +32,9 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `index.html` | Estrutura da tela |
 | `styles.css` | Visual e adaptação ao celular |
 | `data.js` | Cadastro: catálogo de peças, itens e máquinas |
-| `app.js` | Navegação entre telas, rascunho, salvar no aparelho, texto, copiar/enviar, validação do cadastro |
+| `app.js` | Navegação entre telas, rascunho, salvar no aparelho, sincronização com a nuvem, texto, copiar/enviar, validação do cadastro |
+| `cloud.js` | Conexão com o Firebase (login, relatórios, rascunhos, fotos); expõe `window.Cloud` |
+| `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
 Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
@@ -68,8 +70,7 @@ Regras de funcionamento:
   ```
   Aplicado enquanto a pessoa digita (funções `standardize`/`applyStandard` no `app.js`), também no texto puxado e no relatório gerado. O teclado do celular abre em maiúsculas (`autocapitalize="characters"`).
 - **Sem barra de rolagem (regra geral, todos os relatórios):** o texto do relatório aparece inteiro e toda caixa de texto cresce sozinha com o que é escrito. Máscaras novas devem seguir isso (o `app.js` aplica a qualquer `textarea`).
-- **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.drafts.v1` e `rq.reports.v1`; fotos no IndexedDB `rq-photos`). A sincronização celular → computador entra com o Firebase.
-- Não há tela de login ainda; ela entra junto com o Firebase.
+- **Login e nuvem (Firebase, projeto `relatorio-qualidade`)** — ver seção "Banco de dados" abaixo.
 
 Formato do texto gerado:
 
@@ -169,6 +170,20 @@ Conforme e Não conforme: 1 foto cada (a nova substitui a anterior). Localizaç�
 - Rascunho: vale a regra geral; bloqueio sem nenhum campo e sem foto não vira rascunho.
 - Com o Firebase, as fotos precisarão ir para o Firebase Storage para aparecer no computador.
 
+## Banco de dados (Firebase)
+
+- **Login:** tela "Entrar" com matrícula (6 números) ou `ADM` + senha. O `cloud.js` converte para e-mail interno: `123456@relatorio-qualidade.app`, `adm@relatorio-qualidade.app`. Contas são criadas no Firebase → Authentication. **A senha do ADM nunca vai para o código nem para este arquivo.**
+- **Administrador:** UID `Rxejtj0jgEUEGfTup3yK9ngMvtH3` (conta ADM). Está em `cloud.js` e em `firestore.rules`.
+- **Firestore (plano grátis Spark):**
+  - `relatorios/{id}` e `rascunhos/{id}`: o mesmo objeto do app + `owner` (uid de quem fez).
+  - `fotos/{id}`: foto em base64 (`data`), `type`, `owner`. Uma foto por documento; o app reduz cada foto para caber (< 700 KB). Escolhido pelo plano grátis: Cloud Storage exige o plano Blaze desde set/2024.
+  - `compartilhado/ultimoBloqueio`: último Status de bloqueio salvo numa troca de turno, de qualquer pessoa (botão "Puxar último bloqueio").
+- **Regras (`firestore.rules`):** cada pessoa lê/grava só o que é dela; o ADM lê/edita/apaga tudo; `compartilhado/ultimoBloqueio` qualquer pessoa logada.
+- **Funcionamento (aparelho primeiro, nuvem em seguida):** o app continua guardando no aparelho (`rq.reports.v1`, `rq.drafts.v1`, fotos no IndexedDB `rq-photos`) e envia para a nuvem assim que possível. Pendências em `rq.pending.v1` (`d:id`, `r:id`, `x:d:id` para apagar). Ao entrar, o app envia o que está pendente e baixa relatórios, rascunhos e fotos da conta (`pull()`), então funciona no celular e no computador com a mesma conta. Sem internet, tudo continua funcionando e é enviado depois.
+- **Bolinha ao lado do usuário:** verde = tudo na nuvem; laranja = enviando; cinza = sem internet.
+- **Troca de pessoa no mesmo aparelho:** `rq.owner.v1` guarda o dono da cópia local; se outra conta entrar, a cópia local da anterior é limpa. Na primeira entrada, o que foi feito antes do login vai para a conta que entrou.
+- **Ainda não feito:** tela do administrador para ver os relatórios de todos (hoje: pelo painel do Firebase), criar contas pelo app, e apagar da nuvem fotos que não são mais usadas (só são apagadas do aparelho). Redefinir senha de outra pessoa só pelo painel do Firebase (pelo app exigiria o plano Blaze).
+
 ## Regras obrigatórias
 
 ### Regra da vírgula e da barra (a mais importante)
@@ -241,9 +256,7 @@ principal por tela, status nunca só por cor, sem informação solta.
 
 ## Planejado / pendente
 
-1. **Login e sincronização celular → computador** com Firebase: matrícula de 6 dígitos +
-   senha (o app converte a matrícula num e-mail interno), relatórios no Firestore, cada
-   pessoa vê só os seus. Aguardando o dono criar o projeto Firebase e enviar o `firebaseConfig`.
+1. ~~Login e sincronização~~ — feito (11/11/2026). Falta o dono colar `firestore.rules` no Firebase e criar as contas dos operadores.
 2. **Máscaras de produção** (Bloqueio, Scrap, Liberação etc.):
    - Cada máscara tem uma parte **fixa** (texto em português e chinês) que nunca muda, e campos que a pessoa preenche.
    - Algumas exigem **imagens**. Ex.: na de **Bloqueio**, primeiro o produto **conforme** com a imagem logo abaixo, depois o produto **não conforme** com a sua imagem.
