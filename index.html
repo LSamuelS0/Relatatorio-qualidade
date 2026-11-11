@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=2.7">
+  <link rel="stylesheet" href="styles.css?v=2.8">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -33,6 +33,8 @@
       <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4L3 8l4 4"/><path d="M3 8h13a4 4 0 0 1 4 4"/><path d="M17 20l4-4-4-4"/><path d="M21 16H8a4 4 0 0 1-4-4"/></symbol>
       <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></symbol>
       <symbol id="i-edit" viewBox="0 0 24 24"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/></symbol>
+      <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
+      <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     </defs>
   </svg>
@@ -90,10 +92,10 @@
           <span class="tile-icon"><svg><use href="#i-swap"/></svg></span>
           <strong>Troca de turno</strong>
         </button>
-        <div class="tile is-off" aria-disabled="true">
+        <button class="tile" type="button" id="start-bloqueio">
           <span class="tile-icon"><svg><use href="#i-lock"/></svg></span>
-          <strong>Bloqueio de máquina</strong><small>Em breve</small>
-        </div>
+          <strong>Bloqueio</strong>
+        </button>
         <div class="tile is-off" aria-disabled="true">
           <span class="tile-icon"><svg><use href="#i-trash"/></svg></span>
           <strong>Scrap</strong><small>Em breve</small>
@@ -173,6 +175,108 @@
       </div>
     </section>
 
+    <!-- 3c. Bloqueio (máscara: Bloqueio Injetora) -->
+    <section class="screen screen-shift" id="screen-block" data-screen="block" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Bloqueio</h1>
+          <span>Injetora</span>
+        </div>
+        <button class="text-btn" type="button" id="block-restart">Limpar</button>
+      </div>
+
+      <label class="field" for="b-dataProducao">
+        <span class="field-label">Data da produção <small>生产日期</small></span>
+        <input class="text-input" type="date" id="b-dataProducao" data-bfield="dataProducao">
+      </label>
+      <label class="field" for="b-codigo">
+        <span class="field-label">Código do material <small>物料编码</small></span>
+        <input class="text-input" id="b-codigo" data-bfield="codigo" autocapitalize="characters" autocomplete="off" spellcheck="false" list="part-codes" placeholder="DIGITE O CÓDIGO OU O NOME DA PEÇA">
+      </label>
+      <datalist id="part-codes"></datalist>
+      <label class="field" for="b-motivo">
+        <span class="field-label">Motivo <small>问题描述</small></span>
+        <textarea id="b-motivo" data-bfield="motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- O QUE ESTÁ ERRADO NA PEÇA?"></textarea>
+      </label>
+      <label class="field" for="b-quantidade">
+        <span class="field-label">Quantidade <small>数量</small></span>
+        <input class="text-input" id="b-quantidade" data-bfield="quantidade" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="EX.: 120 PÇS">
+      </label>
+      <label class="field" for="b-responsavel">
+        <span class="field-label">Responsável <small>责任部门</small></span>
+        <input class="text-input" id="b-responsavel" data-bfield="responsavel" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="SETOR RESPONSÁVEL">
+      </label>
+      <div class="field">
+        <span class="field-label">Criticidade <small>关键性</small></span>
+        <div class="turno-pick" role="radiogroup" aria-label="Criticidade">
+          <button type="button" class="turno crit" data-crit="ALTA" role="radio">Alta</button>
+          <button type="button" class="turno crit" data-crit="MÉDIA" role="radio">Média</button>
+          <button type="button" class="turno crit" data-crit="BAIXA" role="radio">Baixa</button>
+        </div>
+      </div>
+      <label class="field" for="b-scrap">
+        <span class="field-label">Scrap <small>废料</small></span>
+        <input class="text-input" id="b-scrap" data-bfield="scrap" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="EX.: SIM, 10 PÇS / NÃO">
+      </label>
+      <label class="field" for="b-posicao">
+        <span class="field-label">Posição <small>物料所在位置</small></span>
+        <input class="text-input" id="b-posicao" data-bfield="posicao" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ONDE O MATERIAL ESTÁ">
+      </label>
+      <label class="field" for="b-helpChain">
+        <span class="field-label">Help chain <small>帮助链</small></span>
+        <input class="text-input" id="b-helpChain" data-bfield="helpChain" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="QUEM FOI ACIONADO">
+      </label>
+
+      <h2 class="subtitle photo-title">Fotos</h2>
+        <div class="photo-slot" data-photo="conforme">
+          <span class="field-label">✅ Conforme <small>1 foto</small></span>
+          <label class="photo-add">
+            <input type="file" accept="image/*" data-photo-input="conforme" hidden>
+            <svg><use href="#i-camera"/></svg><span>Adicionar foto</span>
+          </label>
+          <figure class="photo-preview" hidden>
+            <img alt="Foto: produto conforme">
+            <div class="actions-row">
+              <button class="btn btn-outline" type="button" data-photo-change="conforme"><svg><use href="#i-camera"/></svg>Trocar</button>
+              <button class="btn btn-quiet danger" type="button" data-photo-remove="conforme"><svg><use href="#i-trash"/></svg>Remover</button>
+            </div>
+          </figure>
+        </div>
+        <div class="photo-slot" data-photo="naoConforme">
+          <span class="field-label">❌ Não conforme <small>1 foto</small></span>
+          <label class="photo-add">
+            <input type="file" accept="image/*" data-photo-input="naoConforme" hidden>
+            <svg><use href="#i-camera"/></svg><span>Adicionar foto</span>
+          </label>
+          <figure class="photo-preview" hidden>
+            <img alt="Foto: produto não conforme">
+            <div class="actions-row">
+              <button class="btn btn-outline" type="button" data-photo-change="naoConforme"><svg><use href="#i-camera"/></svg>Trocar</button>
+              <button class="btn btn-quiet danger" type="button" data-photo-remove="naoConforme"><svg><use href="#i-trash"/></svg>Remover</button>
+            </div>
+          </figure>
+        </div>
+        <div class="photo-slot" data-photo="localizacao">
+          <span class="field-label">📍 Localização <small>1 foto</small></span>
+          <label class="photo-add">
+            <input type="file" accept="image/*" data-photo-input="localizacao" hidden>
+            <svg><use href="#i-camera"/></svg><span>Adicionar foto</span>
+          </label>
+          <figure class="photo-preview" hidden>
+            <img alt="Foto: localização">
+            <div class="actions-row">
+              <button class="btn btn-outline" type="button" data-photo-change="localizacao"><svg><use href="#i-camera"/></svg>Trocar</button>
+              <button class="btn btn-quiet danger" type="button" data-photo-remove="localizacao"><svg><use href="#i-trash"/></svg>Remover</button>
+            </div>
+          </figure>
+        </div>
+
+      <div class="bottom-bar">
+        <button class="btn btn-primary" type="button" id="block-done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
+      </div>
+    </section>
+
     <!-- 4. Relatório pronto -->
     <section class="screen" id="screen-done" data-screen="done" hidden>
       <button class="back" type="button" id="done-back"><svg><use href="#i-back"/></svg><span id="done-back-label">Corrigir</span></button>
@@ -181,6 +285,7 @@
         <div><h1 class="title">Relatório pronto</h1><p class="muted">Confira o texto abaixo</p></div>
       </div>
       <pre class="report-text" id="done-text" tabindex="0"></pre>
+      <div class="photo-blocks" id="done-photos" hidden></div>
       <div class="actions">
         <button class="btn btn-primary" type="button" id="save-report"><svg><use href="#i-save"/></svg><span id="save-label">Salvar relatório</span></button>
         <div class="actions-row">
@@ -202,6 +307,7 @@
           <h2 id="view-title">Início de turno · Injetora</h2>
           <p class="muted" id="view-sub"></p>
           <pre class="report-text" id="view-text" tabindex="0"></pre>
+          <div class="photo-blocks" id="view-photos" hidden></div>
           <div class="actions-row">
             <button class="btn btn-primary" type="button" data-copy="view"><svg><use href="#i-copy"/></svg>Copiar para o Meixin</button>
             <button class="btn btn-outline" type="button" data-share="view"><svg><use href="#i-share"/></svg>Enviar</button>
@@ -232,7 +338,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=2.7"></script>
-  <script src="app.js?v=2.7"></script>
+  <script src="data.js?v=2.8"></script>
+  <script src="app.js?v=2.8"></script>
 </body>
 </html>

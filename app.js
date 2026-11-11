@@ -56,7 +56,7 @@
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
   function listDrafts() {
-    return load(KEY_DRAFTS, []).filter(item => item && item.id && (item.type === "inicio" || item.type === "troca"));
+    return load(KEY_DRAFTS, []).filter(item => item && item.id && ["inicio", "troca", "bloqueio"].includes(item.type));
   }
   function keepDraft(item) {
     item.savedId = null;
@@ -314,6 +314,341 @@
     go("done");
   });
 
+  /* ---------- Fotos (guardadas no aparelho, IndexedDB) ----------
+     Cada foto é reduzida (máx. 1600 px, JPEG) e guardada com um id.
+     Rascunhos e relatórios guardam só o id. */
+  const PHOTO_DB = "rq-photos";
+  let photoDb = null;
+  const photoUrls = new Map();
+
+  function openPhotoDb() {
+    if (photoDb) return photoDb;
+    photoDb = new Promise((resolve, reject) => {
+      const request = indexedDB.open(PHOTO_DB, 1);
+      request.onupgradeneeded = () => request.result.createObjectStore("photos");
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    return photoDb;
+  }
+  async function photoTx(mode, work) {
+    const db = await openPhotoDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("photos", mode);
+      const result = work(tx.objectStore("photos"));
+      tx.oncomplete = () => resolve(result && "result" in result ? result.result : undefined);
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+  const putPhoto = (id, blob) => photoTx("readwrite", store => store.put(blob, id));
+  const getPhoto = id => photoTx("readonly", store => store.get(id));
+  const deletePhoto = id => photoTx("readwrite", store => store.delete(id));
+  const allPhotoIds = () => photoTx("readonly", store => store.getAllKeys());
+
+  async function photoUrl(id) {
+    if (!id) return null;
+    if (photoUrls.has(id)) return photoUrls.get(id);
+    const blob = await getPhoto(id).catch(() => null);
+    if (!blob) return null;
+    const url = URL.createObjectURL(blob);
+    photoUrls.set(id, url);
+    return url;
+  }
+
+  async function shrinkPhoto(file) {
+    const max = 1600;
+    let source;
+    try { source = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+    catch (error) {
+      source = await new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+    const width = source.width, height = source.height;
+    const scale = Math.min(1, max / Math.max(width, height));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(width * scale);
+    canvas.height = Math.round(height * scale);
+    canvas.getContext("2d").drawImage(source, 0, 0, canvas.width, canvas.height);
+    return new Promise(resolve => canvas.toBlob(blob => resolve(blob || file), "image/jpeg", 0.82));
+  }
+
+  /* Apaga fotos que nenhum rascunho ou relatório usa mais. */
+  async function cleanPhotos() {
+    try {
+      const used = new Set();
+      const collect = item => { if (item && item.photos) Object.values(item.photos).forEach(id => id && used.add(id)); };
+      listDrafts().forEach(collect);
+      load(KEY_REPORTS, []).forEach(collect);
+      collect(block);
+      const ids = await allPhotoIds();
+      await Promise.all((ids || []).filter(id => !used.has(id)).map(id => deletePhoto(id)));
+    } catch (error) { /* sem IndexedDB: nada a limpar */ }
+  }
+
+  /* ---------- Bloqueio (máscara: Bloqueio Injetora) ----------
+     A parte fixa (títulos em português e chinês) nunca muda; só os campos são preenchidos. */
+  const BLOCK_HEADER = "🔒BLOQUEIO INJETORA | 封锁警报 🔒";
+  const BLOCK_FIELDS = [
+    { key: "dataProducao", title: "DATA DA PRODUÇÃO 生产日期:" },
+    { key: "codigo", title: "CÓDIGO DO MATERIAL 物料编码:" },
+    { key: "motivo", title: "MOTIVO 问题描述:", multi: true },
+    { key: "quantidade", title: "QUANTIDADE 数量:" },
+    { key: "responsavel", title: "RESPONSÁVEL 责任部门:" },
+    { key: "criticidade", title: "CRITICIDADE 关键性:" },
+    { key: "scrap", title: "SCRAP 废料:" },
+    { key: "posicao", title: "POSIÇÃO 物料所在位置:" },
+    { key: "helpChain", title: "HELP CHAIN帮助链:" }
+  ];
+  const PHOTO_BLOCKS = [
+    { key: "conforme", title: "CONFORME: ✅" },
+    { key: "naoConforme", title: "NÃO CONFORME: ❌" },
+    { key: "localizacao", title: "LOCALIZAÇÃO: 📍" }
+  ];
+  let block = null; // bloqueio em edição
+
+  function newBlock() {
+    const fields = {};
+    BLOCK_FIELDS.forEach(field => { fields[field.key] = ""; });
+    fields.dataProducao = todayKey();
+    block = { id: newId(), line: "injetora", type: "bloqueio", startedAt: new Date().toISOString(), fields,
+      photos: { conforme: null, naoConforme: null, localizacao: null }, savedId: null };
+  }
+
+  function cleanMulti(text) {
+    return standardize(text || "").split("\n").filter(line => line.trim() !== "-").join("\n").replace(/\s+$/, "").replace(/^\s*\n/, "");
+  }
+
+  function buildBlockText(report) {
+    const lines = [BLOCK_HEADER, ""];
+    BLOCK_FIELDS.forEach((field, index) => {
+      let value = report.fields[field.key] || "";
+      if (field.key === "dataProducao") value = value ? formatDate(dateFromKey(value)) : "";
+      if (field.multi) {
+        const multi = cleanMulti(value);
+        lines.push(field.title);
+        if (multi) lines.push(multi);
+      } else {
+        value = value.toLocaleUpperCase("pt-BR").trim();
+        lines.push(field.title + (value ? " " + value : " "));
+      }
+      if (index < BLOCK_FIELDS.length - 1) lines.push("");
+    });
+    return lines.join("\n");
+  }
+
+  function isEmptyBlock(item) {
+    const fields = Object.entries(item.fields || {}).some(([key, value]) => key !== "dataProducao" && (value || "").trim());
+    const photos = Object.values(item.photos || {}).some(Boolean);
+    return !fields && !photos;
+  }
+
+  // Sugestões do código do material: catálogo da CTQ
+  $("part-codes").innerHTML = "";
+  DATA.parts.forEach(part => {
+    const option = document.createElement("option");
+    option.value = part.code + " - " + part.name.toLocaleUpperCase("pt-BR");
+    $("part-codes").appendChild(option);
+  });
+
+  async function renderBlock() {
+    document.querySelectorAll("[data-bfield]").forEach(input => {
+      input.value = block.fields[input.dataset.bfield] || "";
+      if (input.tagName === "TEXTAREA") fit(input);
+    });
+    document.querySelectorAll("[data-crit]").forEach(button => {
+      button.setAttribute("aria-checked", String(button.dataset.crit === block.fields.criticidade));
+    });
+    for (const slot of PHOTO_BLOCKS) await renderPhotoSlot(slot.key);
+  }
+
+  async function renderPhotoSlot(key) {
+    const slot = document.querySelector('[data-photo="' + key + '"]');
+    const url = await photoUrl(block.photos[key]);
+    slot.querySelector(".photo-add").hidden = Boolean(url);
+    const preview = slot.querySelector(".photo-preview");
+    preview.hidden = !url;
+    if (url) preview.querySelector("img").src = url;
+  }
+
+  $("start-bloqueio").addEventListener("click", () => {
+    newBlock();
+    go("block");
+  });
+
+  document.querySelectorAll("[data-bfield]").forEach(input => {
+    input.addEventListener("input", () => {
+      if (input.tagName === "INPUT" && input.type !== "date") {
+        const caret = input.selectionStart;
+        const upper = input.value.toLocaleUpperCase("pt-BR");
+        if (upper !== input.value) { input.value = upper; input.setSelectionRange(caret, caret); }
+      }
+      block.fields[input.dataset.bfield] = input.value;
+      keepDraft(block);
+    });
+  });
+
+  document.querySelectorAll("[data-crit]").forEach(button => {
+    button.addEventListener("click", () => {
+      block.fields.criticidade = block.fields.criticidade === button.dataset.crit ? "" : button.dataset.crit;
+      keepDraft(block);
+      document.querySelectorAll("[data-crit]").forEach(other => {
+        other.setAttribute("aria-checked", String(other.dataset.crit === block.fields.criticidade));
+      });
+    });
+  });
+
+  document.querySelectorAll("[data-photo-input]").forEach(input => {
+    input.addEventListener("change", async () => {
+      const file = input.files && input.files[0];
+      input.value = "";
+      if (!file) return;
+      const key = input.dataset.photoInput;
+      toast("Guardando a foto…");
+      try {
+        const blob = await shrinkPhoto(file);
+        const id = newId();
+        await putPhoto(id, blob);
+        block.photos[key] = id; // cada espaço guarda só uma foto: a nova substitui a anterior
+        keepDraft(block);
+        await renderPhotoSlot(key);
+        cleanPhotos();
+        toast("Foto adicionada");
+      } catch (error) {
+        toast("Não deu para guardar a foto neste aparelho");
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-photo-change]").forEach(button => {
+    button.addEventListener("click", () => document.querySelector('[data-photo-input="' + button.dataset.photoChange + '"]').click());
+  });
+  document.querySelectorAll("[data-photo-remove]").forEach(button => {
+    button.addEventListener("click", async () => {
+      const key = button.dataset.photoRemove;
+      block.photos[key] = null;
+      keepDraft(block);
+      await renderPhotoSlot(key);
+      cleanPhotos();
+    });
+  });
+
+  $("block-restart").addEventListener("click", () => {
+    if (!confirm("Limpar todos os campos e fotos do bloqueio?")) return;
+    dropDraft(block.id);
+    newBlock();
+    renderBlock();
+    cleanPhotos();
+    toast("Campos limpos");
+  });
+
+  $("block-done").addEventListener("click", () => {
+    active = "bloqueio";
+    go("done");
+  });
+
+  /* Blocos de foto do relatório pronto / Meus relatórios: título + foto + copiar/enviar. */
+  async function renderPhotoBlocks(container, report) {
+    container.innerHTML = "";
+    container.hidden = report.type !== "bloqueio";
+    if (report.type !== "bloqueio") return;
+    for (const item of PHOTO_BLOCKS) {
+      const card = document.createElement("div");
+      card.className = "photo-block";
+      const head = document.createElement("div");
+      head.className = "photo-block-head";
+      const title = document.createElement("strong");
+      title.textContent = item.title;
+      const copyTitle = document.createElement("button");
+      copyTitle.type = "button";
+      copyTitle.className = "btn btn-outline btn-small";
+      copyTitle.append(icon("i-copy"), document.createTextNode("Copiar título"));
+      copyTitle.addEventListener("click", async () => toast((await copyText(item.title)) ? "Título copiado" : "Não deu para copiar"));
+      head.append(title, copyTitle);
+      card.appendChild(head);
+
+      const id = report.photos && report.photos[item.key];
+      const url = await photoUrl(id);
+      if (url) {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = item.title;
+        const row = document.createElement("div");
+        row.className = "actions-row";
+        const copyPhoto = document.createElement("button");
+        copyPhoto.type = "button";
+        copyPhoto.className = "btn btn-outline btn-small";
+        copyPhoto.append(icon("i-copy"), document.createTextNode("Copiar foto"));
+        copyPhoto.addEventListener("click", () => copyImage(id, item.key));
+        const sendPhoto = document.createElement("button");
+        sendPhoto.type = "button";
+        sendPhoto.className = "btn btn-outline btn-small";
+        sendPhoto.append(icon("i-share"), document.createTextNode("Enviar foto"));
+        sendPhoto.addEventListener("click", () => sharePhotos([id], item.title, [item.key]));
+        row.append(copyPhoto, sendPhoto);
+        card.append(img, row);
+      } else {
+        const missing = document.createElement("p");
+        missing.className = "photo-missing";
+        missing.textContent = "Sem foto";
+        card.appendChild(missing);
+      }
+      container.appendChild(card);
+    }
+  }
+
+  async function photoFile(id, name) {
+    const blob = await getPhoto(id);
+    return blob ? new File([blob], name + ".jpg", { type: blob.type || "image/jpeg" }) : null;
+  }
+
+  function downloadFile(file) {
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(file);
+    link.download = file.name;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  }
+
+  async function sharePhotos(ids, text, names) {
+    const files = (await Promise.all(ids.map((id, i) => (id ? photoFile(id, "bloqueio-" + names[i]) : null)))).filter(Boolean);
+    if (files.length && navigator.canShare && navigator.canShare({ files })) {
+      try { await navigator.share(text ? { files, text } : { files }); }
+      catch (error) { if (error && error.name !== "AbortError") toast("Não deu para abrir o envio"); }
+      return;
+    }
+    files.forEach(downloadFile);
+    toast(files.length ? "Este aparelho não envia fotos direto. As fotos foram baixadas." : "Sem fotos para enviar");
+  }
+
+  async function copyImage(id, name) {
+    try {
+      if (!window.ClipboardItem || !navigator.clipboard || !navigator.clipboard.write) throw new Error("sem suporte");
+      const png = getPhoto(id).then(blob => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          canvas.width = img.naturalWidth;
+          canvas.height = img.naturalHeight;
+          canvas.getContext("2d").drawImage(img, 0, 0);
+          canvas.toBlob(out => (out ? resolve(out) : reject(new Error("png"))), "image/png");
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(blob);
+      }));
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": png })]);
+      toast("Foto copiada! Cole no Meixin");
+    } catch (error) {
+      const file = await photoFile(id, "bloqueio-" + name);
+      if (file) downloadFile(file);
+      toast("Este aparelho não copia foto. Ela foi baixada para você enviar.");
+    }
+  }
+
   /* ---------- Salvamento automático no rascunho ----------
      Ao voltar para o início, sair do relatório, fechar ou atualizar a página,
      o relatório aberto e não salvo vai para Rascunhos. */
@@ -321,10 +656,11 @@
     return !item.turno && !Object.values(item.fields || {}).some(value => (value || "").trim());
   }
   function persistOpen() {
-    if (!["machines", "shift", "done"].includes(screenNow)) return;
-    const item = screenNow === "machines" ? draft : screenNow === "shift" ? shift : current();
+    if (!["machines", "shift", "block", "done"].includes(screenNow)) return;
+    const item = screenNow === "machines" ? draft : screenNow === "shift" ? shift : screenNow === "block" ? block : current();
     if (!item || item.savedId || item.pristine) return; // salvo, ou limpo depois de salvar
     if (item.type === "troca" && isEmptyShift(item)) return; // nada escrito ainda
+    if (item.type === "bloqueio" && isEmptyBlock(item)) return;
     keepDraft(item);
   }
   window.addEventListener("pagehide", persistOpen);
@@ -335,18 +671,20 @@
   let screenNow = "home";
   const screens = Array.from(document.querySelectorAll("[data-screen]"));
   function go(name) {
-    const editing = ["machines", "shift", "done"];
+    const editing = ["machines", "shift", "block", "done"];
     if (editing.includes(screenNow) && !editing.includes(name)) persistOpen();
     if (name !== "done") justSaved = null;
     screenNow = name;
     if (name === "machines" && !draft) newDraft();
     if (name === "machines") active = "inicio";
     if (name === "shift" && !shift) newShift();
-    if (name === "done" && !(active === "troca" ? shift : draft)) { go("type"); return; }
+    if (name === "block" && !block) newBlock();
+    if (name === "done" && !current()) { go("type"); return; }
     screens.forEach(screen => { screen.hidden = screen.dataset.screen !== name; });
     if (name === "home") renderHome();
     if (name === "machines") renderMachines();
     if (name === "shift") renderShift();
+    if (name === "block") renderBlock();
     if (name === "done") renderDone();
     if (name === "reports") renderReports();
     window.scrollTo(0, 0);
@@ -371,6 +709,11 @@
   }
 
   function draftSummary(item) {
+    if (item.type === "bloqueio") {
+      const code = (item.fields.codigo || "").split(" - ")[0] || "sem código";
+      const photos = Object.values(item.photos || {}).filter(Boolean).length;
+      return whenLabel(new Date(item.startedAt)) + " · " + code + " · " + photos + "/3 fotos";
+    }
     if (item.type === "troca") {
       return formatDate(dateFromKey(item.date)) + " · " + (item.turno || "turno não escolhido");
     }
@@ -415,6 +758,7 @@
         if (!confirm("Descartar este rascunho? Ele não poderá ser recuperado.")) return;
         dropDraft(item.id);
         renderDrafts();
+        cleanPhotos();
         toast("Rascunho descartado");
       });
 
@@ -424,7 +768,10 @@
   }
 
   function openDraft(item) {
-    if (item.type === "troca") {
+    if (item.type === "bloqueio") {
+      block = item;
+      go("block");
+    } else if (item.type === "troca") {
       shift = item;
       go("shift");
     } else {
@@ -555,23 +902,26 @@
   });
 
   /* ---------- Relatório pronto ---------- */
-  const current = () => (active === "troca" ? shift : draft);
-  const textOf = report => (report.type === "troca" ? buildShiftText(report) : buildText(report));
-  const titleOf = report => (report.type === "troca" ? "Troca de turno" : "Início de turno") + " · Injetora";
+  const current = () => (active === "troca" ? shift : active === "bloqueio" ? block : draft);
+  const textOf = report => (report.type === "bloqueio" ? buildBlockText(report) : report.type === "troca" ? buildShiftText(report) : buildText(report));
+  const TITLES = { inicio: "Início de turno", troca: "Troca de turno", bloqueio: "Bloqueio" };
+  const titleOf = report => (TITLES[report.type] || "Relatório") + " · Injetora";
+  const editScreen = () => (active === "troca" ? "shift" : active === "bloqueio" ? "block" : "machines");
 
   let justSaved = null; // relatório recém-salvo mostrado na tela "Relatório pronto"
 
-  $("done-back").addEventListener("click", () => go(active === "troca" ? "shift" : "machines"));
+  $("done-back").addEventListener("click", () => go(editScreen()));
 
   function renderDone() {
     const report = current();
-    $("done-back-label").textContent = active === "troca" ? "Corrigir relatório" : "Corrigir máquinas";
+    $("done-back-label").textContent = active === "inicio" ? "Corrigir máquinas" : "Corrigir relatório";
     $("done-back").hidden = Boolean(justSaved);
     $("done-text").textContent = justSaved ? justSaved.text : textOf(report);
     const saved = Boolean(justSaved);
     $("save-label").textContent = saved ? "Relatório salvo" : "Salvar relatório";
     $("save-report").disabled = saved;
     $("new-after-save").hidden = !saved;
+    renderPhotoBlocks($("done-photos"), justSaved || report);
   }
 
   $("save-report").addEventListener("click", () => {
@@ -585,7 +935,10 @@
       savedAt: new Date().toISOString(),
       text: textOf(source)
     };
-    if (source.type === "troca") {
+    if (source.type === "bloqueio") {
+      report.fields = { ...source.fields };
+      report.photos = { ...source.photos };
+    } else if (source.type === "troca") {
       report.date = source.date;
       report.turno = source.turno;
       report.fields = { ...source.fields };
@@ -602,19 +955,23 @@
     // Depois de salvar, o formulário fica limpo para o próximo relatório.
     justSaved = report;
     if (source.type === "troca") { newShift(); shift.pristine = true; }
+    else if (source.type === "bloqueio") { newBlock(); block.pristine = true; }
     else { newDraft(); draft.pristine = true; }
     renderDone();
     toast("Relatório salvo");
   });
 
   $("new-after-save").addEventListener("click", () => {
-    go(active === "troca" ? "shift" : "machines");
+    go(editScreen());
   });
 
   /* Editar um relatório salvo: vira um rascunho novo; o salvo original não muda. */
   function editSaved(report) {
     const copy = { id: newId(), line: report.line, type: report.type, startedAt: report.startedAt, savedId: null, fromReport: report.id };
-    if (report.type === "troca") {
+    if (report.type === "bloqueio") {
+      copy.fields = { ...(report.fields || {}) };
+      copy.photos = { conforme: null, naoConforme: null, localizacao: null, ...(report.photos || {}) };
+    } else if (report.type === "troca") {
       copy.date = report.date;
       copy.turno = report.turno || null;
       copy.fields = { relatorio: "", atencao: "", pendencias: "", bloqueio: "", ...(report.fields || {}) };
@@ -651,7 +1008,9 @@
       const title = document.createElement("strong");
       title.textContent = titleOf(report);
       const sub = document.createElement("small");
-      sub.textContent = report.type === "troca"
+      sub.textContent = report.type === "bloqueio"
+        ? whenLabel(new Date(report.savedAt)) + " · " + ((report.fields.codigo || "").split(" - ")[0] || "sem código")
+        : report.type === "troca"
         ? formatDate(dateFromKey(report.date)) + (report.turno ? " · " + report.turno : "")
         : whenLabel(new Date(report.startedAt));
       text.append(title, sub);
@@ -665,14 +1024,15 @@
     });
     const shown = reports.find(report => report.id === viewing);
     $("view-title").textContent = titleOf(shown);
-    if (shown.type === "troca") {
+    if (shown.type === "troca" || shown.type === "bloqueio") {
       $("view-sub").textContent = "Salvo " + whenLabel(new Date(shown.savedAt)).toLowerCase();
     } else {
       const total = counts(shown.selections);
       $("view-sub").textContent = whenLabel(new Date(shown.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup · " + total.stop + " paradas";
     }
     $("view-text").textContent = shown.text;
-    const editable = shown.type === "troca" ? Boolean(shown.fields) : Boolean(shown.selections);
+    renderPhotoBlocks($("view-photos"), shown);
+    const editable = shown.type === "inicio" ? Boolean(shown.selections) : Boolean(shown.fields);
     $("edit-report").hidden = !editable;
     $("report-view").hidden = false;
   }
@@ -687,6 +1047,7 @@
     store(KEY_REPORTS, load(KEY_REPORTS, []).filter(report => report.id !== viewing));
     viewing = null;
     renderReports();
+    cleanPhotos();
     toast("Relatório apagado");
   });
 
@@ -722,6 +1083,14 @@
     const share = event.target.closest("[data-share]");
     if (share) {
       const text = textFor(share.dataset.share);
+      const report = share.dataset.share === "view"
+        ? load(KEY_REPORTS, []).find(item => item.id === viewing)
+        : justSaved || current();
+      if (report && report.type === "bloqueio" && Object.values(report.photos || {}).some(Boolean)) {
+        const keys = PHOTO_BLOCKS.map(item => item.key);
+        await sharePhotos(keys.map(key => report.photos[key]), text, keys);
+        return;
+      }
       if (navigator.share) {
         try { await navigator.share({ title: "Relatório de Início de Turno da Injetora", text }); }
         catch (error) { if (error && error.name !== "AbortError") toast("Não deu para abrir o envio"); }
@@ -744,4 +1113,5 @@
   /* ---------- Começo ---------- */
   migrateOldDrafts();
   go("home");
+  cleanPhotos();
 })();

@@ -46,10 +46,11 @@ Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os 
 
 Telas (versão 2.0, visual simplificado):
 1. **Em qual linha você está?** — Injetora (ativa) e Estamparia (em breve) + atalho "Meus relatórios" (só os salvos) + lista **Rascunhos**.
-2. **O que você vai registrar?** — blocos grandes: Início de turno e Troca de turno (ativos); Bloqueio, Scrap e Liberação (em breve).
+2. **O que você vai registrar?** — blocos grandes: Início de turno, Troca de turno e Bloqueio (ativos); Scrap e Liberação (em breve).
 3. **Máquinas** — contadores Rodando / Setup / Paradas e um cartão por máquina com número grande. Status por cor **e** texto.
 4. **Janela da máquina** — botões grandes com as peças daquela máquina + Setup / Parada + Confirmar.
 4b. **Troca de turno** — máscara "Alinhamento PQC Injetora" (detalhes abaixo).
+4c. **Bloqueio** — máscara "Bloqueio Injetora" com 3 fotos (detalhes abaixo).
 5. **Relatório pronto** — texto gerado, Salvar relatório, Copiar, Enviar e Novo relatório (após salvar).
 6. **Meus relatórios** — lista dos salvos; ao abrir: Copiar para o Meixin, Enviar, Editar (vira rascunho), Apagar. No computador, lista e texto lado a lado.
 
@@ -67,7 +68,7 @@ Regras de funcionamento:
   ```
   Aplicado enquanto a pessoa digita (funções `standardize`/`applyStandard` no `app.js`), também no texto puxado e no relatório gerado. O teclado do celular abre em maiúsculas (`autocapitalize="characters"`).
 - **Sem barra de rolagem (regra geral, todos os relatórios):** o texto do relatório aparece inteiro e toda caixa de texto cresce sozinha com o que é escrito. Máscaras novas devem seguir isso (o `app.js` aplica a qualquer `textarea`).
-- **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.drafts.v1` e `rq.reports.v1`). A sincronização celular → computador entra com o Firebase.
+- **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.drafts.v1` e `rq.reports.v1`; fotos no IndexedDB `rq-photos`). A sincronização celular → computador entra com o Firebase.
 - Não há tela de login ainda; ela entra junto com o Firebase.
 
 Formato do texto gerado:
@@ -116,6 +117,48 @@ TURNO 日期: <turno escolhido>
 - **Puxar último bloqueio**: carrega o Status de bloqueio da troca de turno da Injetora salva mais recentemente, para a pessoa atualizar. Hoje busca nos relatórios do aparelho; com o Firebase, deve buscar o último salvo **por qualquer pessoa** (função `lastBlockStatus()` no `app.js`).
 - Rascunhos da troca de turno seguem a regra geral de Rascunhos; a data é a do dia em que foi começado.
 - Observação para o dono confirmar: na máscara, "TURNO" está com 日期 (rìqī, "data"); turno costuma ser 班次 (bāncì). E 冲压校准 (chōngyā jiàozhǔn) significa "alinhamento da estamparia"; injetora costuma ser 注塑 (zhùsù). Mantido como está até o dono decidir.
+
+## Máscara: Bloqueio (Bloqueio Injetora)
+
+Parte **fixa** (não alterar):
+
+```
+🔒BLOQUEIO INJETORA | 封锁警报 🔒
+
+DATA DA PRODUÇÃO 生产日期: <data escolhida, dd/mm/aaaa>
+
+CÓDIGO DO MATERIAL 物料编码: <código>
+
+MOTIVO 问题描述:
+- <texto livre, padrão de escrita>
+
+QUANTIDADE 数量: <texto>
+
+RESPONSÁVEL 责任部门: <texto>
+
+CRITICIDADE 关键性: <ALTA | MÉDIA | BAIXA>
+
+SCRAP 废料: <texto>
+
+POSIÇÃO 物料所在位置: <texto>
+
+HELP CHAIN帮助链: <texto>
+```
+
+Depois do texto vêm 3 blocos, cada um com **um título fixo e uma foto (no máximo 1 por espaço)**:
+
+1. `CONFORME: ✅` + foto do produto conforme
+2. `NÃO CONFORME: ❌` + foto do produto não conforme
+3. `LOCALIZAÇÃO: 📍` + foto da localização
+
+- Data da produção: escolhida pela pessoa (começa com a data de hoje).
+- Código do material: campo com sugestões do catálogo da CTQ (`CÓDIGO - NOME`); aceita digitar outro.
+- Motivo é caixa de texto (padrão "- TEXTO"); os outros campos são de uma linha, sempre em maiúsculas, sem traço.
+- Criticidade: botões Alta / Média / Baixa (opções definidas pelo Claude; confirmar com o dono).
+- Fotos: reduzidas para no máx. 1600 px (JPEG) e guardadas no IndexedDB do aparelho; nova foto substitui a anterior no mesmo espaço. Fotos que nenhum rascunho/relatório usa são apagadas (`cleanPhotos()`).
+- Relatório pronto e Meus relatórios mostram o texto e os 3 blocos. Cada bloco tem **Copiar título**, **Copiar foto** (área de transferência; onde o aparelho não deixa, baixa a foto) e **Enviar foto**. O botão Enviar geral manda o texto + as fotos pelo compartilhamento do celular.
+- Rascunho: vale a regra geral; bloqueio sem nenhum campo e sem foto não vira rascunho.
+- Com o Firebase, as fotos precisarão ir para o Firebase Storage para aparecer no computador.
 
 ## Regras obrigatórias
 
