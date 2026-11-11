@@ -132,7 +132,7 @@ window.QUALITY_REPORT_DATA = {
     { id: 5,  items: ["Body-B 550", "Body-B 580", "Body-B 601"] },
     { id: 6,  items: ["Proteção do Motor 550", "Proteção do Motor 580", "Proteção do Motor 601", "Proteção do Motor 640"] },
     { id: 7,  items: ["Balancer 580", "Dispenser Case A", "Tub D 580", "Tub D 601"] },
-    { id: 8,  items: ["Pulsador 580/601"] },
+    { id: 8,  items: ["Pulsador 580/601", "Conjunto do Agitador 580/601"] },
     { id: 9,  items: ["Pulsador 580/601"] },
     { id: 10, items: ["Tampa Traseira 550", "Tampa Traseira 580", "Tampa Traseira 601"] },
     { id: 11, items: ["Body-B 550", "Body-B 580", "Body-B 601", "Base 550", "Base 580", "Base 601"] },
