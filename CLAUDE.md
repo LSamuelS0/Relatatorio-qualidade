@@ -152,12 +152,16 @@ principal por tela, status nunca só por cor, sem informação solta.
    - Cada máscara tem uma parte **fixa** (texto em português e chinês) que nunca muda, e campos que a pessoa preenche.
    - Algumas exigem **imagens**. Ex.: na de **Bloqueio**, primeiro o produto **conforme** com a imagem logo abaixo, depois o produto **não conforme** com a sua imagem.
    - Aguardando o dono enviar os modelos das máscaras.
-3. Cadastrar as peças da CTQ ainda sem máquina: Agitador 550, Back Control 550, Capa do Cesto 550,
+3. **Menu de administrador** (esboço aprovado para discussão em 11/11/2026; ainda não implementado):
+   - Só a conta de administrador (usuário `ADM`) acessa. **A senha nunca vai para o código nem para este arquivo**: o repositório é público e qualquer pessoa leria. Ela fica só no serviço de login (Firebase).
+   - Telas: Painel (atalhos + aviso de mudanças não publicadas) → Peças das máquinas (escolher máquina, remover e adicionar itens do catálogo) → Catálogo (cadastrar peça nova, perguntando se é uma peça só para os modelos — barra — ou uma por modelo — vírgula — e o código da CTQ de cada uma) → Contas e usuários (criar com matrícula, nome, senha inicial e tipo Operador/Administrador; redefinir senha; desativar) → Revisar e publicar (lista do que entra e sai, valida a regra da barra, publica).
+   - Publicar = gravar o cadastro e o app atualizar para todos. Opção prevista: guardar máquinas/peças no Firestore (o app lê de lá), em vez de editar `data.js` pelo navegador — publicar direto na `main` exigiria um token do GitHub dentro do app, o que não é seguro num site público.
+4. Cadastrar as peças da CTQ ainda sem máquina: Agitador 550, Back Control 550, Capa do Cesto 550,
    Case do Ímã 550 e 580/601, Tub D 550, Body-B Titânio 580/601, Tub D MAL 120/140,
    Pulsador Impeller, Capa do Pulsador Impeller, Dispenser Case B e Dispenser Case Soldado.
-4. Pesos por material (coluna PP C/TALCO cortada nas fotos) e regra de peso acima de 1 kg.
-5. Linha de Estamparia.
-6. Avaliar se o repositório deve ficar privado (códigos internos da Midea estão públicos).
+5. Pesos por material (coluna PP C/TALCO cortada nas fotos) e regra de peso acima de 1 kg.
+6. Linha de Estamparia.
+7. Avaliar se o repositório deve ficar privado (códigos internos da Midea estão públicos).
 
 ## Ao trabalhar neste projeto
 
