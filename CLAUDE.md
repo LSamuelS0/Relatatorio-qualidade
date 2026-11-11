@@ -109,11 +109,14 @@ TURNO 日期: <turno escolhido>
 
 🛑STATUS DE BLOQUEIO 封锁状态:
 <texto livre>
+
+<marcações @, se houver>
 ```
 
 - Só data, **sem hora**. A data é sempre a de hoje.
 - O turno a pessoa escolhe: **T1, T2 ou T3** (é assim que se escreve na empresa); o app não deixa seguir sem escolher.
 - Campos editáveis: Relatório, Pontos de atenção, Pendências e Status de bloqueio. Campo vazio = só o título.
+- **Marcações** (último quadro, sem título na máscara): legenda "Marque o @ dos colaboradores envolvidos no processo", começa vazio. Sai no fim do texto, depois de uma linha em branco, só se tiver algo escrito. Fica em maiúsculas, mas **sem o traço** do padrão de escrita (o traço atrapalharia o @). Exceção marcada com `data-nodash` no `index.html`.
 - **Puxar último bloqueio**: carrega o Status de bloqueio da troca de turno da Injetora salva mais recentemente, para a pessoa atualizar. Hoje busca nos relatórios do aparelho; com o Firebase, deve buscar o último salvo **por qualquer pessoa** (função `lastBlockStatus()` no `app.js`).
 - Rascunhos da troca de turno seguem a regra geral de Rascunhos; a data é a do dia em que foi começado.
 - Observação para o dono confirmar: na máscara, "TURNO" está com 日期 (rìqī, "data"); turno costuma ser 班次 (bāncì). E 冲压校准 (chōngyā jiàozhǔn) significa "alinhamento da estamparia"; injetora costuma ser 注塑 (zhùsù). Mantido como está até o dono decidir.

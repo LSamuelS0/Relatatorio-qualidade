@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=3.0">
+  <link rel="stylesheet" href="styles.css?v=3.1">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -170,6 +170,10 @@
         <p class="muted small" id="block-source" hidden></p>
         <textarea autocapitalize="characters" spellcheck="false" id="f-bloqueio" data-field="bloqueio" rows="5" placeholder="- MÁQUINAS OU PEÇAS BLOQUEADAS E A SITUAÇÃO DE CADA UMA"></textarea>
       </div>
+      <label class="field" for="f-marcacoes">
+        <span class="field-label">Marque o @ dos colaboradores envolvidos no processo</span>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-marcacoes" data-field="marcacoes" data-nodash="true" rows="2"></textarea>
+      </label>
 
       <div class="bottom-bar">
         <button class="btn btn-primary" type="button" id="shift-done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
@@ -356,7 +360,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=3.0"></script>
-  <script src="app.js?v=3.0"></script>
+  <script src="data.js?v=3.1"></script>
+  <script src="app.js?v=3.1"></script>
 </body>
 </html>

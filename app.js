@@ -152,7 +152,7 @@
 
   function newShift() {
     shift = { id: newId(), line: "injetora", type: "troca", startedAt: new Date().toISOString(), date: todayKey(), turno: null,
-      fields: { relatorio: "", atencao: "", pendencias: "", bloqueio: "" }, savedId: null };
+      fields: { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: "" }, savedId: null };
   }
 
   function buildShiftText(report) {
@@ -171,6 +171,9 @@
       if (value) lines.push(value);
       if (index < SHIFT_FIELDS.length - 1) lines.push("");
     });
+    // Marcações (@ dos colaboradores): no final, sem título, do jeito que foi escrito
+    const tags = (report.fields.marcacoes || "").toLocaleUpperCase("pt-BR").trim();
+    if (tags) lines.push("", tags);
     return lines.join("\n");
   }
 
@@ -235,6 +238,12 @@
   }
 
   function applyStandard(area) {
+    if (area.dataset.nodash) {
+      const caret = area.selectionStart;
+      const upper = area.value.toLocaleUpperCase("pt-BR");
+      if (upper !== area.value) { area.value = upper; area.setSelectionRange(caret, caret); }
+      return;
+    }
     const before = area.value;
     const after = standardize(before);
     if (after === before) return;
@@ -1097,7 +1106,7 @@
     } else if (report.type === "troca") {
       copy.date = report.date;
       copy.turno = report.turno || null;
-      copy.fields = { relatorio: "", atencao: "", pendencias: "", bloqueio: "", ...(report.fields || {}) };
+      copy.fields = { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: "", ...(report.fields || {}) };
     } else {
       copy.selections = { ...(report.selections || {}) };
     }
