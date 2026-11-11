@@ -376,11 +376,20 @@
     return new Promise(resolve => canvas.toBlob(blob => resolve(blob || file), "image/jpeg", 0.82));
   }
 
+  /* Localização aceita várias fotos (lista); Conforme e Não conforme, uma só. */
+  const MULTI_PHOTO = new Set(["localizacao"]);
+  function idsOf(report, key) {
+    const value = report && report.photos ? report.photos[key] : null;
+    if (Array.isArray(value)) return value.filter(Boolean);
+    return value ? [value] : [];
+  }
+  const allIdsOf = report => (report && report.photos ? Object.keys(report.photos).flatMap(key => idsOf(report, key)) : []);
+
   /* Apaga fotos que nenhum rascunho ou relatório usa mais. */
   async function cleanPhotos() {
     try {
       const used = new Set();
-      const collect = item => { if (item && item.photos) Object.values(item.photos).forEach(id => id && used.add(id)); };
+      const collect = item => allIdsOf(item).forEach(id => used.add(id));
       listDrafts().forEach(collect);
       load(KEY_REPORTS, []).forEach(collect);
       collect(block);
@@ -416,7 +425,7 @@
     fields.dataProducao = todayKey();
     fields.helpChain = (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
     block = { id: newId(), line: "injetora", type: "bloqueio", startedAt: new Date().toISOString(), fields,
-      photos: { conforme: null, naoConforme: null, localizacao: null }, savedId: null };
+      photos: { conforme: null, naoConforme: null, localizacao: [] }, savedId: null };
   }
 
   function cleanMulti(text) {
@@ -445,7 +454,7 @@
     const defaultHelp = (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
     const fields = Object.entries(item.fields || {}).some(([key, value]) =>
       key !== "dataProducao" && (value || "").trim() && !(key === "helpChain" && value === defaultHelp));
-    const photos = Object.values(item.photos || {}).some(Boolean);
+    const photos = allIdsOf(item).length > 0;
     return !fields && !photos;
   }
 
@@ -526,12 +535,45 @@
   }
 
   async function renderPhotoSlot(key) {
+    if (MULTI_PHOTO.has(key)) return renderGallery(key);
     const slot = document.querySelector('[data-photo="' + key + '"]');
     const url = await photoUrl(block.photos[key]);
     slot.querySelector(".photo-add").hidden = Boolean(url);
     const preview = slot.querySelector(".photo-preview");
     preview.hidden = !url;
     if (url) preview.querySelector("img").src = url;
+  }
+
+  async function renderGallery(key) {
+    const ids = idsOf(block, key);
+    const gallery = $("location-gallery");
+    gallery.innerHTML = "";
+    for (const [index, id] of ids.entries()) {
+      const url = await photoUrl(id);
+      if (!url) continue;
+      const figure = document.createElement("figure");
+      figure.className = "gallery-item";
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Localização, foto " + (index + 1);
+      const caption = document.createElement("figcaption");
+      const label = document.createElement("span");
+      label.textContent = "Foto " + (index + 1) + " de " + ids.length;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn btn-quiet danger btn-small";
+      remove.append(icon("i-trash"), document.createTextNode("Remover"));
+      remove.addEventListener("click", async () => {
+        block.photos[key] = idsOf(block, key).filter(other => other !== id);
+        keepDraft(block);
+        await renderGallery(key);
+        cleanPhotos();
+      });
+      caption.append(label, remove);
+      figure.append(img, caption);
+      gallery.appendChild(figure);
+    }
+    $("location-add-label").textContent = ids.length ? "Adicionar mais fotos" : "Adicionar foto";
   }
 
   $("start-bloqueio").addEventListener("click", () => {
@@ -568,20 +610,26 @@
 
   document.querySelectorAll("[data-photo-input]").forEach(input => {
     input.addEventListener("change", async () => {
-      const file = input.files && input.files[0];
+      const files = Array.from(input.files || []);
       input.value = "";
-      if (!file) return;
+      if (!files.length) return;
       const key = input.dataset.photoInput;
-      toast("Guardando a foto…");
+      const multi = MULTI_PHOTO.has(key);
+      toast(files.length > 1 ? "Guardando as fotos…" : "Guardando a foto…");
       try {
-        const blob = await shrinkPhoto(file);
-        const id = newId();
-        await putPhoto(id, blob);
-        block.photos[key] = id; // cada espaço guarda só uma foto: a nova substitui a anterior
+        const added = [];
+        for (const file of (multi ? files : files.slice(0, 1))) {
+          const blob = await shrinkPhoto(file);
+          const id = newId();
+          await putPhoto(id, blob);
+          added.push(id);
+        }
+        // Localização: soma as fotos. Conforme / Não conforme: a nova substitui a anterior.
+        block.photos[key] = multi ? idsOf(block, key).concat(added) : added[0];
         keepDraft(block);
         await renderPhotoSlot(key);
         cleanPhotos();
-        toast("Foto adicionada");
+        toast(added.length > 1 ? added.length + " fotos adicionadas" : "Foto adicionada");
       } catch (error) {
         toast("Não deu para guardar a foto neste aparelho");
       }
@@ -635,27 +683,37 @@
       head.append(title, copyTitle);
       card.appendChild(head);
 
-      const id = report.photos && report.photos[item.key];
-      const url = await photoUrl(id);
-      if (url) {
+      const ids = idsOf(report, item.key);
+      let shown = 0;
+      for (const [index, id] of ids.entries()) {
+        const url = await photoUrl(id);
+        if (!url) continue;
+        shown += 1;
+        if (ids.length > 1) {
+          const sub = document.createElement("span");
+          sub.className = "photo-block-sub";
+          sub.textContent = "Foto " + (index + 1) + " de " + ids.length;
+          card.appendChild(sub);
+        }
         const img = document.createElement("img");
         img.src = url;
-        img.alt = item.title;
+        img.alt = item.title + " " + (index + 1);
         const row = document.createElement("div");
         row.className = "actions-row";
         const copyPhoto = document.createElement("button");
         copyPhoto.type = "button";
         copyPhoto.className = "btn btn-outline btn-small";
         copyPhoto.append(icon("i-copy"), document.createTextNode("Copiar foto"));
-        copyPhoto.addEventListener("click", () => copyImage(id, item.key));
+        copyPhoto.addEventListener("click", () => copyImage(id, item.key + "-" + (index + 1)));
         const sendPhoto = document.createElement("button");
         sendPhoto.type = "button";
         sendPhoto.className = "btn btn-outline btn-small";
         sendPhoto.append(icon("i-share"), document.createTextNode("Enviar foto"));
-        sendPhoto.addEventListener("click", () => sharePhotos([id], item.title, [item.key]));
+        sendPhoto.addEventListener("click", () => sharePhotos([id], null, [item.key + "-" + (index + 1)]));
         row.append(copyPhoto, sendPhoto);
         card.append(img, row);
-      } else {
+      }
+      if (!shown) {
         const missing = document.createElement("p");
         missing.className = "photo-missing";
         missing.textContent = "Sem foto";
@@ -776,8 +834,8 @@
   function draftSummary(item) {
     if (item.type === "bloqueio") {
       const code = (item.fields.codigo || "").split(" - ")[0] || "sem código";
-      const photos = Object.values(item.photos || {}).filter(Boolean).length;
-      return whenLabel(new Date(item.startedAt)) + " · " + code + " · " + photos + "/3 fotos";
+      const photos = allIdsOf(item).length;
+      return whenLabel(new Date(item.startedAt)) + " · " + code + " · " + photos + (photos === 1 ? " foto" : " fotos");
     }
     if (item.type === "troca") {
       return formatDate(dateFromKey(item.date)) + " · " + (item.turno || "turno não escolhido");
@@ -1002,7 +1060,7 @@
     };
     if (source.type === "bloqueio") {
       report.fields = { ...source.fields };
-      report.photos = { ...source.photos };
+      report.photos = { ...source.photos, localizacao: idsOf(source, "localizacao") };
     } else if (source.type === "troca") {
       report.date = source.date;
       report.turno = source.turno;
@@ -1035,7 +1093,7 @@
     const copy = { id: newId(), line: report.line, type: report.type, startedAt: report.startedAt, savedId: null, fromReport: report.id };
     if (report.type === "bloqueio") {
       copy.fields = { ...(report.fields || {}) };
-      copy.photos = { conforme: null, naoConforme: null, localizacao: null, ...(report.photos || {}) };
+      copy.photos = { conforme: null, naoConforme: null, ...(report.photos || {}), localizacao: idsOf(report, "localizacao") };
     } else if (report.type === "troca") {
       copy.date = report.date;
       copy.turno = report.turno || null;
@@ -1151,9 +1209,10 @@
       const report = share.dataset.share === "view"
         ? load(KEY_REPORTS, []).find(item => item.id === viewing)
         : justSaved || current();
-      if (report && report.type === "bloqueio" && Object.values(report.photos || {}).some(Boolean)) {
-        const keys = PHOTO_BLOCKS.map(item => item.key);
-        await sharePhotos(keys.map(key => report.photos[key]), text, keys);
+      if (report && report.type === "bloqueio" && allIdsOf(report).length) {
+        const ids = [], names = [];
+        PHOTO_BLOCKS.forEach(item => idsOf(report, item.key).forEach((id, i) => { ids.push(id); names.push(item.key + "-" + (i + 1)); }));
+        await sharePhotos(ids, text, names);
         return;
       }
       if (navigator.share) {

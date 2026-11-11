@@ -145,19 +145,22 @@ POSIÇÃO 物料所在位置: <texto>
 HELP CHAIN帮助链: <em branco ou nomes padrão>
 ```
 
-Depois do texto vêm 3 blocos, cada um com **um título fixo e uma foto (no máximo 1 por espaço)**:
+Depois do texto vêm 3 blocos, cada um com **um título fixo e as fotos**:
 
 1. `CONFORME: ✅` + foto do produto conforme
 2. `NÃO CONFORME: ❌` + foto do produto não conforme
-3. `LOCALIZAÇÃO: 📍` + foto da localização
+3. `LOCALIZAÇÃO: 📍` + fotos da localização — **sem limite** (vários paletes podem estar em lugares diferentes)
+
+Conforme e Não conforme: 1 foto cada (a nova substitui a anterior). Localização: lista de fotos (`photos.localizacao` é um array; `idsOf()` também lê o formato antigo de 1 foto).
 
 - Data da produção: escolhida pela pessoa (começa com a data de hoje).
 - Código do material: botão **Escolher produto** que abre a lista do catálogo da CTQ; escrevendo, a lista filtra (código ou nome, sem precisar de acento). Grava `CÓDIGO - NOME`. Se não achar, a opção "Usar o que escrevi" grava o texto digitado.
 - Motivo é caixa de texto (padrão "- TEXTO"); Quantidade, Responsável e Posição são de uma linha, sempre em maiúsculas, sem traço.
 - Scrap: botões **Sim / Não / Em análise** (definido pelo dono).
-- Help chain: começa **em branco**; as pessoas são marcadas manualmente no Meixin. Nomes padrão (o dono vai passar) entram em `helpChainDefault` no `data.js` e já vêm preenchidos em todo bloqueio novo.
+- Help chain: começa **em branco**, sem texto de exemplo no campo; as pessoas são marcadas manualmente no Meixin. Nomes padrão (o dono vai passar) entram em `helpChainDefault` no `data.js` e já vêm preenchidos em todo bloqueio novo.
 - Criticidade: botões Alta / Média / Baixa (opções definidas pelo Claude; confirmar com o dono).
-- Fotos: reduzidas para no máx. 1600 px (JPEG) e guardadas no IndexedDB do aparelho; nova foto substitui a anterior no mesmo espaço. Fotos que nenhum rascunho/relatório usa são apagadas (`cleanPhotos()`).
+- Fotos: reduzidas para no máx. 1600 px (JPEG) e guardadas no IndexedDB do aparelho; em Conforme/Não conforme a nova substitui a anterior; em Localização as fotos se somam (dá para escolher várias de uma vez na galeria) e cada uma tem Remover. Fotos que nenhum rascunho/relatório usa são apagadas (`cleanPhotos()`).
+- **Formato no Meixin é rígido:** cada parte vai como mensagem separada, na ordem (texto, título, foto, título, foto, título, fotos). Não juntar título com foto nem escrever título dentro da foto. O app não consegue enviar sozinho várias mensagens no Meixin (o navegador não controla outro app); envio automático só com integração oficial do Meixin (robô de grupo 群机器人, qún jīqìrén) via TI. Proposto ao dono: modo "Enviar passo a passo" (ainda não feito).
 - Relatório pronto e Meus relatórios mostram o texto e os 3 blocos. Cada bloco tem **Copiar título**, **Copiar foto** (área de transferência; onde o aparelho não deixa, baixa a foto) e **Enviar foto**. O botão Enviar geral manda o texto + as fotos pelo compartilhamento do celular.
 - Rascunho: vale a regra geral; bloqueio sem nenhum campo e sem foto não vira rascunho.
 - Com o Firebase, as fotos precisarão ir para o Firebase Storage para aparecer no computador.

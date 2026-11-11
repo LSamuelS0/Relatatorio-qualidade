@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=2.9">
+  <link rel="stylesheet" href="styles.css?v=3.0">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -265,19 +265,13 @@
             </div>
           </figure>
         </div>
-        <div class="photo-slot" data-photo="localizacao">
-          <span class="field-label">📍 Localização <small>1 foto</small></span>
+        <div class="photo-slot" data-photo="localizacao" data-multi="true">
+          <span class="field-label">📍 Localização <small>quantas fotos precisar</small></span>
+          <div class="photo-gallery" id="location-gallery"></div>
           <label class="photo-add">
-            <input type="file" accept="image/*" data-photo-input="localizacao" hidden>
-            <svg><use href="#i-camera"/></svg><span>Adicionar foto</span>
+            <input type="file" accept="image/*" multiple data-photo-input="localizacao" hidden>
+            <svg><use href="#i-camera"/></svg><span id="location-add-label">Adicionar foto</span>
           </label>
-          <figure class="photo-preview" hidden>
-            <img alt="Foto: localização">
-            <div class="actions-row">
-              <button class="btn btn-outline" type="button" data-photo-change="localizacao"><svg><use href="#i-camera"/></svg>Trocar</button>
-              <button class="btn btn-quiet danger" type="button" data-photo-remove="localizacao"><svg><use href="#i-trash"/></svg>Remover</button>
-            </div>
-          </figure>
         </div>
 
       <div class="bottom-bar">
@@ -362,7 +356,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=2.9"></script>
-  <script src="app.js?v=2.9"></script>
+  <script src="data.js?v=3.0"></script>
+  <script src="app.js?v=3.0"></script>
 </body>
 </html>

@@ -149,6 +149,12 @@ h1,h2,p{margin:0}
 .product-option.custom{border-style:dashed}
 .crit.small-text{font-size:15px}
 
+.photo-gallery{display:flex;flex-direction:column;gap:12px}
+.photo-gallery:empty{display:none}
+.gallery-item{margin:0;display:flex;flex-direction:column;gap:6px}
+.gallery-item figcaption{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:14px;font-weight:700;color:var(--muted)}
+.photo-block-sub{font-size:13px;font-weight:700;color:var(--muted)}
+
 /* Botões */
 .btn{width:100%;min-height:49.6px;border-radius:var(--radius);border:2px solid transparent;font-size:15.2px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 12.8px}
 .btn-primary{background:var(--green);color:#fff}
