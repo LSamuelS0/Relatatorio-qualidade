@@ -173,7 +173,10 @@
     return lines.join("\n");
   }
 
+  const OLD_TURNO = { "1º TURNO": "T1", "2º TURNO": "T2", "3º TURNO": "T3" }; // nomes da versão anterior
+
   function renderShift() {
+    if (OLD_TURNO[shift.turno]) shift.turno = OLD_TURNO[shift.turno];
     $("shift-date").textContent = "Data: " + formatDate(dateFromKey(shift.date));
     document.querySelectorAll("[data-turno]").forEach(button => {
       button.setAttribute("aria-checked", String(button.dataset.turno === shift.turno));

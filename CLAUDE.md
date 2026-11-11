@@ -111,7 +111,7 @@ TURNO 日期: <turno escolhido>
 ```
 
 - Só data, **sem hora**. A data é sempre a de hoje.
-- O turno a pessoa escolhe (1º, 2º ou 3º TURNO); o app não deixa seguir sem escolher.
+- O turno a pessoa escolhe: **T1, T2 ou T3** (é assim que se escreve na empresa); o app não deixa seguir sem escolher.
 - Campos editáveis: Relatório, Pontos de atenção, Pendências e Status de bloqueio. Campo vazio = só o título.
 - **Puxar último bloqueio**: carrega o Status de bloqueio da troca de turno da Injetora salva mais recentemente, para a pessoa atualizar. Hoje busca nos relatórios do aparelho; com o Firebase, deve buscar o último salvo **por qualquer pessoa** (função `lastBlockStatus()` no `app.js`).
 - Rascunhos da troca de turno seguem a regra geral de Rascunhos; a data é a do dia em que foi começado.
