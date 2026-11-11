@@ -13,7 +13,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;flex:none}
 [hidden]{display:none!important}
 /* Regra geral: caixas de texto e textos de relatório crescem com o conteúdo, sem barra de rolagem */
-textarea{resize:none;overflow:hidden}
+textarea{resize:none;overflow:hidden;text-transform:uppercase}
 h1,h2,p{margin:0}
 
 /* Topo */

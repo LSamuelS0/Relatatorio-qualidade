@@ -166,7 +166,7 @@
     ];
     SHIFT_FIELDS.forEach((field, index) => {
       lines.push(field.title);
-      const value = (report.fields[field.key] || "").replace(/\s+$/, "");
+      const value = standardize(report.fields[field.key] || "").replace(/\s+$/, "");
       if (value) lines.push(value);
       if (index < SHIFT_FIELDS.length - 1) lines.push("");
     });
@@ -214,7 +214,61 @@
     area.style.height = area.scrollHeight + 4 + "px";
   }
   // Vale para toda caixa de texto do app, inclusive de máscaras novas.
-  document.addEventListener("input", event => { if (event.target.matches("textarea")) fit(event.target); });
+  /* Padrão de escrita (todas as caixas de texto):
+     - tudo em MAIÚSCULAS;
+     - toda linha com texto começa com traço "-".
+     Roda antes dos outros "input" (captura), para o rascunho já guardar o texto padronizado. */
+  function standardLine(line) {
+    const upper = line.toLocaleUpperCase("pt-BR");
+    return upper.trim() === "" || upper.trimStart().startsWith("-") ? upper : "-" + upper.trimStart();
+  }
+  function standardize(text) {
+    return text.split("\n").map(standardLine).join("\n");
+  }
+
+  function applyStandard(area) {
+    const before = area.value;
+    const after = standardize(before);
+    if (after === before) return;
+    // recalcula a posição do cursor na linha em que a pessoa está escrevendo
+    const caret = area.selectionStart;
+    const lines = before.split("\n");
+    const prefix = before.slice(0, caret).split("\n");
+    const row = prefix.length - 1;
+    let position = 0;
+    for (let i = 0; i < row; i++) position += standardLine(lines[i]).length + 1;
+    const line = lines[row];
+    const column = prefix[row].length;
+    const addsDash = standardLine(line).length !== line.length || (line.trim() !== "" && !line.trimStart().startsWith("-"));
+    if (addsDash) {
+      const leading = line.length - line.trimStart().length;
+      position += 1 + Math.max(0, column - leading);
+    } else {
+      position += column;
+    }
+    area.value = after;
+    area.setSelectionRange(position, position);
+  }
+
+  let composing = false; // teclado do celular ainda montando a palavra
+  document.addEventListener("compositionstart", event => { if (event.target.matches("textarea")) composing = true; }, true);
+  document.addEventListener("compositionend", event => {
+    if (!event.target.matches("textarea")) return;
+    composing = false;
+    applyStandard(event.target);
+    event.target.dispatchEvent(new Event("input", { bubbles: true }));
+  }, true);
+  document.addEventListener("input", event => {
+    if (!event.target.matches("textarea")) return;
+    if (!composing && !event.isComposing) applyStandard(event.target);
+    fit(event.target);
+  }, true);
+  document.addEventListener("blur", event => {
+    if (!event.target.matches || !event.target.matches("textarea")) return;
+    const old = event.target.value;
+    applyStandard(event.target);
+    if (event.target.value !== old) event.target.dispatchEvent(new Event("input", { bubbles: true }));
+  }, true);
   window.addEventListener("resize", () => document.querySelectorAll("textarea").forEach(fit));
 
   /* Último status de bloqueio salvo numa troca de turno da Injetora.
@@ -231,9 +285,9 @@
     const area = $("f-bloqueio");
     if (area.value.trim() && area.value.trim() !== last.fields.bloqueio.trim() &&
         !confirm("Substituir o que já está escrito pelo último status de bloqueio?")) return;
-    area.value = last.fields.bloqueio;
+    area.value = standardize(last.fields.bloqueio);
     fit(area);
-    shift.fields.bloqueio = last.fields.bloqueio;
+    shift.fields.bloqueio = area.value;
     keepDraft(shift);
     const note = $("block-source");
     note.textContent = "Puxado da troca de turno de " + formatDate(dateFromKey(last.date)) + (last.turno ? " · " + last.turno : "") + ". Atualize o que mudou.";

@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=2.3">
+  <link rel="stylesheet" href="styles.css?v=2.4">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -151,21 +151,21 @@
 
       <label class="field" for="f-relatorio">
         <span class="field-label">📌 Relatório <small>报告</small></span>
-        <textarea id="f-relatorio" data-field="relatorio" rows="5" placeholder="Como foi o turno?"></textarea>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-relatorio" data-field="relatorio" rows="5" placeholder="-COMO FOI O TURNO?"></textarea>
       </label>
       <label class="field" for="f-atencao">
         <span class="field-label">⚠️ Pontos de atenção <small>注意事项</small></span>
-        <textarea id="f-atencao" data-field="atencao" rows="4" placeholder="O que o próximo turno precisa observar?"></textarea>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-atencao" data-field="atencao" rows="4" placeholder="-O QUE O PRÓXIMO TURNO PRECISA OBSERVAR?"></textarea>
       </label>
       <label class="field" for="f-pendencias">
         <span class="field-label">🚨 Pendências <small>待处理问题</small></span>
-        <textarea id="f-pendencias" data-field="pendencias" rows="4" placeholder="O que ficou para resolver?"></textarea>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-pendencias" data-field="pendencias" rows="4" placeholder="-O QUE FICOU PARA RESOLVER?"></textarea>
       </label>
       <div class="field">
         <label class="field-label" for="f-bloqueio">🛑 Status de bloqueio <small>封锁状态</small></label>
         <button class="btn btn-outline" type="button" id="pull-block"><svg><use href="#i-download"/></svg>Puxar último bloqueio</button>
         <p class="muted small" id="block-source" hidden></p>
-        <textarea id="f-bloqueio" data-field="bloqueio" rows="5" placeholder="Máquinas ou peças bloqueadas e situação de cada uma"></textarea>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-bloqueio" data-field="bloqueio" rows="5" placeholder="-MÁQUINAS OU PEÇAS BLOQUEADAS E A SITUAÇÃO DE CADA UMA"></textarea>
       </div>
 
       <div class="bottom-bar">
@@ -232,7 +232,7 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=2.3"></script>
-  <script src="app.js?v=2.3"></script>
+  <script src="data.js?v=2.4"></script>
+  <script src="app.js?v=2.4"></script>
 </body>
 </html>

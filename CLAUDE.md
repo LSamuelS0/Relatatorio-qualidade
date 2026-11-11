@@ -60,6 +60,12 @@ Regras de funcionamento:
 - **Depois de salvar:** o relatório vai para Meus relatórios e o formulário fica **limpo**. A tela "Relatório pronto" mostra o que foi salvo, sem botão de voltar; "Novo relatório" abre o formulário limpo. Um formulário limpo só vira rascunho depois de alterado.
 - **Editar um salvo:** em Meus relatórios, "Editar (vira rascunho)" cria uma cópia em Rascunhos; o salvo original não muda. Ao salvar a cópia, ela vira um relatório novo.
 - Tocar num bloco de relatório (Início de turno, Troca de turno) sempre começa um relatório **novo**; para continuar um anterior, usa-se Rascunhos. "Recomeçar"/"Limpar" descartam o rascunho atual.
+- **Padrão de escrita (regra geral, toda caixa de texto):** tudo em **MAIÚSCULAS** e **toda linha com texto começa com traço** (`-`), sem espaço depois. Linhas em branco ficam em branco. Ex.:
+  ```
+  -MAQUINA 17 ESTAVA COM VARIAÇÃO NO PESO OCASIONANDO QUEBRA E TRINCA NAS PECAS SOLDADAS
+  -MAQUINA 18 RODOU BEM
+  ```
+  Aplicado enquanto a pessoa digita (funções `standardize`/`applyStandard` no `app.js`), também no texto puxado e no relatório gerado. O teclado do celular abre em maiúsculas (`autocapitalize="characters"`). Acentos são mantidos.
 - **Sem barra de rolagem (regra geral, todos os relatórios):** o texto do relatório aparece inteiro e toda caixa de texto cresce sozinha com o que é escrito. Máscaras novas devem seguir isso (o `app.js` aplica a qualquer `textarea`).
 - **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.drafts.v1` e `rq.reports.v1`). A sincronização celular → computador entra com o Firebase.
 - Não há tela de login ainda; ela entra junto com o Firebase.
