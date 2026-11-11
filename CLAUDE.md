@@ -43,7 +43,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 ## O que já funciona (Injetora)
 
 Telas (versão 2.0, visual simplificado):
-1. **Em qual linha você está?** — Injetora (ativa) e Estamparia (em breve) + atalho "Meus relatórios".
+1. **Em qual linha você está?** — Injetora (ativa) e Estamparia (em breve) + atalho "Meus relatórios" (só os salvos) + lista **Rascunhos**.
 2. **O que você vai registrar?** — blocos grandes: Início de turno e Troca de turno (ativos); Bloqueio, Scrap e Liberação (em breve).
 3. **Máquinas** — contadores Rodando / Setup / Paradas e um cartão por máquina com número grande. Status por cor **e** texto.
 4. **Janela da máquina** — botões grandes com as peças daquela máquina + Setup / Parada + Confirmar.
@@ -54,8 +54,10 @@ Telas (versão 2.0, visual simplificado):
 Regras de funcionamento:
 - **Toda máquina começa como `MÁQUINA PARADA`** em cada relatório novo.
 - Data e horário ficam fixos a partir do início do relatório.
-- O rascunho fica guardado no aparelho (sobrevive a recarregar a página). Vira relatório novo se já foi salvo ou se tem mais de 8 horas. "Recomeçar" zera tudo.
-- **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.draft.v1` e `rq.reports.v1`). A sincronização celular → computador entra com o Firebase.
+- **Rascunhos:** todo relatório começado e não salvo, de qualquer tipo, vai para a lista Rascunhos da tela inicial (entra na primeira alteração). Tocar abre de onde parou; a lixeira descarta. Ao salvar, sai dos rascunhos e vai para Meus relatórios.
+- Tocar num bloco de relatório (Início de turno, Troca de turno) sempre começa um relatório **novo**; para continuar um anterior, usa-se Rascunhos. "Recomeçar"/"Limpar" descartam o rascunho atual.
+- **Sem barra de rolagem (regra geral, todos os relatórios):** o texto do relatório aparece inteiro e toda caixa de texto cresce sozinha com o que é escrito. Máscaras novas devem seguir isso (o `app.js` aplica a qualquer `textarea`).
+- **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.drafts.v1` e `rq.reports.v1`). A sincronização celular → computador entra com o Firebase.
 - Não há tela de login ainda; ela entra junto com o Firebase.
 
 Formato do texto gerado:
@@ -102,7 +104,7 @@ TURNO 日期: <turno escolhido>
 - O turno a pessoa escolhe (1º, 2º ou 3º TURNO); o app não deixa seguir sem escolher.
 - Campos editáveis: Relatório, Pontos de atenção, Pendências e Status de bloqueio. Campo vazio = só o título.
 - **Puxar último bloqueio**: carrega o Status de bloqueio da troca de turno da Injetora salva mais recentemente, para a pessoa atualizar. Hoje busca nos relatórios do aparelho; com o Firebase, deve buscar o último salvo **por qualquer pessoa** (função `lastBlockStatus()` no `app.js`).
-- Rascunho guardado no aparelho (`rq.shift.v1`); vira novo quando já foi salvo ou muda o dia.
+- Rascunhos da troca de turno seguem a regra geral de Rascunhos; a data é a do dia em que foi começado.
 - Observação para o dono confirmar: na máscara, "TURNO" está com 日期 (rìqī, "data"); turno costuma ser 班次 (bāncì). E 冲压校准 (chōngyā jiàozhǔn) significa "alinhamento da estamparia"; injetora costuma ser 注塑 (zhùsù). Mantido como está até o dono decidir.
 
 ## Regras obrigatórias

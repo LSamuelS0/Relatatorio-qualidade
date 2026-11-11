@@ -6,7 +6,6 @@
   const partsByCode = new Map(DATA.parts.map(part => [part.code, part]));
   const STOPPED = "MÁQUINA PARADA";
   const SETUP = "SETUP";
-  const KEY_DRAFT = "rq.draft.v1";
   const KEY_REPORTS = "rq.reports.v1";
 
   const $ = id => document.getElementById(id);
@@ -49,28 +48,58 @@
   }
 
   /* ---------- Rascunho do relatório ---------- */
-  let draft = null; // draft.savedId: id do relatório já salvo a partir deste rascunho
-  const DRAFT_MAX_HOURS = 8; // rascunho mais velho que isso vira relatório novo
+  /* ---------- Rascunhos ----------
+     Todo relatório começado e ainda não salvo fica em "Rascunhos" (chave rq.drafts.v1),
+     seja qual for o tipo. Entra na lista na primeira alteração e sai quando é salvo. */
+  const KEY_DRAFTS = "rq.drafts.v1";
+  let draft = null; // início de turno em edição
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+
+  function listDrafts() {
+    return load(KEY_DRAFTS, []).filter(item => item && item.id && (item.type === "inicio" || item.type === "troca"));
+  }
+  function keepDraft(item) {
+    item.savedId = null;
+    item.updatedAt = new Date().toISOString();
+    const all = listDrafts().filter(other => other.id !== item.id);
+    all.unshift(item);
+    store(KEY_DRAFTS, all.slice(0, 50));
+  }
+  function dropDraft(id) {
+    store(KEY_DRAFTS, listDrafts().filter(item => item.id !== id));
+  }
 
   function newDraft() {
     const selections = {};
     machines.forEach(machine => { selections[machine.id] = STOPPED; });
-    draft = { line: "injetora", type: "inicio", startedAt: new Date().toISOString(), selections, savedId: null };
-    store(KEY_DRAFT, draft);
+    draft = { id: newId(), line: "injetora", type: "inicio", startedAt: new Date().toISOString(), selections, savedId: null };
   }
 
-  function loadDraft() {
-    const saved = load(KEY_DRAFT, null);
-    if (saved && saved.selections) {
-      draft = saved;
-      machines.forEach(machine => {
-        const value = draft.selections[machine.id];
-        const valid = value === STOPPED || value === SETUP || machine.items.includes(value);
-        if (!valid) draft.selections[machine.id] = STOPPED; // peça saiu da máquina no cadastro
-      });
-      return true;
-    }
-    return false;
+  function sanitizeDraft(item) {
+    machines.forEach(machine => {
+      const value = item.selections[machine.id];
+      const valid = value === STOPPED || value === SETUP || machine.items.includes(value);
+      if (!valid) item.selections[machine.id] = STOPPED; // peça saiu da máquina no cadastro
+    });
+    return item;
+  }
+
+  /* Versão anterior guardava um rascunho por tipo; passa para a lista de rascunhos. */
+  function migrateOldDrafts() {
+    const all = listDrafts();
+    [load("rq.draft.v1", null), load("rq.shift.v1", null)].forEach(item => {
+      if (!item || item.savedId) return;
+      const touched = item.type === "troca"
+        ? Boolean(item.turno) || Object.values(item.fields || {}).some(value => (value || "").trim())
+        : Object.values(item.selections || {}).some(value => value !== STOPPED);
+      if (!touched) return;
+      item.id = item.id || newId();
+      item.updatedAt = item.updatedAt || item.startedAt;
+      all.push(item);
+    });
+    store(KEY_DRAFTS, all);
+    forget("rq.draft.v1");
+    forget("rq.shift.v1");
   }
 
   function kindOf(status) {
@@ -106,7 +135,6 @@
   /* ---------- Troca de turno (máscara: Alinhamento PQC Injetora) ----------
      A parte fixa da máscara (títulos em português e chinês) nunca muda.
      Só os campos abaixo são preenchidos. */
-  const KEY_SHIFT = "rq.shift.v1";
   const SHIFT_FIELDS = [
     { key: "relatorio", title: "📌RELATÓRIO 报告:" },
     { key: "atencao", title: "⚠️PONTOS DE ATENÇÃO 注意事项:" },
@@ -122,9 +150,8 @@
   const dateFromKey = key => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d); };
 
   function newShift() {
-    shift = { line: "injetora", type: "troca", startedAt: new Date().toISOString(), date: todayKey(), turno: null,
+    shift = { id: newId(), line: "injetora", type: "troca", startedAt: new Date().toISOString(), date: todayKey(), turno: null,
       fields: { relatorio: "", atencao: "", pendencias: "", bloqueio: "" }, savedId: null };
-    store(KEY_SHIFT, shift);
   }
 
   function buildShiftText(report) {
@@ -151,37 +178,43 @@
       button.setAttribute("aria-checked", String(button.dataset.turno === shift.turno));
     });
     document.querySelector(".turno-pick").classList.remove("need");
-    document.querySelectorAll("[data-field]").forEach(area => { area.value = shift.fields[area.dataset.field] || ""; });
+    document.querySelectorAll("[data-field]").forEach(area => { area.value = shift.fields[area.dataset.field] || ""; fit(area); });
     $("block-source").hidden = true;
   }
 
   $("start-troca").addEventListener("click", () => {
-    const stored = shift || load(KEY_SHIFT, null);
-    shift = stored && stored.fields && !stored.savedId && stored.date === todayKey() ? stored : null;
-    if (!shift) newShift();
+    newShift();
     go("shift");
   });
 
   document.querySelectorAll("[data-turno]").forEach(button => {
     button.addEventListener("click", () => {
       shift.turno = button.dataset.turno;
-      shift.savedId = null;
-      store(KEY_SHIFT, shift);
+      keepDraft(shift);
       renderShift();
     });
   });
 
   document.querySelectorAll("[data-field]").forEach(area => {
     area.addEventListener("input", () => {
+      fit(area);
       shift.fields[area.dataset.field] = area.value;
-      shift.savedId = null;
-      store(KEY_SHIFT, shift);
+      keepDraft(shift);
     });
   });
 
   $("shift-restart").addEventListener("click", () => {
-    if (confirm("Limpar todos os campos da troca de turno?")) { newShift(); renderShift(); toast("Campos limpos"); }
+    if (confirm("Limpar todos os campos da troca de turno?")) { dropDraft(shift.id); newShift(); renderShift(); toast("Campos limpos"); }
   });
+
+  /* Caixas de texto crescem com o texto (sem barra de rolagem). */
+  function fit(area) {
+    area.style.height = "auto";
+    area.style.height = area.scrollHeight + 4 + "px";
+  }
+  // Vale para toda caixa de texto do app, inclusive de máscaras novas.
+  document.addEventListener("input", event => { if (event.target.matches("textarea")) fit(event.target); });
+  window.addEventListener("resize", () => document.querySelectorAll("textarea").forEach(fit));
 
   /* Último status de bloqueio salvo numa troca de turno da Injetora.
      Hoje: relatórios deste aparelho. Com o Firebase: o último salvo por qualquer pessoa. */
@@ -198,9 +231,9 @@
     if (area.value.trim() && area.value.trim() !== last.fields.bloqueio.trim() &&
         !confirm("Substituir o que já está escrito pelo último status de bloqueio?")) return;
     area.value = last.fields.bloqueio;
+    fit(area);
     shift.fields.bloqueio = last.fields.bloqueio;
-    shift.savedId = null;
-    store(KEY_SHIFT, shift);
+    keepDraft(shift);
     const note = $("block-source");
     note.textContent = "Puxado da troca de turno de " + formatDate(dateFromKey(last.date)) + (last.turno ? " · " + last.turno : "") + ". Atualize o que mudou.";
     note.hidden = false;
@@ -250,6 +283,70 @@
       $("home-reports-title").textContent = "Nenhum relatório salvo";
       $("home-reports-sub").textContent = "Os relatórios salvos aparecem aqui";
     }
+    renderDrafts();
+  }
+
+  function draftSummary(item) {
+    if (item.type === "troca") {
+      return formatDate(dateFromKey(item.date)) + " · " + (item.turno || "turno não escolhido");
+    }
+    const total = counts(item.selections);
+    return whenLabel(new Date(item.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup";
+  }
+
+  function renderDrafts() {
+    const list = $("draft-list");
+    const drafts = listDrafts();
+    list.innerHTML = "";
+    if (!drafts.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "Nenhum rascunho. O que você começar e não salvar aparece aqui.";
+      list.appendChild(empty);
+      return;
+    }
+    drafts.forEach(item => {
+      const row = document.createElement("div");
+      row.className = "draft-row";
+
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "row-card draft-open";
+      const text = document.createElement("span");
+      text.className = "row-text";
+      const title = document.createElement("strong");
+      title.textContent = titleOf(item);
+      const sub = document.createElement("small");
+      sub.textContent = draftSummary(item);
+      text.append(title, sub);
+      open.append(icon("i-edit", "row-icon draft-icon"), text, icon("i-next", "chev"));
+      open.addEventListener("click", () => openDraft(item));
+
+      const discard = document.createElement("button");
+      discard.type = "button";
+      discard.className = "icon-btn discard";
+      discard.setAttribute("aria-label", "Descartar rascunho: " + titleOf(item));
+      discard.appendChild(icon("i-trash"));
+      discard.addEventListener("click", () => {
+        if (!confirm("Descartar este rascunho? Ele não poderá ser recuperado.")) return;
+        dropDraft(item.id);
+        renderDrafts();
+        toast("Rascunho descartado");
+      });
+
+      row.append(open, discard);
+      list.appendChild(row);
+    });
+  }
+
+  function openDraft(item) {
+    if (item.type === "troca") {
+      shift = item;
+      go("shift");
+    } else {
+      draft = sanitizeDraft(item);
+      go("machines");
+    }
   }
 
   function whenLabel(date) {
@@ -262,8 +359,7 @@
 
   /* ---------- Tipo de relatório ---------- */
   $("start-turno").addEventListener("click", () => {
-    const ageHours = draft ? (Date.now() - new Date(draft.startedAt).getTime()) / 36e5 : Infinity;
-    if (!draft || draft.savedId || ageHours > DRAFT_MAX_HOURS) newDraft();
+    newDraft();
     go("machines");
   });
 
@@ -316,6 +412,7 @@
 
   $("restart").addEventListener("click", () => {
     if (confirm("Recomeçar o relatório? Todas as máquinas voltam para PARADA e a data/hora é atualizada.")) {
+      dropDraft(draft.id);
       newDraft();
       renderMachines();
       toast("Relatório recomeçado");
@@ -366,9 +463,10 @@
 
   $("sheet-form").addEventListener("submit", () => {
     if (!sheetMachine) return;
-    if (draft.selections[sheetMachine.id] !== sheetChoice) draft.savedId = null;
-    draft.selections[sheetMachine.id] = sheetChoice;
-    store(KEY_DRAFT, draft);
+    if (draft.selections[sheetMachine.id] !== sheetChoice) {
+      draft.selections[sheetMachine.id] = sheetChoice;
+      keepDraft(draft);
+    }
     renderMachines();
   });
 
@@ -412,8 +510,8 @@
       toast("Não foi possível salvar neste aparelho");
       return;
     }
+    dropDraft(source.id);
     source.savedId = report.id;
-    store(source.type === "troca" ? KEY_SHIFT : KEY_DRAFT, source);
     renderDone();
     toast("Relatório salvo");
   });
@@ -533,7 +631,6 @@
   }
 
   /* ---------- Começo ---------- */
-  loadDraft();
-  shift = load(KEY_SHIFT, null);
+  migrateOldDrafts();
   go("home");
 })();
