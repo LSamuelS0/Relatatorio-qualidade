@@ -60,10 +60,10 @@ window.QUALITY_REPORT_DATA = {
       { name: "Balancer", models: ["580", "601"] }
     ]},
     { id: 18, parts: [
-      { name: "Capa do Cesto", models: ["580/601"] }
+      { name: "Capa do Cesto", models: ["580", "601"] }
     ]},
     { id: 19, parts: [
-      { name: "Tub D", models: ["580/601"] }
+      { name: "Tub D", models: ["580", "601"] }
     ]}
   ]
 };
