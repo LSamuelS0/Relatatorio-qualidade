@@ -14,7 +14,7 @@ window.QUALITY_REPORT_DATA = {
       { name: "Conjunto do Agitador", models: ["580/601"] }
     ]},
     { id: 4, parts: [
-      { name: "Balancer (Ring Up + Ring Down)", models: ["550"] },
+      { name: "Balancer", models: ["550"] },
       { name: "Body-B", models: ["550", "580", "601"] }
     ]},
     { id: 5, parts: [
@@ -24,7 +24,7 @@ window.QUALITY_REPORT_DATA = {
       { name: "Proteção do Motor", models: ["550", "580", "601", "640"] }
     ]},
     { id: 7, parts: [
-      { name: "Balancer (Ring Up + Ring Down)", models: ["580"] },
+      { name: "Balancer", models: ["580"] },
       { name: "Dispenser Case A", models: [] },
       { name: "Tub D", models: ["580/601"] }
     ]},
@@ -51,13 +51,13 @@ window.QUALITY_REPORT_DATA = {
       { name: "Tampa Superior / Moldura", models: ["550", "580", "601"] }
     ]},
     { id: 15, parts: [
-      { name: "Balancer (Ring Up + Ring Down)", models: ["580", "601"] }
+      { name: "Balancer", models: ["580", "601"] }
     ]},
     { id: 16, parts: [
       { name: "Base", models: ["550", "580", "601"] }
     ]},
     { id: 17, parts: [
-      { name: "Balancer (Ring Up + Ring Down)", models: ["580", "601"] }
+      { name: "Balancer", models: ["580", "601"] }
     ]},
     { id: 18, parts: [
       { name: "Capa do Cesto", models: ["580/601"] }
