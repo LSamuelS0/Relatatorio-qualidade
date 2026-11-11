@@ -35,6 +35,8 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `app.js` | Navegação entre telas, rascunho, salvar no aparelho, texto, copiar/enviar, validação do cadastro |
 | `README.md` | Apresentação do projeto |
 
+Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+
 ## Linhas de produção
 
 - **Injetora (plástico)** — em uso. 19 máquinas fixas, sempre na ordem 1 a 19.
@@ -54,7 +56,7 @@ Telas (versão 2.0, visual simplificado):
 Regras de funcionamento:
 - **Toda máquina começa como `MÁQUINA PARADA`** em cada relatório novo.
 - Data e horário ficam fixos a partir do início do relatório.
-- **Rascunhos:** todo relatório começado e não salvo, de qualquer tipo, vai para a lista Rascunhos da tela inicial (entra na primeira alteração). Tocar abre de onde parou; a lixeira descarta. Ao salvar, sai dos rascunhos e vai para Meus relatórios.
+- **Rascunhos:** todo relatório começado e não salvo, de qualquer tipo, vai para a lista Rascunhos da tela inicial. É gravado a cada alteração e também automaticamente ao voltar para o início, sair do relatório, fechar o app ou atualizar a página (troca de turno totalmente vazia não vira rascunho). Tocar abre de onde parou; a lixeira descarta. Ao salvar, sai dos rascunhos e vai para Meus relatórios.
 - Tocar num bloco de relatório (Início de turno, Troca de turno) sempre começa um relatório **novo**; para continuar um anterior, usa-se Rascunhos. "Recomeçar"/"Limpar" descartam o rascunho atual.
 - **Sem barra de rolagem (regra geral, todos os relatórios):** o texto do relatório aparece inteiro e toda caixa de texto cresce sozinha com o que é escrito. Máscaras novas devem seguir isso (o `app.js` aplica a qualquer `textarea`).
 - **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.drafts.v1` e `rq.reports.v1`). A sincronização celular → computador entra com o Firebase.

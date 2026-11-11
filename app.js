@@ -251,10 +251,30 @@
     go("done");
   });
 
+  /* ---------- Salvamento automático no rascunho ----------
+     Ao voltar para o início, sair do relatório, fechar ou atualizar a página,
+     o relatório aberto e não salvo vai para Rascunhos. */
+  function isEmptyShift(item) {
+    return !item.turno && !Object.values(item.fields || {}).some(value => (value || "").trim());
+  }
+  function persistOpen() {
+    if (!["machines", "shift", "done"].includes(screenNow)) return;
+    const item = screenNow === "machines" ? draft : screenNow === "shift" ? shift : current();
+    if (!item || item.savedId) return;
+    if (item.type === "troca" && isEmptyShift(item)) return; // nada escrito ainda
+    keepDraft(item);
+  }
+  window.addEventListener("pagehide", persistOpen);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") persistOpen(); });
+
   /* ---------- Navegação ---------- */
   let active = "inicio"; // qual relatório a tela "Relatório pronto" mostra
+  let screenNow = "home";
   const screens = Array.from(document.querySelectorAll("[data-screen]"));
   function go(name) {
+    const editing = ["machines", "shift", "done"];
+    if (editing.includes(screenNow) && !editing.includes(name)) persistOpen();
+    screenNow = name;
     if (name === "machines" && !draft) newDraft();
     if (name === "machines") active = "inicio";
     if (name === "shift" && !shift) newShift();
