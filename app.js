@@ -150,9 +150,20 @@
   };
   const dateFromKey = key => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d); };
 
+  /* Marcações automáticas: um relatório novo já vem com as pessoas marcadas no último
+     relatório salvo do MESMO tipo (troca → marcações; bloqueio → help chain).
+     A pessoa só acrescenta ou tira quem mudou. Hoje: relatórios deste aparelho;
+     com o Firebase: os últimos salvos pela própria pessoa. */
+  function lastTags(type, key) {
+    const last = load(KEY_REPORTS, [])
+      .filter(report => report.type === type && report.fields && (report.fields[key] || "").trim())
+      .sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)))[0];
+    return last ? last.fields[key] : "";
+  }
+
   function newShift() {
     shift = { id: newId(), line: "injetora", type: "troca", startedAt: new Date().toISOString(), date: todayKey(), turno: null,
-      fields: { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: "" }, savedId: null };
+      fields: { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: lastTags("troca", "marcacoes") }, savedId: null };
   }
 
   function buildShiftText(report) {
@@ -432,7 +443,7 @@
     const fields = {};
     BLOCK_FIELDS.forEach(field => { fields[field.key] = ""; });
     fields.dataProducao = todayKey();
-    fields.helpChain = (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
+    fields.helpChain = lastTags("bloqueio", "helpChain") || (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
     block = { id: newId(), line: "injetora", type: "bloqueio", startedAt: new Date().toISOString(), fields,
       photos: { conforme: null, naoConforme: null, localizacao: [] }, savedId: null };
   }
@@ -460,9 +471,9 @@
   }
 
   function isEmptyBlock(item) {
-    const defaultHelp = (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
+    // data e help chain vêm preenchidos sozinhos: não contam como "começou a preencher"
     const fields = Object.entries(item.fields || {}).some(([key, value]) =>
-      key !== "dataProducao" && (value || "").trim() && !(key === "helpChain" && value === defaultHelp));
+      key !== "dataProducao" && key !== "helpChain" && (value || "").trim());
     const photos = allIdsOf(item).length > 0;
     return !fields && !photos;
   }
@@ -785,7 +796,8 @@
      Ao voltar para o início, sair do relatório, fechar ou atualizar a página,
      o relatório aberto e não salvo vai para Rascunhos. */
   function isEmptyShift(item) {
-    return !item.turno && !Object.values(item.fields || {}).some(value => (value || "").trim());
+    // marcações vêm preenchidas sozinhas: não contam como "começou a preencher"
+    return !item.turno && !Object.entries(item.fields || {}).some(([key, value]) => key !== "marcacoes" && (value || "").trim());
   }
   function persistOpen() {
     if (!["machines", "shift", "block", "done"].includes(screenNow)) return;
