@@ -32,7 +32,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `index.html` | Estrutura da tela |
 | `styles.css` | Visual e adaptação ao celular |
 | `data.js` | Cadastro: catálogo de peças, itens e máquinas |
-| `app.js` | Seleções, montagem do texto, copiar/compartilhar, validação do cadastro |
+| `app.js` | Navegação entre telas, rascunho, salvar no aparelho, texto, copiar/enviar, validação do cadastro |
 | `README.md` | Apresentação do projeto |
 
 ## Linhas de produção
@@ -42,11 +42,20 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 
 ## O que já funciona (Injetora)
 
-- Relatório de **Início de Turno**: uma lista por máquina com `SETUP`, `MÁQUINA PARADA` e as peças daquela máquina.
-- **Toda máquina começa como `MÁQUINA PARADA`** ao abrir o app e a cada **Novo relatório**.
-- Data e horário são registrados ao iniciar e ficam fixos durante o preenchimento.
-- Texto do relatório gerado na hora, com botões **Copiar** e **Compartilhar**.
-- Bloqueio de máquina, Scrap e Liberação de peças aparecem como "em preparação".
+Telas (versão 2.0, visual simplificado):
+1. **Em qual linha você está?** — Injetora (ativa) e Estamparia (em breve) + atalho "Meus relatórios".
+2. **O que você vai registrar?** — blocos grandes: Início de turno (ativo); Bloqueio, Scrap e Liberação (em breve).
+3. **Máquinas** — contadores Rodando / Setup / Paradas e um cartão por máquina com número grande. Status por cor **e** texto.
+4. **Janela da máquina** — botões grandes com as peças daquela máquina + Setup / Parada + Confirmar.
+5. **Relatório pronto** — texto gerado, Salvar relatório, Copiar, Enviar e Novo relatório (após salvar).
+6. **Meus relatórios** — lista dos salvos; ao abrir: Copiar para o Meixin, Enviar, Apagar. No computador, lista e texto lado a lado.
+
+Regras de funcionamento:
+- **Toda máquina começa como `MÁQUINA PARADA`** em cada relatório novo.
+- Data e horário ficam fixos a partir do início do relatório.
+- O rascunho fica guardado no aparelho (sobrevive a recarregar a página). Vira relatório novo se já foi salvo ou se tem mais de 8 horas. "Recomeçar" zera tudo.
+- **Por enquanto os relatórios salvos ficam só no aparelho** (`localStorage`, chaves `rq.draft.v1` e `rq.reports.v1`). A sincronização celular → computador entra com o Firebase.
+- Não há tela de login ainda; ela entra junto com o Firebase.
 
 Formato do texto gerado:
 
@@ -123,7 +132,7 @@ Máquinas confirmadas pelo dono (11/11/2026):
 - Em caso de dúvida, consultar o desenho técnico ou o aviso técnico.
 - Pesos e materiais seguem a tabela BOM Injection Parts. Pesos por material ainda não estão no cadastro.
 
-## Visual (esboço aprovado para discussão)
+## Visual (aprovado pelo dono em 11/11/2026 e implementado)
 
 Esboço das telas: login com matrícula de 6 números → escolher a linha (Injetora/Estamparia) →
 tipo de relatório em blocos grandes → lista de máquinas com número grande e status por cor

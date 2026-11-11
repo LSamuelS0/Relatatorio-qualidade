@@ -2,90 +2,179 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#17231f">
-  <meta name="description" content="Aplicativo de geração de relatórios de produção e qualidade.">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#1D6B4F">
+  <meta name="description" content="Relatórios de produção e qualidade, simples e padronizados.">
   <title>Relatório da Qualidade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-shell">
-    <header class="topbar">
-      <a class="brand" href="#" aria-label="Página inicial">
-        <span class="brand-mark">RQ</span>
-        <span><strong>Relatório da Qualidade</strong><small>Produção · Qualidade · Registro de turno</small></span>
-      </a>
-      <div class="topbar-right"><span class="status-dot"></span><span>Aplicativo local</span></div>
-    </header>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-back" viewBox="0 0 24 24"><path d="M15 6l-6 6 6 6"/></symbol>
+      <symbol id="i-next" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></symbol>
+      <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></symbol>
+      <symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 3v2h6V3"/><path d="M9 12l2 2 4-4"/></symbol>
+      <symbol id="i-inject" viewBox="0 0 24 24"><path d="M3 8h10v8H3z"/><path d="M13 10h4l3 2-3 2h-4"/><path d="M6 8V5h4v3"/><path d="M5 16v3"/><path d="M11 16v3"/></symbol>
+      <symbol id="i-press" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="6" rx="1"/><path d="M12 9v6"/><path d="M5 21h14"/><path d="M8 15h8v6H8z"/></symbol>
+      <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+      <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></symbol>
+      <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M8.5 12l2.5 2.5 4.5-4.5"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6"/></symbol>
+      <symbol id="i-save" viewBox="0 0 24 24"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8"/><path d="M7 3v5h8"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/></symbol>
+      <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></symbol>
+      <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></symbol>
+      <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
+      <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+    </defs>
+  </svg>
 
-    <main>
-      <section class="welcome">
-        <div>
-          <p class="eyebrow">CENTRAL DE RELATÓRIOS</p>
-          <h1>Organize os registros da produção.</h1>
-          <p class="welcome-copy">Selecione a área, preencha as informações e gere um relatório pronto para copiar ou compartilhar.</p>
+  <header class="topbar">
+    <button class="brand" type="button" data-go="home" aria-label="Ir para o início">
+      <span class="brand-mark"><svg><use href="#i-clip"/></svg></span>
+      <span class="brand-name">Relatório da Qualidade</span>
+    </button>
+  </header>
+
+  <main id="app" class="app">
+
+    <!-- 1. Escolher a linha -->
+    <section class="screen" id="screen-home" data-screen="home">
+      <h1 class="title">Em qual linha você está?</h1>
+
+      <button class="big-card" type="button" data-go="type">
+        <span class="big-icon"><svg><use href="#i-inject"/></svg></span>
+        <span class="big-text"><strong>Injetora</strong><small>Plástico · 19 máquinas</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
+
+      <div class="big-card is-off" aria-disabled="true">
+        <span class="big-icon"><svg><use href="#i-press"/></svg></span>
+        <span class="big-text"><strong>Estamparia</strong><small>Metal · em breve</small></span>
+      </div>
+
+      <div class="home-reports">
+        <h2 class="subtitle">Meus relatórios</h2>
+        <button class="row-card" type="button" data-go="reports" id="home-reports-btn">
+          <svg class="row-icon"><use href="#i-file"/></svg>
+          <span class="row-text"><strong id="home-reports-title">Nenhum relatório salvo</strong><small id="home-reports-sub">Os relatórios salvos aparecem aqui</small></span>
+          <svg class="chev"><use href="#i-next"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- 2. Tipo de relatório -->
+    <section class="screen" id="screen-type" data-screen="type" hidden>
+      <button class="back" type="button" data-go="home"><svg><use href="#i-back"/></svg>Voltar</button>
+      <p class="eyebrow">INJETORA</p>
+      <h1 class="title">O que você vai registrar?</h1>
+      <div class="tiles">
+        <button class="tile" type="button" id="start-turno">
+          <span class="tile-icon"><svg><use href="#i-sun"/></svg></span>
+          <strong>Início de turno</strong>
+        </button>
+        <div class="tile is-off" aria-disabled="true">
+          <span class="tile-icon"><svg><use href="#i-lock"/></svg></span>
+          <strong>Bloqueio de máquina</strong><small>Em breve</small>
         </div>
-        <div class="welcome-icon" aria-hidden="true">▤</div>
-      </section>
+        <div class="tile is-off" aria-disabled="true">
+          <span class="tile-icon"><svg><use href="#i-trash"/></svg></span>
+          <strong>Scrap</strong><small>Em breve</small>
+        </div>
+        <div class="tile is-off" aria-disabled="true">
+          <span class="tile-icon"><svg><use href="#i-shield"/></svg></span>
+          <strong>Liberação de peças</strong><small>Em breve</small>
+        </div>
+      </div>
+    </section>
 
-      <nav class="area-tabs" aria-label="Área de produção">
-        <button class="area-tab active" data-area="injetora" type="button"><span>01</span> Injetora / Injeção de Plástico</button>
-        <button class="area-tab" data-area="metal" type="button"><span>02</span> Fabricação de Metal</button>
-      </nav>
-
-      <section id="injetora-panel" class="panel">
-        <div class="section-heading">
-          <div>
-            <p class="eyebrow">INJEÇÃO DE PLÁSTICO</p>
-            <h2>Relatório de Início de Turno da Injetora</h2>
-            <p>Registre o que cada máquina está produzindo neste momento.</p>
+    <!-- 3. Máquinas -->
+    <section class="screen screen-machines" id="screen-machines" data-screen="machines" hidden>
+      <div class="sticky-head">
+        <div class="head-row">
+          <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+          <div class="head-text">
+            <h1>Início de turno</h1>
+            <span id="draft-when">--/--/---- · --:--</span>
           </div>
-          <div class="report-type">
-            <label for="report-type">Tipo de relatório</label>
-            <select id="report-type">
-              <option value="inicio">Início de Turno</option>
-              <option value="bloqueio" disabled>Bloqueio de máquina — em preparação</option>
-              <option value="scrap" disabled>Scrap — em preparação</option>
-              <option value="liberacao" disabled>Liberação de peças — em preparação</option>
-            </select>
+          <button class="text-btn" type="button" id="restart">Recomeçar</button>
+        </div>
+        <div class="counters">
+          <div class="counter run"><strong id="count-run">0</strong><span>Rodando</span></div>
+          <div class="counter setup"><strong id="count-setup">0</strong><span>Setup</span></div>
+          <div class="counter stop"><strong id="count-stop">19</strong><span>Paradas</span></div>
+        </div>
+      </div>
+      <p class="hint">Toque na máquina para dizer o que ela está rodando.</p>
+      <div id="machine-list" class="machine-list"></div>
+      <div class="bottom-bar">
+        <button class="btn btn-primary" type="button" data-go="done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
+      </div>
+    </section>
+
+    <!-- 4. Relatório pronto -->
+    <section class="screen" id="screen-done" data-screen="done" hidden>
+      <button class="back" type="button" data-go="machines"><svg><use href="#i-back"/></svg>Corrigir máquinas</button>
+      <div class="done-head">
+        <span class="done-badge"><svg><use href="#i-check"/></svg></span>
+        <div><h1 class="title">Relatório pronto</h1><p class="muted">Confira o texto abaixo</p></div>
+      </div>
+      <pre class="report-text" id="done-text" tabindex="0"></pre>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="save-report"><svg><use href="#i-save"/></svg><span id="save-label">Salvar relatório</span></button>
+        <div class="actions-row">
+          <button class="btn btn-outline" type="button" data-copy="done"><svg><use href="#i-copy"/></svg>Copiar</button>
+          <button class="btn btn-outline" type="button" data-share="done"><svg><use href="#i-share"/></svg>Enviar</button>
+        </div>
+        <button class="btn btn-quiet" type="button" id="new-after-save" hidden><svg><use href="#i-plus"/></svg>Novo relatório</button>
+      </div>
+    </section>
+
+    <!-- 5. Meus relatórios -->
+    <section class="screen screen-reports" id="screen-reports" data-screen="reports" hidden>
+      <button class="back" type="button" data-go="home"><svg><use href="#i-back"/></svg>Voltar</button>
+      <h1 class="title">Meus relatórios</h1>
+      <p class="muted small" id="reports-note">Guardados neste aparelho.</p>
+      <div class="reports-layout">
+        <div id="report-list" class="report-list"></div>
+        <div class="report-view" id="report-view" hidden>
+          <h2 id="view-title">Início de turno · Injetora</h2>
+          <p class="muted" id="view-sub"></p>
+          <pre class="report-text" id="view-text" tabindex="0"></pre>
+          <div class="actions-row">
+            <button class="btn btn-primary" type="button" data-copy="view"><svg><use href="#i-copy"/></svg>Copiar para o Meixin</button>
+            <button class="btn btn-outline" type="button" data-share="view"><svg><use href="#i-share"/></svg>Enviar</button>
           </div>
+          <button class="btn btn-quiet danger" type="button" id="delete-report"><svg><use href="#i-trash"/></svg>Apagar este relatório</button>
         </div>
+      </div>
+    </section>
+  </main>
 
-        <div class="report-meta">
-          <div><span>DATA DO RELATÓRIO</span><strong id="report-date">--/--/----</strong></div>
-          <div><span>HORÁRIO DE INÍCIO</span><strong id="report-time">--:--</strong></div>
-          <button id="new-report" class="button button-quiet" type="button">↻ Novo relatório</button>
-        </div>
+  <!-- Janela: o que a máquina roda -->
+  <dialog id="machine-sheet" class="sheet" aria-labelledby="sheet-title">
+    <form method="dialog" class="sheet-body" id="sheet-form">
+      <span class="grip" aria-hidden="true"></span>
+      <div class="sheet-head">
+        <span class="sheet-num" id="sheet-num">7</span>
+        <div><h2 id="sheet-title">Máquina 7</h2><p class="muted">O que ela está rodando agora?</p></div>
+      </div>
+      <div class="choice-list" id="sheet-parts" role="radiogroup" aria-label="Peças"></div>
+      <div class="choice-pair">
+        <button type="button" class="choice-alt setup" data-status="SETUP"><svg><use href="#i-wrench"/></svg>Setup</button>
+        <button type="button" class="choice-alt stop" data-status="MÁQUINA PARADA"><svg><use href="#i-stop"/></svg>Parada</button>
+      </div>
+      <button class="btn btn-primary" type="submit" value="ok">Confirmar</button>
+    </form>
+  </dialog>
 
-        <div class="machine-heading">
-          <div><h3>MÁQUINAS QUE ESTÃO RODANDO NESTE MOMENTO:</h3><p>As 19 máquinas permanecem fixas. Todas começam como máquina parada; troque pela peça ou situação de cada uma.</p></div>
-          <span class="machine-count">19 máquinas</span>
-        </div>
-        <div id="machine-list" class="machine-list" aria-live="polite"></div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-        <section class="output-section" aria-labelledby="output-title">
-          <div class="output-heading">
-            <div><p class="eyebrow">RESULTADO</p><h3 id="output-title">Sobre o relatório</h3></div>
-            <div class="output-actions">
-              <button id="copy-report" class="button button-secondary" type="button">▢ Copiar</button>
-              <button id="share-report" class="button button-primary" type="button">↗ Compartilhar</button>
-            </div>
-          </div>
-          <div id="report-output" class="report-output" tabindex="0" aria-label="Texto do relatório gerado"></div>
-          <p id="feedback" class="feedback" role="status" aria-live="polite"></p>
-        </section>
-      </section>
-
-      <section id="metal-panel" class="panel empty-panel" hidden>
-        <div class="empty-icon">⚒</div>
-        <p class="eyebrow">FABRICAÇÃO DE METAL</p>
-        <h2>Área em preparação</h2>
-        <p>Esta área terá seu próprio cadastro de máquinas, peças, códigos e relatórios, independente da Injetora.</p>
-        <button class="button button-secondary" type="button" id="back-injetora">Voltar para Injetora</button>
-      </section>
-    </main>
-    <footer><span>Relatório da Qualidade</span><span>Versão inicial · 1.0</span></footer>
-  </div>
   <script src="data.js"></script>
   <script src="app.js"></script>
 </body>

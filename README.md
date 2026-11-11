@@ -13,16 +13,15 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 1. Abra o arquivo `index.html` em um navegador.
 2. Não é necessário instalar dependências ou executar um servidor para testar localmente.
 
-## Funcionalidades da versão 1.0
+## Funcionalidades da versão 2.0
 
-- 19 máquinas fixas, sempre na ordem de 1 a 19.
-- Uma lista de seleção na frente de cada máquina, que começa em `MÁQUINA PARADA` a cada novo relatório.
-- Opções iniciais: `SETUP`, `MÁQUINA PARADA` e peças cadastradas para aquela máquina.
-- Data e horário preenchidos automaticamente quando o relatório é iniciado.
-- Data e horário permanecem fixos durante o preenchimento. O botão **Novo relatório** inicia um novo registro e atualiza a data/hora.
-- Texto do relatório atualizado automaticamente.
-- Botões para copiar e compartilhar o relatório.
-- Layout adaptável para celular e computador.
+- Visual simplificado, com botões grandes e uma ação por tela, pensado para quem tem pouco contato com computador.
+- Fluxo: escolher a linha → tipo de relatório → máquinas → relatório pronto.
+- 19 máquinas fixas; cada uma começa como `MÁQUINA PARADA` e é alterada numa janela com as peças daquela máquina.
+- Contadores de máquinas rodando, em setup e paradas.
+- Data e horário registrados ao iniciar o relatório.
+- Salvar relatório, Copiar e Enviar; lista **Meus relatórios** (por enquanto salvos no próprio aparelho).
+- Funciona no celular e no computador.
 
 ## Arquivos
 
