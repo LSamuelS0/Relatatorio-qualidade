@@ -30,6 +30,8 @@
       <symbol id="i-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></symbol>
       <symbol id="i-wrench" viewBox="0 0 24 24"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></symbol>
       <symbol id="i-stop" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></symbol>
+      <symbol id="i-swap" viewBox="0 0 24 24"><path d="M7 4L3 8l4 4"/><path d="M3 8h13a4 4 0 0 1 4 4"/><path d="M17 20l4-4-4-4"/><path d="M21 16H8a4 4 0 0 1-4-4"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 20h14"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     </defs>
   </svg>
@@ -78,6 +80,10 @@
           <span class="tile-icon"><svg><use href="#i-sun"/></svg></span>
           <strong>Início de turno</strong>
         </button>
+        <button class="tile" type="button" id="start-troca">
+          <span class="tile-icon"><svg><use href="#i-swap"/></svg></span>
+          <strong>Troca de turno</strong>
+        </button>
         <div class="tile is-off" aria-disabled="true">
           <span class="tile-icon"><svg><use href="#i-lock"/></svg></span>
           <strong>Bloqueio de máquina</strong><small>Em breve</small>
@@ -117,9 +123,53 @@
       </div>
     </section>
 
+    <!-- 3b. Troca de turno (máscara: Alinhamento PQC Injetora) -->
+    <section class="screen screen-shift" id="screen-shift" data-screen="shift" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Troca de turno</h1>
+          <span id="shift-date">Hoje</span>
+        </div>
+        <button class="text-btn" type="button" id="shift-restart">Limpar</button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Qual é o seu turno? <small>班次</small></span>
+        <div class="turno-pick" role="radiogroup" aria-label="Turno">
+          <button type="button" class="turno" data-turno="1º TURNO" role="radio">1º</button>
+          <button type="button" class="turno" data-turno="2º TURNO" role="radio">2º</button>
+          <button type="button" class="turno" data-turno="3º TURNO" role="radio">3º</button>
+        </div>
+      </div>
+
+      <label class="field" for="f-relatorio">
+        <span class="field-label">📌 Relatório <small>报告</small></span>
+        <textarea id="f-relatorio" data-field="relatorio" rows="5" placeholder="Como foi o turno?"></textarea>
+      </label>
+      <label class="field" for="f-atencao">
+        <span class="field-label">⚠️ Pontos de atenção <small>注意事项</small></span>
+        <textarea id="f-atencao" data-field="atencao" rows="4" placeholder="O que o próximo turno precisa observar?"></textarea>
+      </label>
+      <label class="field" for="f-pendencias">
+        <span class="field-label">🚨 Pendências <small>待处理问题</small></span>
+        <textarea id="f-pendencias" data-field="pendencias" rows="4" placeholder="O que ficou para resolver?"></textarea>
+      </label>
+      <div class="field">
+        <label class="field-label" for="f-bloqueio">🛑 Status de bloqueio <small>封锁状态</small></label>
+        <button class="btn btn-outline" type="button" id="pull-block"><svg><use href="#i-download"/></svg>Puxar último bloqueio</button>
+        <p class="muted small" id="block-source" hidden></p>
+        <textarea id="f-bloqueio" data-field="bloqueio" rows="5" placeholder="Máquinas ou peças bloqueadas e situação de cada uma"></textarea>
+      </div>
+
+      <div class="bottom-bar">
+        <button class="btn btn-primary" type="button" id="shift-done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
+      </div>
+    </section>
+
     <!-- 4. Relatório pronto -->
     <section class="screen" id="screen-done" data-screen="done" hidden>
-      <button class="back" type="button" data-go="machines"><svg><use href="#i-back"/></svg>Corrigir máquinas</button>
+      <button class="back" type="button" id="done-back"><svg><use href="#i-back"/></svg><span id="done-back-label">Corrigir</span></button>
       <div class="done-head">
         <span class="done-badge"><svg><use href="#i-check"/></svg></span>
         <div><h1 class="title">Relatório pronto</h1><p class="muted">Confira o texto abaixo</p></div>

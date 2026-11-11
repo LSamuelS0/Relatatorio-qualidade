@@ -16,7 +16,8 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 ## Funcionalidades da versão 2.0
 
 - Visual simplificado, com botões grandes e uma ação por tela, pensado para quem tem pouco contato com computador.
-- Fluxo: escolher a linha → tipo de relatório → máquinas → relatório pronto.
+- Fluxo: escolher a linha → tipo de relatório → preencher → relatório pronto.
+- Relatórios da Injetora: **Início de turno** e **Troca de turno** (máscara Alinhamento PQC, com botão para puxar o último status de bloqueio).
 - 19 máquinas fixas; cada uma começa como `MÁQUINA PARADA` e é alterada numa janela com as peças daquela máquina.
 - Contadores de máquinas rodando, em setup e paradas.
 - Data e horário registrados ao iniciar o relatório.

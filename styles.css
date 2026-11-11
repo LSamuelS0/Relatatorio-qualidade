@@ -55,6 +55,7 @@ h1,h2,p{margin:0}
 
 /* Blocos de tipo */
 .tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.tiles .tile:last-child:nth-child(odd){grid-column:1 / -1;min-height:120px}
 .tile{display:flex;flex-direction:column;align-items:flex-start;gap:12px;min-height:168px;padding:20px 16px;background:var(--card);border:2px solid var(--green);border-radius:22px;text-align:left}
 .tile strong{font-size:20px;font-weight:800;line-height:1.2}
 .tile small{font-size:14px;font-weight:600;color:var(--off)}
@@ -97,6 +98,18 @@ h1,h2,p{margin:0}
 
 .bottom-bar{position:fixed;left:0;right:0;bottom:0;z-index:4;background:var(--card);border-top:1px solid var(--line);padding:12px 16px;padding-bottom:max(16px,env(safe-area-inset-bottom))}
 .bottom-bar .btn{max-width:728px;margin:0 auto}
+
+/* Troca de turno */
+.screen-shift{gap:18px;padding-bottom:96px}
+.field{display:flex;flex-direction:column;gap:8px}
+.field-label{font-size:18px;font-weight:800}
+.field-label small{font-size:15px;font-weight:600;color:var(--muted);margin-left:4px}
+.field textarea{width:100%;min-height:110px;resize:vertical;border:2px solid var(--line-strong);border-radius:16px;padding:14px 16px;font:inherit;font-size:17px;line-height:1.45;color:var(--ink);background:var(--card)}
+.field textarea:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px var(--green-soft)}
+.turno-pick{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.turno{min-height:62px;border-radius:16px;border:2px solid #D5DDD9;background:var(--card);font-size:22px;font-weight:800}
+.turno[aria-checked="true"]{border-color:var(--green);background:var(--green);color:#fff}
+.turno-pick.need .turno{border-color:var(--orange)}
 
 /* Botões */
 .btn{width:100%;min-height:62px;border-radius:var(--radius);border:2px solid transparent;font-size:19px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 16px}

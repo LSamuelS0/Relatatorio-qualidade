@@ -103,14 +103,133 @@
     return result;
   }
 
+  /* ---------- Troca de turno (máscara: Alinhamento PQC Injetora) ----------
+     A parte fixa da máscara (títulos em português e chinês) nunca muda.
+     Só os campos abaixo são preenchidos. */
+  const KEY_SHIFT = "rq.shift.v1";
+  const SHIFT_FIELDS = [
+    { key: "relatorio", title: "📌RELATÓRIO 报告:" },
+    { key: "atencao", title: "⚠️PONTOS DE ATENÇÃO 注意事项:" },
+    { key: "pendencias", title: "🚨PENDÊNCIAS 待处理问题:" },
+    { key: "bloqueio", title: "🛑STATUS DE BLOQUEIO 封锁状态:" }
+  ];
+  let shift = null; // rascunho da troca de turno
+
+  const todayKey = () => {
+    const now = new Date();
+    return now.getFullYear() + "-" + String(now.getMonth() + 1).padStart(2, "0") + "-" + String(now.getDate()).padStart(2, "0");
+  };
+  const dateFromKey = key => { const [y, m, d] = key.split("-").map(Number); return new Date(y, m - 1, d); };
+
+  function newShift() {
+    shift = { line: "injetora", type: "troca", startedAt: new Date().toISOString(), date: todayKey(), turno: null,
+      fields: { relatorio: "", atencao: "", pendencias: "", bloqueio: "" }, savedId: null };
+    store(KEY_SHIFT, shift);
+  }
+
+  function buildShiftText(report) {
+    const lines = [
+      "Ⓜ️ALINHAMENTO PQC INJETORA | PQC 冲压校准",
+      "",
+      "DATA 日期: " + formatDate(dateFromKey(report.date)),
+      "",
+      "TURNO 日期: " + (report.turno || ""),
+      ""
+    ];
+    SHIFT_FIELDS.forEach((field, index) => {
+      lines.push(field.title);
+      const value = (report.fields[field.key] || "").replace(/\s+$/, "");
+      if (value) lines.push(value);
+      if (index < SHIFT_FIELDS.length - 1) lines.push("");
+    });
+    return lines.join("\n");
+  }
+
+  function renderShift() {
+    $("shift-date").textContent = "Data: " + formatDate(dateFromKey(shift.date));
+    document.querySelectorAll("[data-turno]").forEach(button => {
+      button.setAttribute("aria-checked", String(button.dataset.turno === shift.turno));
+    });
+    document.querySelector(".turno-pick").classList.remove("need");
+    document.querySelectorAll("[data-field]").forEach(area => { area.value = shift.fields[area.dataset.field] || ""; });
+    $("block-source").hidden = true;
+  }
+
+  $("start-troca").addEventListener("click", () => {
+    const stored = shift || load(KEY_SHIFT, null);
+    shift = stored && stored.fields && !stored.savedId && stored.date === todayKey() ? stored : null;
+    if (!shift) newShift();
+    go("shift");
+  });
+
+  document.querySelectorAll("[data-turno]").forEach(button => {
+    button.addEventListener("click", () => {
+      shift.turno = button.dataset.turno;
+      shift.savedId = null;
+      store(KEY_SHIFT, shift);
+      renderShift();
+    });
+  });
+
+  document.querySelectorAll("[data-field]").forEach(area => {
+    area.addEventListener("input", () => {
+      shift.fields[area.dataset.field] = area.value;
+      shift.savedId = null;
+      store(KEY_SHIFT, shift);
+    });
+  });
+
+  $("shift-restart").addEventListener("click", () => {
+    if (confirm("Limpar todos os campos da troca de turno?")) { newShift(); renderShift(); toast("Campos limpos"); }
+  });
+
+  /* Último status de bloqueio salvo numa troca de turno da Injetora.
+     Hoje: relatórios deste aparelho. Com o Firebase: o último salvo por qualquer pessoa. */
+  function lastBlockStatus() {
+    return load(KEY_REPORTS, [])
+      .filter(report => report.type === "troca" && report.line === "injetora" && report.fields && (report.fields.bloqueio || "").trim())
+      .sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)))[0] || null;
+  }
+
+  $("pull-block").addEventListener("click", () => {
+    const last = lastBlockStatus();
+    if (!last) { toast("Nenhum status de bloqueio salvo ainda"); return; }
+    const area = $("f-bloqueio");
+    if (area.value.trim() && area.value.trim() !== last.fields.bloqueio.trim() &&
+        !confirm("Substituir o que já está escrito pelo último status de bloqueio?")) return;
+    area.value = last.fields.bloqueio;
+    shift.fields.bloqueio = last.fields.bloqueio;
+    shift.savedId = null;
+    store(KEY_SHIFT, shift);
+    const note = $("block-source");
+    note.textContent = "Puxado da troca de turno de " + formatDate(dateFromKey(last.date)) + (last.turno ? " · " + last.turno : "") + ". Atualize o que mudou.";
+    note.hidden = false;
+    toast("Status de bloqueio carregado");
+  });
+
+  $("shift-done").addEventListener("click", () => {
+    if (!shift.turno) {
+      document.querySelector(".turno-pick").classList.add("need");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      toast("Escolha o turno primeiro");
+      return;
+    }
+    active = "troca";
+    go("done");
+  });
+
   /* ---------- Navegação ---------- */
+  let active = "inicio"; // qual relatório a tela "Relatório pronto" mostra
   const screens = Array.from(document.querySelectorAll("[data-screen]"));
   function go(name) {
     if (name === "machines" && !draft) newDraft();
-    if (name === "done" && !draft) { go("type"); return; }
+    if (name === "machines") active = "inicio";
+    if (name === "shift" && !shift) newShift();
+    if (name === "done" && !(active === "troca" ? shift : draft)) { go("type"); return; }
     screens.forEach(screen => { screen.hidden = screen.dataset.screen !== name; });
     if (name === "home") renderHome();
     if (name === "machines") renderMachines();
+    if (name === "shift") renderShift();
     if (name === "done") renderDone();
     if (name === "reports") renderReports();
     window.scrollTo(0, 0);
@@ -254,39 +373,53 @@
   });
 
   /* ---------- Relatório pronto ---------- */
+  const current = () => (active === "troca" ? shift : draft);
+  const textOf = report => (report.type === "troca" ? buildShiftText(report) : buildText(report));
+  const titleOf = report => (report.type === "troca" ? "Troca de turno" : "Início de turno") + " · Injetora";
+
+  $("done-back").addEventListener("click", () => go(active === "troca" ? "shift" : "machines"));
+
   function renderDone() {
-    $("done-text").textContent = buildText(draft);
-    const saved = Boolean(draft.savedId);
+    const report = current();
+    $("done-back-label").textContent = active === "troca" ? "Corrigir relatório" : "Corrigir máquinas";
+    $("done-text").textContent = textOf(report);
+    const saved = Boolean(report.savedId);
     $("save-label").textContent = saved ? "Relatório salvo" : "Salvar relatório";
     $("save-report").disabled = saved;
     $("new-after-save").hidden = !saved;
   }
 
   $("save-report").addEventListener("click", () => {
+    const source = current();
     const reports = load(KEY_REPORTS, []);
     const report = {
       id: String(Date.now()),
-      line: draft.line,
-      type: draft.type,
-      startedAt: draft.startedAt,
+      line: source.line,
+      type: source.type,
+      startedAt: source.startedAt,
       savedAt: new Date().toISOString(),
-      selections: { ...draft.selections },
-      text: buildText(draft)
+      text: textOf(source)
     };
+    if (source.type === "troca") {
+      report.date = source.date;
+      report.turno = source.turno;
+      report.fields = { ...source.fields };
+    } else {
+      report.selections = { ...source.selections };
+    }
     reports.unshift(report);
     if (!store(KEY_REPORTS, reports.slice(0, 200))) {
       toast("Não foi possível salvar neste aparelho");
       return;
     }
-    draft.savedId = report.id;
-    store(KEY_DRAFT, draft);
+    source.savedId = report.id;
+    store(source.type === "troca" ? KEY_SHIFT : KEY_DRAFT, source);
     renderDone();
     toast("Relatório salvo");
   });
 
   $("new-after-save").addEventListener("click", () => {
-    forget(KEY_DRAFT);
-    draft = null;
+    if (active === "troca") { newShift(); go("shift"); return; }
     newDraft();
     go("machines");
   });
@@ -314,9 +447,11 @@
       const text = document.createElement("span");
       text.className = "row-text";
       const title = document.createElement("strong");
-      title.textContent = "Início de turno · Injetora";
+      title.textContent = titleOf(report);
       const sub = document.createElement("small");
-      sub.textContent = whenLabel(new Date(report.startedAt));
+      sub.textContent = report.type === "troca"
+        ? formatDate(dateFromKey(report.date)) + (report.turno ? " · " + report.turno : "")
+        : whenLabel(new Date(report.startedAt));
       text.append(title, sub);
       item.append(icon("i-file", "row-icon"), text);
       item.addEventListener("click", () => {
@@ -326,10 +461,15 @@
       });
       list.appendChild(item);
     });
-    const current = reports.find(report => report.id === viewing);
-    const total = counts(current.selections);
-    $("view-sub").textContent = whenLabel(new Date(current.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup · " + total.stop + " paradas";
-    $("view-text").textContent = current.text;
+    const shown = reports.find(report => report.id === viewing);
+    $("view-title").textContent = titleOf(shown);
+    if (shown.type === "troca") {
+      $("view-sub").textContent = "Salvo " + whenLabel(new Date(shown.savedAt)).toLowerCase();
+    } else {
+      const total = counts(shown.selections);
+      $("view-sub").textContent = whenLabel(new Date(shown.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup · " + total.stop + " paradas";
+    }
+    $("view-text").textContent = shown.text;
     $("report-view").hidden = false;
   }
 
@@ -394,5 +534,6 @@
 
   /* ---------- Começo ---------- */
   loadDraft();
+  shift = load(KEY_SHIFT, null);
   go("home");
 })();

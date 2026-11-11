@@ -44,9 +44,10 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 
 Telas (versão 2.0, visual simplificado):
 1. **Em qual linha você está?** — Injetora (ativa) e Estamparia (em breve) + atalho "Meus relatórios".
-2. **O que você vai registrar?** — blocos grandes: Início de turno (ativo); Bloqueio, Scrap e Liberação (em breve).
+2. **O que você vai registrar?** — blocos grandes: Início de turno e Troca de turno (ativos); Bloqueio, Scrap e Liberação (em breve).
 3. **Máquinas** — contadores Rodando / Setup / Paradas e um cartão por máquina com número grande. Status por cor **e** texto.
 4. **Janela da máquina** — botões grandes com as peças daquela máquina + Setup / Parada + Confirmar.
+4b. **Troca de turno** — máscara "Alinhamento PQC Injetora" (detalhes abaixo).
 5. **Relatório pronto** — texto gerado, Salvar relatório, Copiar, Enviar e Novo relatório (após salvar).
 6. **Meus relatórios** — lista dos salvos; ao abrir: Copiar para o Meixin, Enviar, Apagar. No computador, lista e texto lado a lado.
 
@@ -72,6 +73,37 @@ Máquina 1: <peça ou situação>
 ...
 Máquina 19: <peça ou situação>
 ```
+
+## Máscara: Troca de turno (Alinhamento PQC Injetora)
+
+Parte **fixa** (não alterar, nem corrigir o chinês sem o dono pedir):
+
+```
+Ⓜ️ALINHAMENTO PQC INJETORA | PQC 冲压校准
+
+DATA 日期: <data de hoje, dd/mm/aaaa>
+
+TURNO 日期: <turno escolhido>
+
+📌RELATÓRIO 报告:
+<texto livre>
+
+⚠️PONTOS DE ATENÇÃO 注意事项:
+<texto livre>
+
+🚨PENDÊNCIAS 待处理问题:
+<texto livre>
+
+🛑STATUS DE BLOQUEIO 封锁状态:
+<texto livre>
+```
+
+- Só data, **sem hora**. A data é sempre a de hoje.
+- O turno a pessoa escolhe (1º, 2º ou 3º TURNO); o app não deixa seguir sem escolher.
+- Campos editáveis: Relatório, Pontos de atenção, Pendências e Status de bloqueio. Campo vazio = só o título.
+- **Puxar último bloqueio**: carrega o Status de bloqueio da troca de turno da Injetora salva mais recentemente, para a pessoa atualizar. Hoje busca nos relatórios do aparelho; com o Firebase, deve buscar o último salvo **por qualquer pessoa** (função `lastBlockStatus()` no `app.js`).
+- Rascunho guardado no aparelho (`rq.shift.v1`); vira novo quando já foi salvo ou muda o dia.
+- Observação para o dono confirmar: na máscara, "TURNO" está com 日期 (rìqī, "data"); turno costuma ser 班次 (bāncì). E 冲压校准 (chōngyā jiàozhǔn) significa "alinhamento da estamparia"; injetora costuma ser 注塑 (zhùsù). Mantido como está até o dono decidir.
 
 ## Regras obrigatórias
 
