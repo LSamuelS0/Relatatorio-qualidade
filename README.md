@@ -2,11 +2,16 @@
 
 Aplicativo web simples para montar relatórios de produção e qualidade. A primeira versão implementa o **Relatório de Início de Turno da Injetora (Fabricação de Plástico)**.
 
-## Como abrir
+## Acessar o aplicativo
 
-1. Abra o repositório no GitHub.
-2. Entre em `index.html` e use a visualização do arquivo, ou publique o repositório com GitHub Pages para acessar como site.
-3. Não é necessário instalar dependências ou executar um servidor para testar localmente: basta abrir o arquivo `index.html` em um navegador.
+**[Clique aqui para abrir o Relatório da Qualidade](https://lsamuels0.github.io/Relatatorio-qualidade/)**
+
+O aplicativo pode ser acessado diretamente pelo celular ou computador, sem precisar instalar nada.
+
+## Como abrir localmente
+
+1. Abra o arquivo `index.html` em um navegador.
+2. Não é necessário instalar dependências ou executar um servidor para testar localmente.
 
 ## Funcionalidades da versão 1.0
 
