@@ -3,6 +3,10 @@
 > Leia este arquivo antes de qualquer mudança. Ele resume o que o app faz hoje, as regras
 > que precisam ser seguidas e o que está planejado. Atualize-o sempre que algo mudar.
 
+## Regras do Firebase (pedido do dono, 12/11/2026)
+
+Sempre que uma mudança precisar de regra nova ou diferente no Firebase (`firestore.rules`), **avisar o dono claramente** e passar o texto completo das regras para ele colar no console do Firebase (Firestore → Regras → Publicar). Se não precisar, dizer que não precisa.
+
 ## Para que serve
 
 App web (HTML/CSS/JS puro, sem instalação) usado na **Midea**, setor de qualidade, para
