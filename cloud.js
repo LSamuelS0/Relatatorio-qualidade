@@ -18,7 +18,7 @@ import {
   getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, setPersistence, browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import {
-  getFirestore, doc, setDoc, getDoc, deleteDoc, collection, query, where, getDocs, onSnapshot
+  getFirestore, doc, setDoc, getDoc, getDocFromServer, deleteDoc, collection, query, where, getDocs, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -91,6 +91,12 @@ const Cloud = {
   },
 
   signOut: () => signOut(auth),
+
+  /* Teste direto no servidor: mostra se o banco existe e se as regras deixam ler. */
+  async ping() {
+    needUser();
+    await getDocFromServer(doc(db, "compartilhado", "ultimoBloqueio"));
+  },
 
   /* Relatórios e rascunhos: um documento por item, com o dono. */
   async put(kind, item) {

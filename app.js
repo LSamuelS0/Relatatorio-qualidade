@@ -1329,8 +1329,14 @@
     "not-found": "Banco de dados não encontrado. Confira se o Firestore foi criado com o ID (default).",
     "failed-precondition": "Banco de dados não está pronto. Confira se o Firestore foi criado no Firebase.",
     "unavailable": "Sem conexão com o servidor. Vai tentar de novo sozinho.",
-    "unauthenticated": "A sessão expirou. Saia e entre de novo."
+    "unauthenticated": "A sessão expirou. Saia e entre de novo.",
+    "timeout": "O servidor do Firebase não respondeu. Confira se o Firestore Database foi criado (Firebase → Firestore Database → Criar banco de dados)."
   };
+  /* O Firebase às vezes fica esperando para sempre (ex.: banco não criado): limita o tempo. */
+  function withTimeout(promise, ms) {
+    return Promise.race([promise, new Promise((_, reject) =>
+      setTimeout(() => reject(Object.assign(new Error("timeout"), { code: "timeout" })), ms || 20000))]);
+  }
   function reportSync(error) {
     if (!error) { syncError = null; paintSync(); return; }
     const code = String(error.code || "").replace("firestore/", "");
@@ -1349,20 +1355,20 @@
         const parts = key.split(":");
         try {
           if (parts[0] === "x") {
-            await Cloud.remove(KIND[parts[1]], parts[2]);
+            await withTimeout(Cloud.remove(KIND[parts[1]], parts[2]));
           } else {
             const list = parts[0] === "d" ? listDrafts() : load(KEY_REPORTS, []);
             const item = list.find(other => String(other.id) === parts[1]);
             if (item) {
-              await uploadPhotosOf(item);
-              await Cloud.put(KIND[parts[0]], item);
+              await withTimeout(uploadPhotosOf(item), 60000);
+              await withTimeout(Cloud.put(KIND[parts[0]], item));
             }
           }
           setPending(key, false);
           if (syncError && !syncError.includes("unavailable")) reportSync(null);
         } catch (error) {
           reportSync(error);
-          if (error && ["unavailable", "permission-denied", "not-found", "failed-precondition", "unauthenticated"].includes(error.code)) break;
+          if (error && ["unavailable", "permission-denied", "not-found", "failed-precondition", "unauthenticated", "timeout"].includes(error.code)) break;
         }
       }
     } finally {
@@ -1389,7 +1395,7 @@
 
   async function pull() {
     if (!cloudOk()) return;
-    const [reports, drafts] = await Promise.all([Cloud.listMine("relatorios"), Cloud.listMine("rascunhos")]);
+    const [reports, drafts] = await withTimeout(Promise.all([Cloud.listMine("relatorios"), Cloud.listMine("rascunhos")]));
     mergeRemote("r", reports);
     mergeRemote("d", drafts);
     await fetchMissingPhotos();
@@ -1477,13 +1483,20 @@
     $("user-chip").hidden = false;
     paintSync();
     go("home");
+    // 1) teste rápido no servidor; 2) enviar e baixar em paralelo (um não trava o outro)
     try {
-      await flush();
+      await withTimeout(Cloud.ping(), 15000);
+      reportSync(null);
+    } catch (error) {
+      reportSync(error);
+      toast(navigator.onLine ? "Problema na nuvem: toque na bolinha ao lado do seu nome" : "Sem internet: mostrando o que está no aparelho");
+    }
+    flush();
+    try {
       await pull();
       startWatching();
     } catch (error) {
       reportSync(error);
-      toast(navigator.onLine ? "Problema na nuvem: toque na bolinha ao lado do seu nome" : "Sem internet: mostrando o que está no aparelho");
     }
     if (screenNow === "home") renderHome();
     cleanPhotos();
