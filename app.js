@@ -1462,7 +1462,30 @@
       : syncError ? "Problema na nuvem:\n\n" + syncError + (count ? "\n\nItens esperando envio: " + count : "")
       : count ? "Enviando " + count + " item(ns) para a nuvem…" : "Tudo salvo na nuvem.");
     flush();
+    if (syncError) reconnect(); // tenta de novo (ex.: regras publicadas depois do erro)
   });
+
+  /* Teste no servidor + baixar + tempo real. Usado ao entrar e ao tocar na bolinha vermelha. */
+  async function reconnect() {
+    if (!cloudOk()) return;
+    try {
+      await withTimeout(Cloud.ping(), 15000);
+      reportSync(null);
+    } catch (error) {
+      reportSync(error);
+      return false;
+    }
+    try {
+      await pull();
+      startWatching();
+    } catch (error) {
+      reportSync(error);
+      return false;
+    }
+    if (screenNow === "home") renderHome();
+    if (screenNow === "reports") renderReports();
+    return true;
+  }
 
   async function onLogin(account) {
     const owner = load(KEY_OWNER, null);
@@ -1484,21 +1507,9 @@
     paintSync();
     go("home");
     // 1) teste rápido no servidor; 2) enviar e baixar em paralelo (um não trava o outro)
-    try {
-      await withTimeout(Cloud.ping(), 15000);
-      reportSync(null);
-    } catch (error) {
-      reportSync(error);
-      toast(navigator.onLine ? "Problema na nuvem: toque na bolinha ao lado do seu nome" : "Sem internet: mostrando o que está no aparelho");
-    }
     flush();
-    try {
-      await pull();
-      startWatching();
-    } catch (error) {
-      reportSync(error);
-    }
-    if (screenNow === "home") renderHome();
+    const ok = await reconnect();
+    if (!ok) toast(navigator.onLine ? "Problema na nuvem: toque na bolinha ao lado do seu nome" : "Sem internet: mostrando o que está no aparelho");
     cleanPhotos();
   }
 
