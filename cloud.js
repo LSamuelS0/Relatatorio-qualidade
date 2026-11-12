@@ -11,6 +11,7 @@
                                     (qualquer pessoa logada lê e grava)
      cadastro/injetora   máquinas e peças da Injetora (todos leem; só o ADM grava)
      cadastro/mascaras   textos fixos dos relatórios publicados pelo ADM
+     ocorrencias/{id}    ocorrências da linha (todos leem; cada um lança as suas)
 
    O firebaseConfig NÃO é segredo: quem protege os dados são as regras de
    acesso (firestore.rules). A senha do ADM nunca fica no código.
@@ -118,6 +119,14 @@ const Cloud = {
   watchMine(kind, onData, onError) {
     const owner = needUser();
     return onSnapshot(query(collection(db, kind), where("owner", "==", owner)),
+      snapshot => onData(snapshot.docs.map(item => item.data())),
+      error => onError && onError(error));
+  },
+
+  /* Ocorrências de um dia (de todas as pessoas), em tempo real. */
+  watchDay(kind, date, onData, onError) {
+    needUser();
+    return onSnapshot(query(collection(db, kind), where("date", "==", date)),
       snapshot => onData(snapshot.docs.map(item => item.data())),
       error => onError && onError(error));
   },

@@ -48,7 +48,7 @@ Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os 
 
 Telas (versão 2.0, visual simplificado):
 1. **Em qual linha você está?** — Injetora (ativa) e Estamparia (em breve) + atalho "Meus relatórios" (só os salvos) + lista **Rascunhos**.
-2. **O que você vai registrar?** — blocos grandes: Funcionamento de máquinas (antigo "Início de turno"), Troca de turno e Bloqueio (ativos); Scrap e Liberação (em breve).
+2. **O que você vai registrar?** — blocos grandes: Funcionamento de máquinas (antigo "Início de turno"), Troca de turno, Bloqueio, **Lançar ocorrência** (no lugar de Scrap) e **Ocorrências do dia** (no lugar de Liberação de peças).
 3. **Máquinas** — turno (T1/T2/T3, obrigatório), contadores Rodando / Setup / Paradas e um cartão por máquina com número grande. Status por cor **e** texto.
 4. **Janela da máquina** — botões grandes com as peças daquela máquina + Setup / Parada + Confirmar.
 4b. **Troca de turno** — máscara "Alinhamento PQC Injetora" (detalhes abaixo).
@@ -178,6 +178,16 @@ Conforme e Não conforme: 1 foto cada (a nova substitui a anterior). Localizaç�
 - Relatório pronto e Meus relatórios mostram o texto e os 3 blocos. Cada bloco tem **Copiar título**, **Copiar foto** (área de transferência; onde o aparelho não deixa, baixa a foto) e **Enviar foto**. O botão Enviar geral manda o texto + as fotos pelo compartilhamento do celular.
 - Rascunho: vale a regra geral; bloqueio sem nenhum campo e sem foto não vira rascunho.
 - Com o Firebase, as fotos precisarão ir para o Firebase Storage para aparecer no computador.
+
+## Ocorrências (projeto do dono, iniciado em 11/11/2026)
+
+Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais acontecem mais, quantas vezes foi preciso pedir ajuste de máquina, troca de molde ou manutenção da ferramentaria, e atacar a causa raiz.
+
+- **Lançar ocorrência:** turno (T1/T2/T3; fica escolhido para a próxima), máquina (botões 1–19), peça (só as peças daquela máquina, + "Nenhuma peça (máquina parada)") e problema. Um toque em **Lançar ocorrência** salva na hora (não tem rascunho nem tela de relatório pronto) e limpa máquina/peça/problema para lançar a próxima.
+- **Problemas:** `problemas` no `data.js`. **Vazio por enquanto** → o problema é escrito à mão (maiúsculas). O dono vai passar a lista; com itens, viram botões + campo "Outro problema".
+- **Ocorrências do dia:** escolher a data (setas ou calendário); totais por turno; barras "Problemas que mais aconteceram" e "Por máquina" (quantidade e %); lista com hora, turno, peça e quem lançou. Mostra as ocorrências de **todas as pessoas**, em tempo real. Quem lançou (ou o ADM) pode apagar.
+- **Dados:** `ocorrencias/{id}` no Firestore = `{ id, date (aaaa-mm-dd), at, turno, machine, part, problem, by (matrícula/ADM), owner }`. Cópia no aparelho `rq.occ.v1`; envio pela fila de pendências (`o:id`). Regras: todos logados leem; cada um cria as suas; dono ou ADM apaga.
+- **Próximos passos:** lista de problemas do dono; depois, relatório/painel por período (semana, mês), por tipo de problema e por máquina.
 
 ## Banco de dados (Firebase)
 

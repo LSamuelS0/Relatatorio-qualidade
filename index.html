@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=4.0">
+  <link rel="stylesheet" href="styles.css?v=4.2">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -36,6 +36,8 @@
       <symbol id="i-camera" viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1z"/><circle cx="12" cy="13.5" r="3.5"/></symbol>
       <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-9 9"/></symbol>
       <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></symbol>
+      <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5"/><path d="M12 17.5v.5"/></symbol>
+      <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
     </defs>
   </svg>
@@ -262,14 +264,14 @@
           <span class="tile-icon"><svg><use href="#i-lock"/></svg></span>
           <strong>Bloqueio</strong>
         </button>
-        <div class="tile is-off" aria-disabled="true">
-          <span class="tile-icon"><svg><use href="#i-trash"/></svg></span>
-          <strong>Scrap</strong><small>Em breve</small>
-        </div>
-        <div class="tile is-off" aria-disabled="true">
-          <span class="tile-icon"><svg><use href="#i-shield"/></svg></span>
-          <strong>Liberação de peças</strong><small>Em breve</small>
-        </div>
+        <button class="tile" type="button" id="start-ocorrencia">
+          <span class="tile-icon"><svg><use href="#i-alert"/></svg></span>
+          <strong>Lançar ocorrência</strong>
+        </button>
+        <button class="tile" type="button" data-go="occ-list">
+          <span class="tile-icon"><svg><use href="#i-chart"/></svg></span>
+          <strong>Ocorrências do dia</strong>
+        </button>
       </div>
     </section>
 
@@ -453,6 +455,77 @@
       </div>
     </section>
 
+    <!-- 3d. Lançar ocorrência -->
+    <section class="screen screen-shift" id="screen-occ-new" data-screen="occ-new" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Lançar ocorrência</h1>
+          <span>Injetora</span>
+        </div>
+        <button class="text-btn" type="button" data-go="occ-list">Ver o dia</button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Turno</span>
+        <div class="turno-pick occ-turno" role="radiogroup" aria-label="Turno">
+          <button type="button" class="turno" data-oturno="T1" role="radio">T1</button>
+          <button type="button" class="turno" data-oturno="T2" role="radio">T2</button>
+          <button type="button" class="turno" data-oturno="T3" role="radio">T3</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Máquina</span>
+        <div class="occ-machines" id="occ-machines" role="radiogroup" aria-label="Máquina"></div>
+      </div>
+
+      <div class="field" id="occ-part-field" hidden>
+        <span class="field-label">Peça que está rodando</span>
+        <div class="choice-list" id="occ-parts" role="radiogroup" aria-label="Peça"></div>
+      </div>
+
+      <div class="field" id="occ-problem-field" hidden>
+        <span class="field-label">Qual é o problema?</span>
+        <div class="choice-list" id="occ-problems" role="radiogroup" aria-label="Problema"></div>
+        <input class="text-input" id="occ-problem-text" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="DESCREVA O PROBLEMA">
+      </div>
+
+      <div class="bottom-bar">
+        <button class="btn btn-primary" type="button" id="occ-save"><svg><use href="#i-check"/></svg>Lançar ocorrência</button>
+      </div>
+    </section>
+
+    <!-- 3e. Ocorrências do dia -->
+    <section class="screen screen-reports" id="screen-occ-list" data-screen="occ-list" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Ocorrências do dia</h1>
+          <span>Injetora · todas as pessoas</span>
+        </div>
+        <button class="text-btn" type="button" id="occ-new-btn">+ Lançar</button>
+      </div>
+      <div class="occ-date">
+        <button class="icon-btn" type="button" id="occ-prev" aria-label="Dia anterior"><svg><use href="#i-back"/></svg></button>
+        <label class="occ-date-input" for="occ-date"><span class="sr-only">Data</span><input class="text-input" type="date" id="occ-date"></label>
+        <button class="icon-btn" type="button" id="occ-next" aria-label="Próximo dia"><svg><use href="#i-next"/></svg></button>
+      </div>
+      <div class="counters occ-counters" id="occ-turnos"></div>
+      <div class="occ-section">
+        <h2 class="subtitle">Problemas que mais aconteceram</h2>
+        <div class="occ-bars" id="occ-by-problem"></div>
+      </div>
+      <div class="occ-section">
+        <h2 class="subtitle">Por máquina</h2>
+        <div class="occ-bars" id="occ-by-machine"></div>
+      </div>
+      <div class="occ-section">
+        <h2 class="subtitle">Todas as ocorrências</h2>
+        <div class="admin-list" id="occ-items"></div>
+      </div>
+    </section>
+
     <!-- 4. Relatório pronto -->
     <section class="screen" id="screen-done" data-screen="done" hidden>
       <button class="back" type="button" id="done-back"><svg><use href="#i-back"/></svg><span id="done-back-label">Corrigir</span></button>
@@ -604,8 +677,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=4.0"></script>
-  <script src="app.js?v=4.0"></script>
-  <script type="module" src="cloud.js?v=4.0"></script>
+  <script src="data.js?v=4.2"></script>
+  <script src="app.js?v=4.2"></script>
+  <script type="module" src="cloud.js?v=4.2"></script>
 </body>
 </html>

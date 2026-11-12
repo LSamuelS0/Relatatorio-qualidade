@@ -48,6 +48,14 @@ service cloud.firestore {
       allow read, write: if signedIn();
     }
 
+    // Ocorrências da linha: todas as pessoas logadas veem (acompanhamento diário);
+    // cada um lança as suas; quem lançou ou o ADM pode apagar.
+    match /ocorrencias/{id} {
+      allow read: if signedIn();
+      allow create: if ownsNew();
+      allow update, delete: if isAdmin() || ownsExisting();
+    }
+
     // Cadastro da Injetora (quais peças rodam em cada máquina): todos leem, só o ADM altera.
     match /cadastro/{doc} {
       allow read: if signedIn();

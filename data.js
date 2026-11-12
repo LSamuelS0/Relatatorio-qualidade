@@ -128,6 +128,10 @@ window.QUALITY_REPORT_DATA = {
      Deixe vazio ([]) para o campo começar em branco. */
   helpChainDefault: [],
 
+  /* Ocorrências: lista de problemas (o dono vai passar). Enquanto estiver vazia,
+     o problema é escrito à mão. Com itens, viram botões + "Outro". */
+  problemas: [],
+
   machines: [
     { id: 1,  items: ["Cesto Externo 550", "Cesto Externo 580", "Cesto Externo 601", "Cesto Externo 640"] },
     { id: 2,  items: ["Cesto Externo 550", "Cesto Externo 580", "Cesto Externo 601", "Cesto Externo 640"] },

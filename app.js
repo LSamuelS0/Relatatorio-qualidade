@@ -967,6 +967,9 @@
     if (name === "admin-home") renderPending();
     if (name === "admin-parts") { $("ap-search").value = ""; renderAdminParts(); }
     if (name === "admin-masks") renderMasksList();
+    if (name === "occ-new") renderOccNew();
+    if (name === "occ-list") renderOccList();
+    if (name !== "occ-list") stopOccWatch();
     if (name === "admin-mask") { if (!maskType) { go("admin-masks"); return; } renderMaskEditor(); }
     if (name === "admin-machine") renderAdminMachine();
     window.scrollTo(0, 0);
@@ -1431,7 +1434,7 @@
   const KEY_UPLOADED = "rq.photosUp.v1";
   let user = null;
   const cloudOk = () => Boolean(window.Cloud && user);
-  const KIND = { d: "rascunhos", r: "relatorios" };
+  const KIND = { d: "rascunhos", r: "relatorios", o: "ocorrencias" };
 
   function setPending(key, on) {
     const pending = load(KEY_PENDING, {});
@@ -1498,7 +1501,7 @@
           if (parts[0] === "x") {
             await withTimeout(Cloud.remove(KIND[parts[1]], parts[2]));
           } else {
-            const list = parts[0] === "d" ? listDrafts() : load(KEY_REPORTS, []);
+            const list = parts[0] === "d" ? listDrafts() : parts[0] === "o" ? load(KEY_OCC, []) : load(KEY_REPORTS, []);
             const item = list.find(other => String(other.id) === parts[1]);
             if (item) {
               await withTimeout(uploadPhotosOf(item), 60000);
@@ -1634,7 +1637,7 @@
     const owner = load(KEY_OWNER, null);
     if (owner && owner !== account.uid) {
       // outra pessoa entrou neste aparelho: limpa a cópia local da conta anterior
-      [KEY_REPORTS, KEY_DRAFTS].forEach(key => store(key, []));
+      [KEY_REPORTS, KEY_DRAFTS, KEY_OCC].forEach(key => store(key, []));
       store(KEY_PENDING, {});
       store(KEY_UPLOADED, {});
     } else if (!owner) {
@@ -1657,6 +1660,7 @@
   }
 
   function onLogout() {
+    stopOccWatch();
     stopWatching();
     if (unwatchCadastro) { try { unwatchCadastro(); } catch (error) { /* já parado */ } unwatchCadastro = null; }
     if (unwatchMasks) { try { unwatchMasks(); } catch (error) { /* já parado */ } unwatchMasks = null; }
@@ -2235,6 +2239,252 @@
       button.disabled = false;
     }
   });
+
+  /* ---------- Ocorrências ----------
+     Lançar: turno, máquina, peça (da máquina) e problema. Cada ocorrência vai para
+     ocorrencias/{id} (todos leem) com cópia no aparelho (rq.occ.v1) até ser enviada.
+     Problemas: DATA.problemas (botões) ou texto livre enquanto a lista estiver vazia. */
+  const KEY_OCC = "rq.occ.v1";
+  let occ = { turno: null, machine: null, part: null, problem: "" };
+
+  function occTurnoGuess() {
+    const last = load(KEY_OCC, [])[0];
+    return last && last.date === todayKey() ? last.turno : null;
+  }
+
+  function renderOccNew() {
+    if (!occ.turno) occ.turno = occTurnoGuess();
+    document.querySelectorAll("[data-oturno]").forEach(button => button.setAttribute("aria-checked", String(button.dataset.oturno === occ.turno)));
+    const grid = $("occ-machines");
+    grid.innerHTML = "";
+    machines.forEach(machine => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "occ-machine";
+      button.textContent = machine.id;
+      button.setAttribute("role", "radio");
+      button.setAttribute("aria-label", "Máquina " + machine.id);
+      button.setAttribute("aria-checked", String(occ.machine === machine.id));
+      button.addEventListener("click", () => {
+        if (occ.machine !== machine.id) { occ.machine = machine.id; occ.part = null; }
+        renderOccNew();
+      });
+      grid.appendChild(button);
+    });
+    const machine = machines.find(item => item.id === occ.machine);
+    $("occ-part-field").hidden = !machine;
+    const parts = $("occ-parts");
+    parts.innerHTML = "";
+    if (machine) {
+      const options = machine.items.length ? machine.items : [];
+      options.concat(["Nenhuma peça (máquina parada)"]).forEach(label => {
+        const option = document.createElement("button");
+        option.type = "button";
+        option.className = "choice";
+        option.setAttribute("role", "radio");
+        option.setAttribute("aria-checked", String(occ.part === label));
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        dot.appendChild(icon("i-check"));
+        option.append(dot, document.createTextNode(label));
+        option.addEventListener("click", () => { occ.part = label; renderOccNew(); });
+        parts.appendChild(option);
+      });
+    }
+    $("occ-problem-field").hidden = !occ.part;
+    const problems = $("occ-problems");
+    problems.innerHTML = "";
+    const list = DATA.problemas || [];
+    problems.hidden = !list.length;
+    list.forEach(label => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "choice";
+      option.setAttribute("role", "radio");
+      option.setAttribute("aria-checked", String(occ.problem === label));
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.appendChild(icon("i-check"));
+      option.append(dot, document.createTextNode(label));
+      option.addEventListener("click", () => { occ.problem = label; $("occ-problem-text").value = ""; renderOccNew(); });
+      problems.appendChild(option);
+    });
+    $("occ-problem-text").placeholder = list.length ? "OUTRO PROBLEMA (ESCREVA)" : "DESCREVA O PROBLEMA";
+    if (!list.includes(occ.problem)) $("occ-problem-text").value = occ.problem;
+  }
+
+  document.querySelectorAll("[data-oturno]").forEach(button => button.addEventListener("click", () => {
+    occ.turno = button.dataset.oturno;
+    document.querySelector(".occ-turno").classList.remove("need");
+    renderOccNew();
+  }));
+  $("occ-problem-text").addEventListener("input", event => {
+    const input = event.target;
+    const caret = input.selectionStart;
+    const upper = input.value.toLocaleUpperCase("pt-BR");
+    if (upper !== input.value) { input.value = upper; input.setSelectionRange(caret, caret); }
+    occ.problem = input.value.trim();
+    document.querySelectorAll("#occ-problems .choice").forEach(option => option.setAttribute("aria-checked", "false"));
+  });
+  $("start-ocorrencia").addEventListener("click", () => {
+    occ = { turno: occ.turno, machine: null, part: null, problem: "" };
+    go("occ-new");
+  });
+  $("occ-new-btn").addEventListener("click", () => { occ = { turno: occ.turno, machine: null, part: null, problem: "" }; go("occ-new"); });
+
+  $("occ-save").addEventListener("click", () => {
+    if (!occ.turno) { document.querySelector(".occ-turno").classList.add("need"); window.scrollTo({ top: 0, behavior: "smooth" }); toast("Escolha o turno"); return; }
+    if (!occ.machine) { toast("Escolha a máquina"); return; }
+    if (!occ.part) { toast("Escolha a peça"); return; }
+    if (!occ.problem) { $("occ-problem-text").focus(); toast("Diga qual é o problema"); return; }
+    const now = new Date();
+    const item = {
+      id: newId(), line: "injetora", type: "ocorrencia", at: now.toISOString(), date: todayKey(),
+      turno: occ.turno, machine: occ.machine, part: occ.part, problem: occ.problem, by: user ? user.login : ""
+    };
+    const all = load(KEY_OCC, []);
+    all.unshift(item);
+    store(KEY_OCC, all.slice(0, 500));
+    queuePush("o", item.id);
+    toast("Ocorrência lançada: máquina " + item.machine);
+    // pronto para a próxima: mantém o turno
+    occ = { turno: occ.turno, machine: null, part: null, problem: "" };
+    $("occ-problem-text").value = "";
+    renderOccNew();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  /* Ocorrências do dia: todas as pessoas (nuvem) + as deste aparelho ainda não enviadas */
+  let occDate = null;
+  let occRemote = [];
+  let occUnwatch = null;
+  function stopOccWatch() {
+    if (occUnwatch) { try { occUnwatch(); } catch (error) { /* já parado */ } occUnwatch = null; }
+  }
+  function startOccWatch() {
+    stopOccWatch();
+    occRemote = [];
+    if (!cloudOk() || !Cloud.watchDay) return;
+    occUnwatch = Cloud.watchDay("ocorrencias", occDate, items => { occRemote = items; paintOccList(); }, reportSync);
+  }
+  function shiftDay(key, delta) {
+    const date = dateFromKey(key);
+    date.setDate(date.getDate() + delta);
+    return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
+  }
+  function renderOccList() {
+    if (!occDate) occDate = todayKey();
+    $("occ-date").value = occDate;
+    $("occ-next").disabled = occDate >= todayKey();
+    paintOccList();
+    startOccWatch();
+  }
+  $("occ-date").addEventListener("change", event => { if (event.target.value) { occDate = event.target.value; renderOccList(); } });
+  $("occ-prev").addEventListener("click", () => { occDate = shiftDay(occDate, -1); renderOccList(); });
+  $("occ-next").addEventListener("click", () => { if (occDate < todayKey()) { occDate = shiftDay(occDate, 1); renderOccList(); } });
+
+  function occOfDay() {
+    const pending = load(KEY_PENDING, {});
+    const byId = new Map(occRemote.map(item => [String(item.id), item]));
+    load(KEY_OCC, []).filter(item => item.date === occDate && (pending["o:" + item.id] || !cloudOk()))
+      .forEach(item => { if (!byId.has(String(item.id))) byId.set(String(item.id), { ...item, pending: true }); });
+    return Array.from(byId.values()).filter(item => !pending["x:o:" + item.id])
+      .sort((a, b) => String(b.at).localeCompare(String(a.at)));
+  }
+
+  function bars(container, entries, total) {
+    container.innerHTML = "";
+    if (!entries.length) {
+      const empty = document.createElement("p");
+      empty.className = "muted small";
+      empty.textContent = "Nada neste dia.";
+      container.appendChild(empty);
+      return;
+    }
+    const max = entries[0][1];
+    entries.forEach(([label, count]) => {
+      const row = document.createElement("div");
+      row.className = "occ-bar";
+      const name = document.createElement("span");
+      name.textContent = label;
+      const num = document.createElement("span");
+      num.className = "num";
+      num.textContent = count + (total ? " (" + Math.round((count / total) * 100) + "%)" : "");
+      const track = document.createElement("div");
+      track.className = "track";
+      const fill = document.createElement("div");
+      fill.className = "fill";
+      fill.style.width = Math.max(4, (count / max) * 100) + "%";
+      track.appendChild(fill);
+      row.append(name, num, track);
+      container.appendChild(row);
+    });
+  }
+
+  function paintOccList() {
+    if (screenNow !== "occ-list") return;
+    const items = occOfDay();
+    const count = key => {
+      const map = new Map();
+      items.forEach(item => map.set(key(item), (map.get(key(item)) || 0) + 1));
+      return Array.from(map.entries()).sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]), "pt-BR", { numeric: true }));
+    };
+    const turnos = $("occ-turnos");
+    turnos.innerHTML = "";
+    [["Total", items.length, " total"], ["T1", items.filter(i => i.turno === "T1").length, ""], ["T2", items.filter(i => i.turno === "T2").length, ""], ["T3", items.filter(i => i.turno === "T3").length, ""]]
+      .forEach(([label, value, extra]) => {
+        const box = document.createElement("div");
+        box.className = "counter" + extra;
+        const num = document.createElement("strong");
+        num.textContent = value;
+        const name = document.createElement("span");
+        name.textContent = label;
+        box.append(num, name);
+        turnos.appendChild(box);
+      });
+    turnos.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
+    bars($("occ-by-problem"), count(item => item.problem), items.length);
+    bars($("occ-by-machine"), count(item => "Máquina " + item.machine), items.length);
+
+    const list = $("occ-items");
+    list.innerHTML = "";
+    if (!items.length) {
+      const empty = document.createElement("p");
+      empty.className = "admin-empty";
+      empty.textContent = "Nenhuma ocorrência neste dia.";
+      list.appendChild(empty);
+    }
+    items.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "occ-item" + (item.pending ? " pending" : "");
+      const top = document.createElement("div");
+      top.className = "occ-item-top";
+      const title = document.createElement("strong");
+      title.textContent = "Máquina " + item.machine + " · " + item.problem;
+      top.appendChild(title);
+      const mine = user && (item.owner === user.uid || item.pending || item.by === user.login);
+      if (mine || (user && user.admin)) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "remove";
+        remove.setAttribute("aria-label", "Apagar ocorrência");
+        remove.appendChild(icon("i-trash"));
+        remove.addEventListener("click", () => {
+          if (!confirm("Apagar esta ocorrência?")) return;
+          store(KEY_OCC, load(KEY_OCC, []).filter(other => String(other.id) !== String(item.id)));
+          occRemote = occRemote.filter(other => String(other.id) !== String(item.id));
+          queueDelete("o", item.id);
+          paintOccList();
+          toast("Ocorrência apagada");
+        });
+        top.appendChild(remove);
+      }
+      const info = document.createElement("small");
+      info.textContent = formatTime(new Date(item.at)) + " · " + item.turno + " · " + item.part + (item.by ? " · " + item.by : "") + (item.pending ? " · enviando…" : "");
+      card.append(top, info);
+      list.appendChild(card);
+    });
+  }
 
   /* ---------- Começo ---------- */
   applyCadastro(load(KEY_CADASTRO, null));
