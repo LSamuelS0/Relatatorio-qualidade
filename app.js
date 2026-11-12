@@ -179,9 +179,12 @@
     ];
     SHIFT_FIELDS.forEach((field, index) => {
       lines.push(field.title);
-      const value = standardize(report.fields[field.key] || "").split("\n")
+      let value = standardize(report.fields[field.key] || "").split("\n")
         .filter(line => line.trim() !== "-").join("\n").replace(/\s+$/, "").replace(/^\s*\n/, "");
-      if (value) lines.push(value);
+      // Pontos de atenção e Pendências vazios saem como "- N/A"
+      if (!value && (field.key === "atencao" || field.key === "pendencias")) value = "- N/A";
+      // linha em branco entre o título e o texto (o texto não fica grudado no título)
+      if (value) lines.push("", value);
       if (index < SHIFT_FIELDS.length - 1) lines.push("");
     });
     // Marcações (@ dos colaboradores): no final, sem título, do jeito que foi escrito
