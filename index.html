@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=4.2">
+  <link rel="stylesheet" href="styles.css?v=5.0">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -84,16 +84,17 @@
     <section class="screen" id="screen-home" data-screen="home" hidden>
       <h1 class="title">Em qual linha você está?</h1>
 
-      <button class="big-card" type="button" data-go="type">
+      <button class="big-card" type="button" data-line-start="injetora">
         <span class="big-icon"><svg><use href="#i-inject"/></svg></span>
-        <span class="big-text"><strong>Injetora</strong><small>Plástico · 19 máquinas</small></span>
+        <span class="big-text"><strong>Injetora</strong><small data-line-sub="injetora">Plástico · 19 máquinas</small></span>
         <svg class="chev"><use href="#i-next"/></svg>
       </button>
 
-      <div class="big-card is-off" aria-disabled="true">
+      <button class="big-card" type="button" data-line-start="estamparia">
         <span class="big-icon"><svg><use href="#i-press"/></svg></span>
-        <span class="big-text"><strong>Estamparia</strong><small>Metal · em breve</small></span>
-      </div>
+        <span class="big-text"><strong>Estamparia</strong><small data-line-sub="estamparia">Metal · 13 máquinas</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
 
       <div class="home-reports">
         <h2 class="subtitle">Meus relatórios</h2>
@@ -111,7 +112,7 @@
 
       <div class="home-reports" id="home-admin" hidden>
         <h2 class="subtitle">Administrador</h2>
-        <button class="row-card admin-card" type="button" data-go="admin-home">
+        <button class="row-card admin-card" type="button" data-go="admin-line">
           <svg class="row-icon"><use href="#i-shield"/></svg>
           <span class="row-text"><strong>Painel do administrador</strong><small id="home-admin-sub">Máquinas, peças e máscaras</small></span>
           <svg class="chev"><use href="#i-next"/></svg>
@@ -119,14 +120,37 @@
       </div>
     </section>
 
-    <!-- A0. Painel do administrador -->
-    <section class="screen screen-admin" id="screen-admin-home" data-screen="admin-home" hidden>
+    <!-- A. Administrador: escolher a área -->
+    <section class="screen screen-admin" id="screen-admin-line" data-screen="admin-line" hidden>
       <div class="head-row">
         <button class="icon-btn" type="button" data-go="home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
         <div class="head-text">
           <h1>Administrador</h1>
-          <span>Injetora</span>
+          <span>Escolha a área</span>
         </div>
+      </div>
+      <h2 class="title">Em qual área você quer fazer alterações?</h2>
+      <button class="big-card admin-hub" type="button" data-admin-line="injetora">
+        <span class="big-icon"><svg><use href="#i-inject"/></svg></span>
+        <span class="big-text"><strong>Injetora</strong><small data-admin-line-sub="injetora">Plástico</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
+      <button class="big-card admin-hub" type="button" data-admin-line="estamparia">
+        <span class="big-icon"><svg><use href="#i-press"/></svg></span>
+        <span class="big-text"><strong>Estamparia</strong><small data-admin-line-sub="estamparia">Metal</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
+    </section>
+
+    <!-- A0. Painel do administrador -->
+    <section class="screen screen-admin" id="screen-admin-home" data-screen="admin-home" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="admin-line" aria-label="Trocar de área"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Administrador</h1>
+          <span data-admin-line-name>Injetora</span>
+        </div>
+        <button class="text-btn" type="button" data-go="admin-line">Trocar área</button>
       </div>
       <div class="admin-pending" data-pending hidden>
         <strong data-pending-text>Mudanças ainda não publicadas</strong>
@@ -159,7 +183,7 @@
         <button class="icon-btn" type="button" data-go="admin-home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
         <div class="head-text">
           <h1>Peças cadastradas</h1>
-          <span id="ap-count">—</span>
+          <span><span data-admin-line-name>Injetora</span> · <span id="ap-count">—</span></span>
         </div>
       </div>
       <div class="admin-pending" data-pending hidden>
@@ -184,7 +208,7 @@
         <button class="icon-btn" type="button" data-go="admin-home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
         <div class="head-text">
           <h1>Máscaras</h1>
-          <span>Textos fixos dos relatórios</span>
+          <span><span data-admin-line-name>Injetora</span> · textos fixos dos relatórios</span>
         </div>
       </div>
       <div class="admin-list" id="masks-list"></div>
@@ -214,7 +238,7 @@
         <button class="icon-btn" type="button" data-go="admin-home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
         <div class="head-text">
           <h1>Peças das máquinas</h1>
-          <span>Injetora · administrador</span>
+          <span><span data-admin-line-name>Injetora</span> · administrador</span>
         </div>
       </div>
       <div class="admin-pending" data-pending hidden>
@@ -249,7 +273,7 @@
     <!-- 2. Tipo de relatório -->
     <section class="screen" id="screen-type" data-screen="type" hidden>
       <button class="back" type="button" data-go="home"><svg><use href="#i-back"/></svg>Voltar</button>
-      <p class="eyebrow">INJETORA</p>
+      <p class="eyebrow" data-line-upper>INJETORA</p>
       <h1 class="title">O que você vai registrar?</h1>
       <div class="tiles">
         <button class="tile" type="button" id="start-turno">
@@ -264,6 +288,10 @@
           <span class="tile-icon"><svg><use href="#i-lock"/></svg></span>
           <strong>Bloqueio</strong>
         </button>
+        <button class="tile" type="button" id="start-parada">
+          <span class="tile-icon"><svg><use href="#i-stop"/></svg></span>
+          <strong>Parada de máquina</strong>
+        </button>
         <button class="tile" type="button" id="start-ocorrencia">
           <span class="tile-icon"><svg><use href="#i-alert"/></svg></span>
           <strong>Lançar ocorrência</strong>
@@ -271,6 +299,11 @@
         <button class="tile" type="button" data-go="occ-list">
           <span class="tile-icon"><svg><use href="#i-chart"/></svg></span>
           <strong>Ocorrências do dia</strong>
+        </button>
+        <button class="tile" type="button" data-go="audit">
+          <span class="tile-icon"><svg><use href="#i-shield"/></svg></span>
+          <strong>Auditoria 6M</strong>
+          <small>em breve</small>
         </button>
       </div>
     </section>
@@ -358,7 +391,7 @@
         <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
         <div class="head-text">
           <h1>Bloqueio</h1>
-          <span>Injetora</span>
+          <span data-line-name>Injetora</span>
         </div>
         <button class="text-btn" type="button" id="block-restart">Limpar</button>
       </div>
@@ -455,13 +488,65 @@
       </div>
     </section>
 
+    <!-- 3d0. Parada de máquina (mesma máscara nas duas linhas) -->
+    <section class="screen screen-shift" id="screen-stop" data-screen="stop" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Parada de máquina</h1>
+          <span id="stop-date">Hoje</span>
+        </div>
+        <button class="text-btn" type="button" id="stop-restart">Limpar</button>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Qual é o seu turno? <small>班次</small></span>
+        <div class="turno-pick stop-turno" role="radiogroup" aria-label="Turno">
+          <button type="button" class="turno" data-pturno="T1" role="radio">T1</button>
+          <button type="button" class="turno" data-pturno="T2" role="radio">T2</button>
+          <button type="button" class="turno" data-pturno="T3" role="radio">T3</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <span class="field-label">Qual máquina parou? <small>机器</small></span>
+        <div class="occ-machines" id="stop-machines" role="radiogroup" aria-label="Máquina"></div>
+      </div>
+
+      <div class="field" id="stop-part-field" hidden>
+        <span class="field-label">Peça <small>零件</small></span>
+        <div class="choice-list" id="stop-parts" role="radiogroup" aria-label="Peça"></div>
+      </div>
+
+      <label class="field" for="p-motivo">
+        <span class="field-label">Motivo <small>原因</small></span>
+        <textarea id="p-motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- POR QUE A MÁQUINA PAROU?"></textarea>
+      </label>
+
+      <div class="bottom-bar">
+        <button class="btn btn-primary" type="button" id="stop-done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
+      </div>
+    </section>
+
+    <!-- 3d1. Auditoria 6M (espaço reservado para Injetora e Estamparia) -->
+    <section class="screen" id="screen-audit" data-screen="audit" hidden>
+      <button class="back" type="button" data-go="type"><svg><use href="#i-back"/></svg>Voltar</button>
+      <p class="eyebrow" data-line-upper>INJETORA</p>
+      <h1 class="title">Auditoria 6M</h1>
+      <div class="audit-box">
+        <span class="big-icon"><svg><use href="#i-shield"/></svg></span>
+        <strong>Em construção</strong>
+        <p class="muted">Espaço reservado para a Auditoria 6M da Injetora e da Estamparia: Mão de obra, Método, Máquina, Material, Medição e Meio ambiente.</p>
+      </div>
+    </section>
+
     <!-- 3d. Lançar ocorrência -->
     <section class="screen screen-shift" id="screen-occ-new" data-screen="occ-new" hidden>
       <div class="head-row">
         <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
         <div class="head-text">
           <h1>Lançar ocorrência</h1>
-          <span>Injetora</span>
+          <span data-line-name>Injetora</span>
         </div>
         <button class="text-btn" type="button" data-go="occ-list">Ver o dia</button>
       </div>
@@ -502,7 +587,7 @@
         <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
         <div class="head-text">
           <h1>Ocorrências do dia</h1>
-          <span>Injetora · todas as pessoas</span>
+          <span><span data-line-name>Injetora</span> · todas as pessoas</span>
         </div>
         <button class="text-btn" type="button" id="occ-new-btn">+ Lançar</button>
       </div>
@@ -677,8 +762,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=4.2"></script>
-  <script src="app.js?v=4.2"></script>
-  <script type="module" src="cloud.js?v=4.2"></script>
+  <script src="data.js?v=5.0"></script>
+  <script src="app.js?v=5.0"></script>
+  <script type="module" src="cloud.js?v=5.0"></script>
 </body>
 </html>

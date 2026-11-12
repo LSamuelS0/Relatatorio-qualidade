@@ -315,3 +315,14 @@ h1,h2,p{margin:0}
   .reports-layout{display:grid;grid-template-columns:304px minmax(0,1fr);align-items:start}
   .sheet{margin:auto;border-radius:22.4px}
 }
+
+/* Estamparia: grupos de máquinas e máquinas com nome */
+.machine-group{grid-column:1 / -1;font-size:13px;font-weight:800;color:var(--muted);letter-spacing:.3px;text-transform:uppercase;margin:6px 2px -2px}
+.machine-list .machine-group:first-child{margin-top:0}
+.machine-num.long,.sheet-num.long{font-size:13px}
+.occ-machines.named{grid-template-columns:repeat(2,minmax(0,1fr))}
+.occ-machines.named .occ-machine{font-size:14px;line-height:1.2;padding:6px 8px}
+.occ-group{grid-column:1 / -1;font-size:12px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.3px;margin-top:4px}
+.stop-turno.need .turno,.occ-machines.need{outline:2px solid var(--orange);outline-offset:3px;border-radius:12.8px}
+.audit-box{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:28px 18px;border:2px dashed var(--line-strong);border-radius:16px;background:var(--card)}
+.audit-box strong{font-size:17px;font-weight:800}

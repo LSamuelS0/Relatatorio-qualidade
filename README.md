@@ -1,6 +1,6 @@
 # Relatório da Qualidade
 
-Aplicativo web simples para montar relatórios de produção e qualidade. A primeira versão implementa o **Relatório de Início de Turno da Injetora (Fabricação de Plástico)**.
+Aplicativo web simples para montar relatórios de produção e qualidade. Atende duas linhas: **Injetora (plástico)** e **Estamparia (metal)**, com os mesmos relatórios e o mesmo padrão de escrita.
 
 ## Acessar o aplicativo
 
@@ -18,12 +18,15 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 - Visual simplificado, com botões grandes e uma ação por tela, pensado para quem tem pouco contato com computador.
 - Fluxo: escolher a linha → tipo de relatório → preencher → relatório pronto.
 - Relatórios da Injetora: **Funcionamento de máquinas** (turno + quantidade de máquinas rodando, em setup e paradas), **Troca de turno** (máscara Alinhamento PQC, com botão para puxar o último status de bloqueio) e **Bloqueio** (máscara com 3 fotos: conforme, não conforme e localização).
-- 19 máquinas fixas; cada uma começa como `MÁQUINA PARADA` e é alterada numa janela com as peças daquela máquina.
+- Relatórios da Estamparia: os mesmos formatos, com máscaras próprias (Alinhamento PQC Estamparia, Bloqueio Estamparia) e máquinas próprias (Balancer 01–06, Linhas dos cestos 01–03, Prensa Progressiva, Prensa Transfer, Linha do Gabinete, Prensa 80/110).
+- **Parada de máquina:** mesma máscara para as duas linhas, com as máquinas e peças de cada linha.
+- **Auditoria 6M:** espaço reservado nas duas linhas (em construção).
+- Injetora com 19 máquinas fixas; cada máquina começa como `MÁQUINA PARADA` e é alterada numa janela com as peças daquela máquina.
 - Contadores de máquinas rodando, em setup e paradas.
 - Data e horário registrados ao iniciar o relatório.
 - Salvar relatório, Copiar e Enviar; lista **Meus relatórios** (por enquanto salvos no próprio aparelho).
 - **Ocorrências:** lançar problemas da linha (turno, máquina, peça, problema) e acompanhar o dia com totais por problema e por máquina.
-- Administrador (conta ADM): ajusta quais peças rodam em cada máquina e publica para todos.
+- Administrador (conta ADM): ao entrar, escolhe a área (Injetora ou Estamparia); ajusta quais peças rodam em cada máquina, as peças cadastradas e os textos das máscaras, e publica para todos.
 - Login com matrícula e senha; relatórios, rascunhos e fotos salvos no Firebase (celular e computador com a mesma conta).
 - **Rascunhos** na tela inicial: tudo o que foi começado e não salvo, de qualquer tipo.
 - Textos e caixas de texto crescem com o conteúdo, sem barra de rolagem.
@@ -36,7 +39,7 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 
 - `index.html`: estrutura da interface.
 - `styles.css`: aparência e adaptação para telas menores.
-- `data.js`: cadastro inicial das 19 máquinas e peças.
+- `data.js`: cadastro inicial das máquinas e peças da Injetora e da Estamparia.
 - `app.js`: seleções, montagem do relatório, cópia e compartilhamento.
 
 ## Cadastro inicial e regras importantes

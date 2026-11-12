@@ -10,6 +10,7 @@
      compartilhado/ultimoBloqueio   último Status de bloqueio da troca de turno
                                     (qualquer pessoa logada lê e grava)
      cadastro/injetora   máquinas e peças da Injetora (todos leem; só o ADM grava)
+    cadastro/estamparia máquinas e peças da Estamparia (idem)
      cadastro/mascaras   textos fixos dos relatórios publicados pelo ADM
      ocorrencias/{id}    ocorrências da linha (todos leem; cada um lança as suas)
 
@@ -186,14 +187,22 @@ const Cloud = {
   },
 
   /* Último Status de bloqueio da troca de turno (de qualquer pessoa). */
-  async setLastBlock(value) {
+  /* Último status de bloqueio de cada linha, no mesmo documento:
+     Injetora no próprio documento (formato antigo); Estamparia no campo "estamparia".
+     merge: gravar uma linha não apaga a outra. */
+  async setLastBlock(value, line) {
     needUser();
-    await setDoc(doc(db, "compartilhado", "ultimoBloqueio"), clean({ ...value, by: uid() }));
+    const data = clean({ ...value, by: uid() });
+    await setDoc(doc(db, "compartilhado", "ultimoBloqueio"), line === "estamparia" ? { estamparia: data } : data, { merge: true });
   },
-  async getLastBlock() {
+  async getLastBlock(line) {
     needUser();
     const snapshot = await getDoc(doc(db, "compartilhado", "ultimoBloqueio"));
-    return snapshot.exists() ? snapshot.data() : null;
+    if (!snapshot.exists()) return null;
+    const data = snapshot.data();
+    if (line === "estamparia") return data.estamparia || null;
+    const { estamparia, ...injetora } = data;
+    return injetora.fields ? injetora : null;
   }
 };
 

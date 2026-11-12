@@ -152,5 +152,70 @@ window.QUALITY_REPORT_DATA = {
     { id: 17, items: ["Balancer 580", "Balancer 601"] },
     { id: 18, items: ["Capa do Cesto 580", "Capa do Cesto 601"] },
     { id: 19, items: ["Tub D 580", "Tub D 601"] }
-  ]
+  ],
+
+  /* =====================================================================
+     CADASTRO DA ESTAMPARIA (metal) — independente da Injetora.
+     Mesmas regras: vírgula = peças diferentes (um item por modelo/variante);
+     barra = uma peça só. Catálogo de códigos (parts) é o mesmo.
+     - id: identificador fixo (não mudar; os relatórios guardam por ele)
+     - name: como aparece na tela e no relatório
+     - badge: o que vai no quadradinho da máquina
+     - group: título do grupo na lista de máquinas
+     Balancer: mesmos códigos já cadastrados (Ring Up + Ring Down). 640 sem código.
+     Linhas dos cestos: peças ainda não informadas pelo dono (o ADM adiciona).
+     ===================================================================== */
+  estamparia: {
+    items: {
+      "Balancer 550": ["L2138000000301", "L2138000000321"],
+      "Balancer 580": ["L2138000A00011", "L2138000A00033"],
+      "Balancer 601": ["L2138000A00037", "L2138000A00038"],
+      "Balancer 640": [null],
+
+      "Chapa Inox 550": [null],
+      "Chapa Inox 580 com Canaleta": [null],
+      "Chapa Inox 580 sem Canaleta": [null],
+      "Chapa Inox 601 com Canaleta": [null],
+      "Chapa Inox 601 sem Canaleta": [null],
+      "Chapa Inox 640": [null],
+
+      "Chapa do Gabinete 550": [null],
+      "Chapa do Gabinete 580 com Canaleta": [null],
+      "Chapa do Gabinete 580 sem Canaleta": [null],
+      "Chapa do Gabinete 601 com Canaleta": [null],
+      "Chapa do Gabinete 601 sem Canaleta": [null],
+      "Chapa do Gabinete 640": [null],
+
+      "Gabinete 550 Branco": [null],
+      "Gabinete 580 Branco": [null],
+      "Gabinete 580 Titânio": [null],
+      "Gabinete 601 Branco": [null],
+      "Gabinete 601 Titânio": [null],
+      "Gabinete 640 Branco": [null],
+
+      "Placa de Conexão Superior 640": [null],
+      "Placa de Conexão Inferior 640": [null]
+    },
+    machines: [
+      { id: "BAL01", name: "Balancer 01", badge: "01", group: "Balancer", items: ["Balancer 580", "Balancer 601"] },
+      { id: "BAL02", name: "Balancer 02", badge: "02", group: "Balancer", items: ["Balancer 580", "Balancer 601"] },
+      { id: "BAL03", name: "Balancer 03", badge: "03", group: "Balancer", items: ["Balancer 580", "Balancer 601"] },
+      { id: "BAL04", name: "Balancer 04", badge: "04", group: "Balancer", items: ["Balancer 580", "Balancer 601"] },
+      { id: "BAL05", name: "Balancer 05", badge: "05", group: "Balancer", items: ["Balancer 550", "Balancer 580", "Balancer 601", "Balancer 640"] },
+      { id: "BAL06", name: "Balancer 06", badge: "06", group: "Balancer", items: ["Balancer 550", "Balancer 580", "Balancer 601", "Balancer 640"] },
+
+      { id: "CES01", name: "Linha do Cesto 01 (automática)", badge: "01", group: "Linhas dos cestos", items: [] },
+      { id: "CES02", name: "Linha do Cesto 02 (manual)", badge: "02", group: "Linhas dos cestos", items: [] },
+      { id: "CES03", name: "Linha do Cesto 03 (automática)", badge: "03", group: "Linhas dos cestos", items: [] },
+
+      { id: "PROG", name: "Prensa Progressiva", badge: "PG", group: "Prensas",
+        items: ["Chapa Inox 550", "Chapa Inox 580 com Canaleta", "Chapa Inox 580 sem Canaleta", "Chapa Inox 601 com Canaleta", "Chapa Inox 601 sem Canaleta", "Chapa Inox 640"] },
+      { id: "TRANS", name: "Prensa Transfer", badge: "TR", group: "Prensas",
+        items: ["Chapa do Gabinete 550", "Chapa do Gabinete 580 com Canaleta", "Chapa do Gabinete 580 sem Canaleta", "Chapa do Gabinete 601 com Canaleta", "Chapa do Gabinete 601 sem Canaleta", "Chapa do Gabinete 640"] },
+      { id: "GAB", name: "Linha do Gabinete", badge: "GB", group: "Prensas",
+        items: ["Gabinete 550 Branco", "Gabinete 580 Branco", "Gabinete 580 Titânio", "Gabinete 601 Branco", "Gabinete 601 Titânio", "Gabinete 640 Branco"] },
+      { id: "P80", name: "Prensa 80/110", badge: "80", group: "Prensas",
+        items: ["Placa de Conexão Superior 640", "Placa de Conexão Inferior 640"] }
+    ]
+  }
 };

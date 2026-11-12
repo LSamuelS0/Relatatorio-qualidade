@@ -2,29 +2,60 @@
   "use strict";
 
   const DATA = window.QUALITY_REPORT_DATA;
-  const machines = DATA.machines;
   const partsByCode = new Map(DATA.parts.map(part => [part.code, part]));
 
-  /* ---------- Cadastro da Injetora ----------
-     Base: data.js. O administrador pode publicar outra versão na nuvem
-     (cadastro/injetora), que substitui máquinas e itens para todos e pode
-     acrescentar peças novas ao catálogo (extraParts). Cópia no aparelho: rq.cadastro.v1. */
-  const KEY_CADASTRO = "rq.cadastro.v1";
-  const clone = value => JSON.parse(JSON.stringify(value));
-  const BASE = { machines: clone(DATA.machines), items: clone(DATA.items), parts: clone(DATA.parts) };
-
-  function currentCadastro() {
-    const extraParts = DATA.parts.filter(part => !BASE.parts.some(base => base.code === part.code));
-    return clone({ machines: machines, items: DATA.items, extraParts });
+  /* ---------- Linhas de produção ----------
+     Cada linha tem o seu cadastro (máquinas e peças) e as suas máscaras.
+     Injetora: máquinas numeradas 1–19. Estamparia: máquinas com nome (Balancer 01,
+     Prensa Transfer…), definidas em DATA.estamparia. O relatório guarda a linha em "line". */
+  const LINES = {
+    injetora: { name: "Injetora", sub: "Plástico", machines: DATA.machines, items: DATA.items },
+    estamparia: { name: "Estamparia", sub: "Metal", machines: DATA.estamparia.machines, items: DATA.estamparia.items }
+  };
+  let LINE = "injetora";               // linha escolhida na tela inicial
+  let machines = LINES.injetora.machines; // máquinas da linha escolhida
+  const lineOf = item => (item && LINES[item.line] ? item.line : "injetora");
+  const machinesOf = line => LINES[line && LINES[line] ? line : "injetora"].machines;
+  const itemsOf = line => LINES[line && LINES[line] ? line : "injetora"].items;
+  const mName = machine => machine.name || "Máquina " + machine.id;
+  const mBadge = machine => machine.badge || String(machine.id);
+  function setLine(line) {
+    LINE = LINES[line] ? line : "injetora";
+    machines = LINES[LINE].machines;
+    document.querySelectorAll("[data-line-name]").forEach(element => { element.textContent = LINES[LINE].name; });
+    document.querySelectorAll("[data-line-upper]").forEach(element => { element.textContent = LINES[LINE].name.toLocaleUpperCase("pt-BR"); });
   }
 
-  function applyCadastro(cad) {
-    const source = cad && Array.isArray(cad.machines) && cad.items ? cad : { machines: BASE.machines, items: BASE.items, extraParts: [] };
-    machines.splice(0, machines.length, ...clone(source.machines));
-    Object.keys(DATA.items).forEach(key => delete DATA.items[key]);
-    Object.assign(DATA.items, clone(source.items));
+  /* ---------- Cadastro de cada linha ----------
+     Base: data.js. O administrador pode publicar outra versão na nuvem
+     (cadastro/injetora e cadastro/estamparia), que substitui máquinas e itens para todos
+     e pode acrescentar peças novas ao catálogo (extraParts).
+     Cópia no aparelho: rq.cadastro.v1 (Injetora) e rq.cadastro.est.v1 (Estamparia). */
+  const KEY_CADASTRO = { injetora: "rq.cadastro.v1", estamparia: "rq.cadastro.est.v1" };
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const BASE = {
+    parts: clone(DATA.parts),
+    injetora: { machines: clone(LINES.injetora.machines), items: clone(LINES.injetora.items) },
+    estamparia: { machines: clone(LINES.estamparia.machines), items: clone(LINES.estamparia.items) }
+  };
+  const EXTRA = { injetora: [], estamparia: [] }; // peças novas publicadas pelo ADM em cada linha
+
+  function currentCadastro(line) {
+    return clone({ machines: machinesOf(line), items: itemsOf(line), extraParts: EXTRA[line] || [] });
+  }
+
+  function applyCadastro(cad, line) {
+    line = LINES[line] ? line : "injetora";
+    const target = LINES[line];
+    const source = cad && Array.isArray(cad.machines) && cad.items ? cad : { machines: BASE[line].machines, items: BASE[line].items, extraParts: [] };
+    target.machines.splice(0, target.machines.length, ...clone(source.machines));
+    Object.keys(target.items).forEach(key => delete target.items[key]);
+    Object.assign(target.items, clone(source.items));
+    EXTRA[line] = clone(source.extraParts || []).filter(part => part && part.code);
     DATA.parts.splice(0, DATA.parts.length, ...clone(BASE.parts));
-    (source.extraParts || []).forEach(part => { if (part && part.code && !partsByCode.has(part.code) || !BASE.parts.some(base => base.code === part.code)) DATA.parts.push(part); });
+    EXTRA.injetora.concat(EXTRA.estamparia).forEach(part => {
+      if (!DATA.parts.some(other => other.code === part.code)) DATA.parts.push(part);
+    });
     partsByCode.clear();
     DATA.parts.forEach(part => partsByCode.set(part.code, part));
     if (typeof refreshProducts === "function") refreshProducts();
@@ -71,8 +102,60 @@
       conforme: "CONFORME: ✅",
       naoConforme: "NÃO CONFORME: ❌",
       localizacao: "LOCALIZAÇÃO: 📍"
+    },
+    /* ---- Estamparia: mesmos formatos da Injetora, textos próprios ---- */
+    inicio_est: {
+      titulo: "RELATÓRIO DE FUNCIONAMENTO DE MÁQUINAS DA ESTAMPARIA",
+      subtitulo: "(FABRICAÇÃO DE METAL)",
+      data: "Data:",
+      turno: "Turno:",
+      rodando: "Máquinas rodando:",
+      setup: "Máquinas em setup:",
+      paradas: "Máquinas paradas:",
+      lista: "MÁQUINAS QUE ESTÃO RODANDO NESTE MOMENTO:"
+    },
+    troca_est: {
+      cabecalho: "Ⓜ️ALINHAMENTO PQC ESTAMPARIA | PQC 冲压校准",
+      data: "DATA 日期:",
+      turno: "TURNO 日期:",
+      relatorio: "📌RELATÓRIO 报告:",
+      atencao: "⚠️PONTOS DE ATENÇÃO 注意事项:",
+      pendencias: "🚨PENDÊNCIAS 待处理问题:",
+      bloqueio: "🛑STATUS DE BLOQUEIO 封锁状态:",
+      vazio: "- N/A"
+    },
+    bloqueio_est: {
+      cabecalho: "🔒BLOQUEIO ESTAMPARIA | 封锁警报 🔒",
+      dataProducao: "DATA DA PRODUÇÃO 生产日期:",
+      codigo: "CÓDIGO DO MATERIAL 物料编码:",
+      motivo: "MOTIVO 问题描述:",
+      quantidade: "QUANTIDADE 数量:",
+      responsavel: "RESPONSÁVEL 责任部门:",
+      criticidade: "CRITICIDADE 关键性:",
+      scrap: "SCRAP 废料:",
+      posicao: "POSIÇÃO 物料所在位置:",
+      helpChain: "HELP CHAIN帮助链:",
+      conforme: "CONFORME: ✅",
+      naoConforme: "NÃO CONFORME: ❌",
+      localizacao: "LOCALIZAÇÃO: 📍"
+    },
+    /* ---- Parada de máquina: a mesma máscara para as duas linhas.
+       PROVISÓRIA: o dono ainda vai passar o texto oficial (dá para trocar pelo editor de Máscaras). */
+    parada: {
+      cabecalho: "⛔PARADA DE MÁQUINA | 停机",
+      linha: "LINHA 生产线:",
+      data: "DATA 日期:",
+      turno: "TURNO 班次:",
+      maquina: "MÁQUINA 机器:",
+      peca: "PEÇA 零件:",
+      motivo: "MOTIVO 原因:"
     }
   };
+  // Em qual linha cada máscara vale (o editor do ADM mostra só as da área escolhida)
+  const MASK_LINE = { inicio: "injetora", troca: "injetora", bloqueio: "injetora",
+    inicio_est: "estamparia", troca_est: "estamparia", bloqueio_est: "estamparia", parada: "ambas" };
+  // Chave da máscara de um tipo de relatório numa linha: troca + estamparia → troca_est
+  const mk = (type, line) => (type === "parada" ? "parada" : line === "estamparia" ? type + "_est" : type);
   // Nome de cada texto no editor do administrador
   const MASK_LABELS = {
     inicio: { name: "Funcionamento de máquinas", titulo: "Título", subtitulo: "Linha abaixo do título", data: "Data", turno: "Turno",
@@ -81,8 +164,14 @@
       pendencias: "Título: Pendências", bloqueio: "Título: Status de bloqueio", vazio: "Texto quando Pontos de atenção/Pendências ficam vazios" },
     bloqueio: { name: "Bloqueio", cabecalho: "Cabeçalho", dataProducao: "Data da produção", codigo: "Código do material", motivo: "Motivo", quantidade: "Quantidade",
       responsavel: "Responsável", criticidade: "Criticidade", scrap: "Scrap", posicao: "Posição", helpChain: "Help chain",
-      conforme: "Título da foto: Conforme", naoConforme: "Título da foto: Não conforme", localizacao: "Título das fotos: Localização" }
+      conforme: "Título da foto: Conforme", naoConforme: "Título da foto: Não conforme", localizacao: "Título das fotos: Localização" },
+    parada: { name: "Parada de máquina", cabecalho: "Cabeçalho", linha: "Linha", data: "Data", turno: "Turno", maquina: "Máquina", peca: "Peça", motivo: "Motivo" }
   };
+  // Estamparia usa os mesmos nomes de campo da Injetora
+  MASK_LABELS.inicio_est = { ...MASK_LABELS.inicio };
+  delete MASK_LABELS.inicio_est.maquina;
+  MASK_LABELS.troca_est = { ...MASK_LABELS.troca };
+  MASK_LABELS.bloqueio_est = { ...MASK_LABELS.bloqueio };
   const MASK = clone(MASK_DEFAULTS);
   function applyMasks(published) {
     Object.keys(MASK_DEFAULTS).forEach(type => {
@@ -94,8 +183,9 @@
   function validateCadastro(cad) {
     const problems = [];
     const codes = new Set(BASE.parts.map(part => part.code).concat((cad.extraParts || []).map(part => part.code)));
+    EXTRA.injetora.concat(EXTRA.estamparia).forEach(part => codes.add(part.code));
     cad.machines.forEach(machine => machine.items.forEach(label => {
-      if (!(label in cad.items)) problems.push("Máquina " + machine.id + ": peça sem cadastro → " + label);
+      if (!(label in cad.items)) problems.push(mName(machine) + ": peça sem cadastro → " + label);
     }));
     Object.entries(cad.items).forEach(([label, list]) => {
       list.forEach(code => { if (code !== null && !codes.has(code)) problems.push(label + ": código sem cadastro → " + code); });
@@ -114,19 +204,21 @@
   /* ---------- Conferência do cadastro (avisos no console) ---------- */
   function validateData() {
     const problems = [];
-    machines.forEach(machine => {
-      machine.items.forEach(label => {
-        if (!(label in DATA.items)) problems.push("Máquina " + machine.id + ": item sem cadastro → " + label);
+    Object.entries(LINES).forEach(([line, info]) => {
+      info.machines.forEach(machine => {
+        machine.items.forEach(label => {
+          if (!(label in info.items)) problems.push(info.name + " · " + mName(machine) + ": item sem cadastro → " + label);
+        });
       });
-    });
-    Object.entries(DATA.items).forEach(([label, codes]) => {
-      codes.forEach(code => {
-        if (code !== null && !partsByCode.has(code)) problems.push(label + ": código inexistente no catálogo → " + code);
+      Object.entries(info.items).forEach(([label, codes]) => {
+        codes.forEach(code => {
+          if (code !== null && !partsByCode.has(code)) problems.push(info.name + " · " + label + ": código inexistente no catálogo → " + code);
+        });
+        // Regra da barra: "580/601" só vale para UMA peça física (um código).
+        if (/\d\/\d/.test(label) && new Set(codes).size !== 1) {
+          problems.push(info.name + " · " + label + ": usa barra, mas aponta para mais de um código (deveriam ser itens separados)");
+        }
       });
-      // Regra da barra: "580/601" só vale para UMA peça física (um código).
-      if (/\d\/\d/.test(label) && new Set(codes).size !== 1) {
-        problems.push(label + ": usa barra, mas aponta para mais de um código (deveriam ser itens separados)");
-      }
     });
     problems.forEach(problem => console.warn("[Cadastro] " + problem));
     return problems;
@@ -155,7 +247,7 @@
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 
   function listDrafts() {
-    return load(KEY_DRAFTS, []).filter(item => item && item.id && ["inicio", "troca", "bloqueio"].includes(item.type));
+    return load(KEY_DRAFTS, []).filter(item => item && item.id && ["inicio", "troca", "bloqueio", "parada"].includes(item.type));
   }
   function keepDraft(item) {
     item.savedId = null;
@@ -174,11 +266,11 @@
   function newDraft() {
     const selections = {};
     machines.forEach(machine => { selections[machine.id] = STOPPED; });
-    draft = { id: newId(), line: "injetora", type: "inicio", startedAt: new Date().toISOString(), turno: null, selections, savedId: null };
+    draft = { id: newId(), line: LINE, type: "inicio", startedAt: new Date().toISOString(), turno: null, selections, savedId: null };
   }
 
   function sanitizeDraft(item) {
-    machines.forEach(machine => {
+    machinesOf(lineOf(item)).forEach(machine => {
       const value = item.selections[machine.id];
       const valid = value === STOPPED || value === SETUP || machine.items.includes(value);
       if (!valid) item.selections[machine.id] = STOPPED; // peça saiu da máquina no cadastro
@@ -212,30 +304,34 @@
 
   function buildText(report) {
     const started = new Date(report.startedAt);
-    const total = counts(report.selections);
+    const line = lineOf(report);
+    const M = MASK[mk("inicio", line)];
+    const total = counts(report.selections, line);
     const lines = [
-      MASK.inicio.titulo,
-      MASK.inicio.subtitulo,
+      M.titulo,
+      M.subtitulo,
       "",
-      MASK.inicio.data + " " + formatDate(started),
-      MASK.inicio.turno + " " + (report.turno || ""),
+      M.data + " " + formatDate(started),
+      M.turno + " " + (report.turno || ""),
       "",
-      MASK.inicio.rodando + " " + total.run,
-      MASK.inicio.setup + " " + total.setup,
-      MASK.inicio.paradas + " " + total.stop,
+      M.rodando + " " + total.run,
+      M.setup + " " + total.setup,
+      M.paradas + " " + total.stop,
       "",
-      MASK.inicio.lista,
+      M.lista,
       ""
-    ].filter((line, index) => !(index === 1 && !line.trim()));
-    machines.forEach(machine => {
-      lines.push(MASK.inicio.maquina + " " + machine.id + ": " + (report.selections[machine.id] || STOPPED));
+    ].filter((text, index) => !(index === 1 && !text.trim()));
+    machinesOf(line).forEach(machine => {
+      // Injetora: "Máquina 7: ..." · Estamparia: o nome da máquina ("Balancer 01: ...")
+      const name = machine.name || M.maquina + " " + machine.id;
+      lines.push(name + ": " + (report.selections[machine.id] || STOPPED));
     });
     return lines.join("\n");
   }
 
-  function counts(selections) {
+  function counts(selections, line) {
     const result = { run: 0, setup: 0, stop: 0 };
-    machines.forEach(machine => { result[kindOf(selections[machine.id] || STOPPED)] += 1; });
+    machinesOf(line || LINE).forEach(machine => { result[kindOf(selections[machine.id] || STOPPED)] += 1; });
     return result;
   }
 
@@ -260,33 +356,34 @@
      relatório salvo do MESMO tipo (troca → marcações; bloqueio → help chain).
      A pessoa só acrescenta ou tira quem mudou. Hoje: relatórios deste aparelho;
      com o Firebase: os últimos salvos pela própria pessoa. */
-  function lastTags(type, key) {
+  function lastTags(type, key, line) {
     const last = load(KEY_REPORTS, [])
-      .filter(report => report.type === type && report.fields && (report.fields[key] || "").trim())
+      .filter(report => report.type === type && lineOf(report) === (line || LINE) && report.fields && (report.fields[key] || "").trim())
       .sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)))[0];
     return last ? last.fields[key] : "";
   }
 
   function newShift() {
-    shift = { id: newId(), line: "injetora", type: "troca", startedAt: new Date().toISOString(), date: todayKey(), turno: null,
-      fields: { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: lastTags("troca", "marcacoes") }, savedId: null };
+    shift = { id: newId(), line: LINE, type: "troca", startedAt: new Date().toISOString(), date: todayKey(), turno: null,
+      fields: { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: lastTags("troca", "marcacoes", LINE) }, savedId: null };
   }
 
   function buildShiftText(report) {
+    const T = MASK[mk("troca", lineOf(report))];
     const lines = [
-      MASK.troca.cabecalho,
+      T.cabecalho,
       "",
-      MASK.troca.data + " " + formatDate(dateFromKey(report.date)),
+      T.data + " " + formatDate(dateFromKey(report.date)),
       "",
-      MASK.troca.turno + " " + (report.turno || ""),
+      T.turno + " " + (report.turno || ""),
       ""
     ];
     SHIFT_FIELDS.forEach((field, index) => {
-      lines.push(MASK.troca[field.key]);
+      lines.push(T[field.key]);
       let value = standardize(report.fields[field.key] || "").split("\n")
         .filter(line => line.trim() !== "-").join("\n").replace(/\s+$/, "").replace(/^\s*\n/, "");
       // Pontos de atenção e Pendências vazios saem como "- N/A"
-      if (!value && (field.key === "atencao" || field.key === "pendencias")) value = MASK.troca.vazio;
+      if (!value && (field.key === "atencao" || field.key === "pendencias")) value = T.vazio;
       // linha em branco entre o título e o texto (o texto não fica grudado no título)
       if (value) lines.push("", value);
       if (index < SHIFT_FIELDS.length - 1) lines.push("");
@@ -301,7 +398,8 @@
 
   function renderShift() {
     if (OLD_TURNO[shift.turno]) shift.turno = OLD_TURNO[shift.turno];
-    $("shift-date").textContent = "Data: " + formatDate(dateFromKey(shift.date));
+    setLine(lineOf(shift));
+    $("shift-date").textContent = LINES[LINE].name + " · " + formatDate(dateFromKey(shift.date));
     document.querySelectorAll("[data-turno]").forEach(button => {
       button.setAttribute("aria-checked", String(button.dataset.turno === shift.turno));
     });
@@ -410,17 +508,18 @@
 
   /* Último status de bloqueio salvo numa troca de turno da Injetora.
      Hoje: relatórios deste aparelho. Com o Firebase: o último salvo por qualquer pessoa. */
-  function lastBlockStatus() {
+  function lastBlockStatus(line) {
     return load(KEY_REPORTS, [])
-      .filter(report => report.type === "troca" && report.line === "injetora" && report.fields && (report.fields.bloqueio || "").trim())
+      .filter(report => report.type === "troca" && lineOf(report) === line && report.fields && (report.fields.bloqueio || "").trim())
       .sort((a, b) => String(b.savedAt).localeCompare(String(a.savedAt)))[0] || null;
   }
 
   $("pull-block").addEventListener("click", async () => {
-    let last = lastBlockStatus();
+    const line = lineOf(shift);
+    let last = lastBlockStatus(line);
     if (cloudOk()) {
       try {
-        const shared = await Cloud.getLastBlock();
+        const shared = await Cloud.getLastBlock(line);
         if (shared && shared.fields && (!last || String(shared.savedAt) > String(last.savedAt))) last = shared;
       } catch (error) { /* sem internet: usa o do aparelho */ }
     }
@@ -567,8 +666,8 @@
     const fields = {};
     BLOCK_FIELDS.forEach(field => { fields[field.key] = ""; });
     fields.dataProducao = todayKey();
-    fields.helpChain = lastTags("bloqueio", "helpChain") || (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
-    block = { id: newId(), line: "injetora", type: "bloqueio", startedAt: new Date().toISOString(), fields,
+    fields.helpChain = lastTags("bloqueio", "helpChain", LINE) || (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
+    block = { id: newId(), line: LINE, type: "bloqueio", startedAt: new Date().toISOString(), fields,
       photos: { conforme: null, naoConforme: null, localizacao: [] }, savedId: null };
   }
 
@@ -577,17 +676,18 @@
   }
 
   function buildBlockText(report) {
-    const lines = [MASK.bloqueio.cabecalho, ""];
+    const B = MASK[mk("bloqueio", lineOf(report))];
+    const lines = [B.cabecalho, ""];
     BLOCK_FIELDS.forEach((field, index) => {
       let value = report.fields[field.key] || "";
       if (field.key === "dataProducao") value = value ? formatDate(dateFromKey(value)) : "";
       if (field.multi) {
         const multi = cleanMulti(value);
-        lines.push(MASK.bloqueio[field.key]);
+        lines.push(B[field.key]);
         if (multi) lines.push(multi);
       } else {
         value = value.toLocaleUpperCase("pt-BR").trim();
-        lines.push(MASK.bloqueio[field.key] + (value ? " " + value : " "));
+        lines.push(B[field.key] + (value ? " " + value : " "));
       }
       if (index < BLOCK_FIELDS.length - 1) lines.push("");
     });
@@ -604,10 +704,20 @@
 
   /* Escolher produto: lista do catálogo da CTQ que filtra enquanto a pessoa escreve.
      Valor gravado: "CÓDIGO - NOME" (ou o texto que a pessoa escreveu). */
+  /* Injetora: catálogo da CTQ. Estamparia: as peças cadastradas na Estamparia
+     (com o código, quando houver). */
   const PRODUCTS = [];
   function refreshProducts() {
     PRODUCTS.splice(0, PRODUCTS.length, ...DATA.parts.map(part => ({ code: part.code, name: part.name.toLocaleUpperCase("pt-BR"),
       label: part.code + " - " + part.name.toLocaleUpperCase("pt-BR") })));
+  }
+  function productsFor(line) {
+    if (line !== "estamparia") return PRODUCTS;
+    return Object.keys(itemsOf("estamparia")).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true })).map(label => {
+      const codes = itemsOf("estamparia")[label].filter(Boolean);
+      const name = label.toLocaleUpperCase("pt-BR");
+      return { code: codes.join(" / ") || "sem código", name, label: codes.length ? codes.join(" / ") + " - " + name : name };
+    });
   }
   refreshProducts();
   const plain = text => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
@@ -631,7 +741,7 @@
     const words = query.split(/\s+/).filter(Boolean);
     const list = $("product-list");
     list.innerHTML = "";
-    const found = PRODUCTS.filter(item => words.every(word => plain(item.label).includes(word)));
+    const found = productsFor(lineOf(block)).filter(item => words.every(word => plain(item.label).includes(word)));
     found.forEach(item => {
       const option = document.createElement("button");
       option.type = "button";
@@ -673,6 +783,7 @@
   productSheet.addEventListener("click", event => { if (event.target === productSheet) productSheet.close(); });
 
   async function renderBlock() {
+    setLine(lineOf(block));
     document.querySelectorAll("[data-bfield]").forEach(input => {
       input.value = block.fields[input.dataset.bfield] || "";
       if (input.tagName === "TEXTAREA") fit(input);
@@ -811,6 +922,137 @@
     go("done");
   });
 
+  /* ---------- Máquinas em botões (Parada de máquina e Ocorrências) ----------
+     Injetora: números 1–19. Estamparia: nome da máquina, em grupos. */
+  const machineLabel = (line, id) => {
+    const machine = machinesOf(line).find(other => String(other.id) === String(id));
+    return machine ? mName(machine) : id ? "Máquina " + id : "—";
+  };
+  function fillMachineGrid(grid, line, selected, onPick) {
+    grid.innerHTML = "";
+    const list = machinesOf(line);
+    const named = list.some(machine => machine.name);
+    grid.classList.toggle("named", named);
+    let group = null;
+    list.forEach(machine => {
+      if (named && machine.group && machine.group !== group) {
+        group = machine.group;
+        const head = document.createElement("span");
+        head.className = "occ-group";
+        head.textContent = group;
+        grid.appendChild(head);
+      }
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "occ-machine";
+      button.textContent = machine.name || machine.id;
+      button.setAttribute("role", "radio");
+      button.setAttribute("aria-label", mName(machine));
+      button.setAttribute("aria-checked", String(String(selected) === String(machine.id)));
+      button.addEventListener("click", () => onPick(machine));
+      grid.appendChild(button);
+    });
+  }
+  function fillPartChoices(container, machine, selected, onPick, noneLabel) {
+    container.innerHTML = "";
+    if (!machine) return;
+    machine.items.concat([noneLabel]).forEach(label => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "choice";
+      option.setAttribute("role", "radio");
+      option.setAttribute("aria-checked", String(selected === label));
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.appendChild(icon("i-check"));
+      option.append(dot, document.createTextNode(label));
+      option.addEventListener("click", () => onPick(label));
+      container.appendChild(option);
+    });
+  }
+
+  /* ---------- Parada de máquina ----------
+     Mesma máscara (MASK.parada) para Injetora e Estamparia; as caixas de máquina e de
+     peça mostram o cadastro da linha do relatório. Texto PROVISÓRIO até o dono enviar o oficial. */
+  const NO_PART = "Nenhuma peça";
+  let parada = null;
+
+  function newParada() {
+    parada = { id: newId(), line: LINE, type: "parada", startedAt: new Date().toISOString(), date: todayKey(),
+      turno: null, machine: null, part: null, fields: { motivo: "" }, savedId: null };
+  }
+
+  function isEmptyParada(item) {
+    return !item.turno && !item.machine && !(item.fields && (item.fields.motivo || "").trim());
+  }
+
+  function buildParadaText(report) {
+    const P = MASK.parada;
+    const line = lineOf(report);
+    const up = text => String(text || "").toLocaleUpperCase("pt-BR");
+    const lines = [
+      P.cabecalho,
+      "",
+      P.linha + " " + up(LINES[line].name),
+      "",
+      P.data + " " + formatDate(dateFromKey(report.date)),
+      "",
+      P.turno + " " + (report.turno || ""),
+      "",
+      P.maquina + " " + (report.machine ? up(machineLabel(line, report.machine)) : ""),
+      "",
+      P.peca + " " + up(report.part),
+      "",
+      P.motivo
+    ];
+    const motivo = cleanMulti((report.fields || {}).motivo);
+    if (motivo) lines.push(motivo);
+    return lines.join("\n");
+  }
+
+  function renderParada() {
+    setLine(lineOf(parada));
+    $("stop-date").textContent = LINES[LINE].name + " · " + formatDate(dateFromKey(parada.date));
+    document.querySelectorAll("[data-pturno]").forEach(button => button.setAttribute("aria-checked", String(button.dataset.pturno === parada.turno)));
+    fillMachineGrid($("stop-machines"), lineOf(parada), parada.machine, machine => {
+      if (String(parada.machine) !== String(machine.id)) { parada.machine = machine.id; parada.part = null; }
+      $("stop-machines").classList.remove("need");
+      keepDraft(parada);
+      renderParada();
+    });
+    const machine = machinesOf(lineOf(parada)).find(other => String(other.id) === String(parada.machine));
+    $("stop-part-field").hidden = !machine;
+    fillPartChoices($("stop-parts"), machine, parada.part, label => { parada.part = label; keepDraft(parada); renderParada(); }, NO_PART);
+    const area = $("p-motivo");
+    if (area.value !== (parada.fields.motivo || "")) area.value = parada.fields.motivo || "";
+    fit(area);
+  }
+
+  document.querySelectorAll("[data-pturno]").forEach(button => button.addEventListener("click", () => {
+    parada.turno = button.dataset.pturno;
+    document.querySelector(".stop-turno").classList.remove("need");
+    keepDraft(parada);
+    renderParada();
+  }));
+  $("p-motivo").addEventListener("input", event => {
+    parada.fields.motivo = event.target.value;
+    keepDraft(parada);
+  });
+  $("start-parada").addEventListener("click", () => { newParada(); go("stop"); });
+  $("stop-restart").addEventListener("click", () => {
+    if (!confirm("Limpar todos os campos da parada de máquina?")) return;
+    dropDraft(parada.id);
+    newParada();
+    renderParada();
+    toast("Campos limpos");
+  });
+  $("stop-done").addEventListener("click", () => {
+    if (!parada.turno) { document.querySelector(".stop-turno").classList.add("need"); window.scrollTo({ top: 0, behavior: "smooth" }); toast("Escolha o turno primeiro"); return; }
+    if (!parada.machine) { $("stop-machines").classList.add("need"); toast("Escolha a máquina"); return; }
+    active = "parada";
+    go("done");
+  });
+
   /* Blocos de foto do relatório pronto / Meus relatórios: título + foto + copiar/enviar. */
   async function renderPhotoBlocks(container, report) {
     container.innerHTML = "";
@@ -822,7 +1064,7 @@
       const head = document.createElement("div");
       head.className = "photo-block-head";
       const title = document.createElement("strong");
-      const titleText = MASK.bloqueio[item.key];
+      const titleText = MASK[mk("bloqueio", lineOf(report))][item.key];
       title.textContent = titleText;
       const copyTitle = document.createElement("button");
       copyTitle.type = "button";
@@ -929,11 +1171,12 @@
     return !item.turno && !Object.entries(item.fields || {}).some(([key, value]) => key !== "marcacoes" && (value || "").trim());
   }
   function persistOpen() {
-    if (!["machines", "shift", "block", "done"].includes(screenNow)) return;
-    const item = screenNow === "machines" ? draft : screenNow === "shift" ? shift : screenNow === "block" ? block : current();
+    if (!["machines", "shift", "block", "stop", "done"].includes(screenNow)) return;
+    const item = screenNow === "machines" ? draft : screenNow === "shift" ? shift : screenNow === "block" ? block : screenNow === "stop" ? parada : current();
     if (!item || item.savedId || item.pristine) return; // salvo, ou limpo depois de salvar
     if (item.type === "troca" && isEmptyShift(item)) return; // nada escrito ainda
     if (item.type === "bloqueio" && isEmptyBlock(item)) return;
+    if (item.type === "parada" && isEmptyParada(item)) return;
     keepDraft(item);
   }
   window.addEventListener("pagehide", persistOpen);
@@ -945,7 +1188,7 @@
   const screens = Array.from(document.querySelectorAll("[data-screen]"));
   function go(name) {
     if (!user) name = "login";
-    const editing = ["machines", "shift", "block", "done"];
+    const editing = ["machines", "shift", "block", "stop", "done"];
     if (editing.includes(screenNow) && !editing.includes(name)) persistOpen();
     if (name !== "done") justSaved = null;
     screenNow = name;
@@ -953,18 +1196,24 @@
     if (name === "machines") active = "inicio";
     if (name === "shift" && !shift) newShift();
     if (name === "block" && !block) newBlock();
+    if (name === "stop" && !parada) newParada();
     if (name === "done" && !current()) { go("type"); return; }
     if (name.startsWith("admin") && !(user && user.admin)) { go("home"); return; }
     if (name === "admin-machine" && !adminMachineId) { go("admin"); return; }
+    if (["admin-home", "admin", "admin-parts", "admin-masks", "admin-mask", "admin-machine"].includes(name) && !adminLine) { go("admin-line"); return; }
     screens.forEach(screen => { screen.hidden = screen.dataset.screen !== name; });
     if (name === "home") renderHome();
+    if (name === "type" || name === "audit") setLine(LINE);
+    if (name === "admin-line") adminLine = null;
     if (name === "machines") renderMachines();
     if (name === "shift") renderShift();
     if (name === "block") renderBlock();
+    if (name === "stop") renderParada();
     if (name === "done") renderDone();
     if (name === "reports") renderReports();
     if (name === "admin") renderAdmin();
     if (name === "admin-home") renderPending();
+    if (name === "admin-line") renderAdminLine();
     if (name === "admin-parts") { $("ap-search").value = ""; renderAdminParts(); }
     if (name === "admin-masks") renderMasksList();
     if (name === "occ-new") renderOccNew();
@@ -981,8 +1230,12 @@
 
   /* ---------- Início ---------- */
   function renderHome() {
+    Object.entries(LINES).forEach(([line, info]) => {
+      const sub = document.querySelector('[data-line-sub="' + line + '"]');
+      if (sub) sub.textContent = info.sub + " · " + info.machines.length + " máquinas";
+    });
     $("home-admin").hidden = !(user && user.admin);
-    if (user && user.admin) $("home-admin-sub").textContent = adminDirty() ? "Há mudanças ainda não publicadas" : "Máquinas, peças e máscaras";
+    if (user && user.admin) $("home-admin-sub").textContent = adminDirty("injetora") || adminDirty("estamparia") ? "Há mudanças ainda não publicadas" : "Máquinas, peças e máscaras";
     const reports = load(KEY_REPORTS, []);
     if (reports.length) {
       const last = reports[0];
@@ -996,6 +1249,10 @@
   }
 
   function draftSummary(item) {
+    if (item.type === "parada") {
+      const machine = machinesOf(lineOf(item)).find(other => other.id === item.machine);
+      return whenLabel(new Date(item.startedAt)) + " · " + (machine ? mName(machine) : "máquina não escolhida");
+    }
     if (item.type === "bloqueio") {
       const code = (item.fields.codigo || "").split(" - ")[0] || "sem código";
       const photos = allIdsOf(item).length;
@@ -1004,7 +1261,7 @@
     if (item.type === "troca") {
       return formatDate(dateFromKey(item.date)) + " · " + (item.turno || "turno não escolhido");
     }
-    const total = counts(item.selections);
+    const total = counts(item.selections, lineOf(item));
     return whenLabel(new Date(item.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup";
   }
 
@@ -1055,7 +1312,11 @@
   }
 
   function openDraft(item) {
-    if (item.type === "bloqueio") {
+    setLine(lineOf(item));
+    if (item.type === "parada") {
+      parada = item;
+      go("stop");
+    } else if (item.type === "bloqueio") {
       block = item;
       go("block");
     } else if (item.type === "troca") {
@@ -1075,6 +1336,13 @@
     return day + ", " + formatTime(date);
   }
 
+  /* ---------- Escolher a linha (Injetora / Estamparia) ---------- */
+  document.querySelectorAll("[data-line-start]").forEach(button => button.addEventListener("click", () => {
+    setLine(button.dataset.lineStart);
+    occ = { turno: null, machine: null, part: null, problem: "" };
+    go("type");
+  }));
+
   /* ---------- Tipo de relatório ---------- */
   $("start-turno").addEventListener("click", () => {
     newDraft();
@@ -1083,9 +1351,10 @@
 
   /* ---------- Máquinas ---------- */
   function renderMachines() {
+    setLine(lineOf(draft));
     const started = new Date(draft.startedAt);
-    $("draft-when").textContent = formatDate(started) + " · " + formatTime(started);
-    const total = counts(draft.selections);
+    $("draft-when").textContent = LINES[LINE].name + " · " + formatDate(started) + " · " + formatTime(started);
+    const total = counts(draft.selections, lineOf(draft));
     $("count-run").textContent = total.run;
     $("count-setup").textContent = total.setup;
     $("count-stop").textContent = total.stop;
@@ -1094,24 +1363,33 @@
 
     const list = $("machine-list");
     list.innerHTML = "";
+    let group = null;
     machines.forEach(machine => {
+      // Estamparia: título de grupo (Balancer, Linhas dos cestos, Prensas)
+      if (machine.group && machine.group !== group) {
+        group = machine.group;
+        const head = document.createElement("h2");
+        head.className = "machine-group";
+        head.textContent = group;
+        list.appendChild(head);
+      }
       const status = draft.selections[machine.id] || STOPPED;
       const kind = kindOf(status);
       const button = document.createElement("button");
       button.type = "button";
       button.className = "machine " + kind;
-      button.setAttribute("aria-label", "Máquina " + machine.id + ": " + status);
+      button.setAttribute("aria-label", mName(machine) + ": " + status);
 
       const num = document.createElement("span");
-      num.className = "machine-num";
-      num.textContent = machine.id;
+      num.className = "machine-num" + (mBadge(machine).length > 2 ? " long" : "");
+      num.textContent = mBadge(machine);
 
       const text = document.createElement("span");
       text.className = "machine-text";
       const title = document.createElement("strong");
       title.textContent = kind === "run" ? status : kind === "setup" ? "Setup" : "Máquina parada";
       const tag = document.createElement("small");
-      tag.textContent = kind === "run" ? "Rodando" : kind === "setup" ? "Em setup" : "Parada";
+      tag.textContent = (machine.name ? machine.name + " · " : "") + (kind === "run" ? "Rodando" : kind === "setup" ? "Em setup" : "Parada");
       text.append(title, tag);
 
       button.append(num, text, icon("i-next", "chev"));
@@ -1164,11 +1442,18 @@
   function openSheet(machine) {
     sheetMachine = machine;
     sheetChoice = draft.selections[machine.id] || STOPPED;
-    $("sheet-num").textContent = machine.id;
-    $("sheet-title").textContent = "Máquina " + machine.id;
+    $("sheet-num").textContent = mBadge(machine);
+    $("sheet-num").classList.toggle("long", mBadge(machine).length > 2);
+    $("sheet-title").textContent = mName(machine);
 
     const parts = $("sheet-parts");
     parts.innerHTML = "";
+    if (!machine.items.length) {
+      const empty = document.createElement("p");
+      empty.className = "muted small";
+      empty.textContent = "Nenhuma peça cadastrada nesta máquina ainda. O administrador pode adicionar.";
+      parts.appendChild(empty);
+    }
     machine.items.forEach(label => {
       const option = document.createElement("button");
       option.type = "button";
@@ -1208,11 +1493,12 @@
   });
 
   /* ---------- Relatório pronto ---------- */
-  const current = () => (active === "troca" ? shift : active === "bloqueio" ? block : draft);
-  const textOf = report => (report.type === "bloqueio" ? buildBlockText(report) : report.type === "troca" ? buildShiftText(report) : buildText(report));
-  const TITLES = { inicio: "Funcionamento de máquinas", troca: "Troca de turno", bloqueio: "Bloqueio" };
-  const titleOf = report => (TITLES[report.type] || "Relatório") + " · Injetora";
-  const editScreen = () => (active === "troca" ? "shift" : active === "bloqueio" ? "block" : "machines");
+  const current = () => (active === "troca" ? shift : active === "bloqueio" ? block : active === "parada" ? parada : draft);
+  const textOf = report => (report.type === "bloqueio" ? buildBlockText(report) : report.type === "troca" ? buildShiftText(report)
+    : report.type === "parada" ? buildParadaText(report) : buildText(report));
+  const TITLES = { inicio: "Funcionamento de máquinas", troca: "Troca de turno", bloqueio: "Bloqueio", parada: "Parada de máquina" };
+  const titleOf = report => (TITLES[report.type] || "Relatório") + " · " + LINES[lineOf(report)].name;
+  const editScreen = () => (active === "troca" ? "shift" : active === "bloqueio" ? "block" : active === "parada" ? "stop" : "machines");
 
   let justSaved = null; // relatório recém-salvo mostrado na tela "Relatório pronto"
 
@@ -1221,6 +1507,7 @@
   function renderDone() {
     const report = current();
     $("done-back-label").textContent = active === "inicio" ? "Corrigir máquinas" : "Corrigir relatório";
+    if (current()) setLine(lineOf(justSaved || current()));
     $("done-back").hidden = Boolean(justSaved);
     $("done-text").textContent = justSaved ? justSaved.text : textOf(report);
     const saved = Boolean(justSaved);
@@ -1248,6 +1535,12 @@
       report.date = source.date;
       report.turno = source.turno;
       report.fields = { ...source.fields };
+    } else if (source.type === "parada") {
+      report.date = source.date;
+      report.turno = source.turno;
+      report.machine = source.machine;
+      report.part = source.part;
+      report.fields = { ...source.fields };
     } else {
       report.turno = source.turno || null;
       report.selections = { ...source.selections };
@@ -1259,7 +1552,7 @@
     }
     queuePush("r", report.id);
     if (report.type === "troca" && (report.fields.bloqueio || "").trim() && cloudOk()) {
-      Cloud.setLastBlock({ fields: { bloqueio: report.fields.bloqueio }, date: report.date, turno: report.turno, savedAt: report.savedAt })
+      Cloud.setLastBlock({ fields: { bloqueio: report.fields.bloqueio }, date: report.date, turno: report.turno, savedAt: report.savedAt }, lineOf(report))
         .catch(error => console.warn("[Nuvem] último bloqueio", error));
     }
     dropDraft(source.id);
@@ -1268,6 +1561,7 @@
     justSaved = report;
     if (source.type === "troca") { newShift(); shift.pristine = true; }
     else if (source.type === "bloqueio") { newBlock(); block.pristine = true; }
+    else if (source.type === "parada") { newParada(); parada.pristine = true; }
     else { newDraft(); draft.pristine = true; }
     renderDone();
     toast("Relatório salvo");
@@ -1287,6 +1581,12 @@
       copy.date = report.date;
       copy.turno = report.turno || null;
       copy.fields = { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: "", ...(report.fields || {}) };
+    } else if (report.type === "parada") {
+      copy.date = report.date;
+      copy.turno = report.turno || null;
+      copy.machine = report.machine || null;
+      copy.part = report.part || null;
+      copy.fields = { motivo: "", ...(report.fields || {}) };
     } else {
       copy.selections = { ...(report.selections || {}) };
       copy.turno = report.turno || null;
@@ -1325,6 +1625,8 @@
         ? whenLabel(new Date(report.savedAt)) + " · " + ((report.fields.codigo || "").split(" - ")[0] || "sem código")
         : report.type === "troca"
         ? formatDate(dateFromKey(report.date)) + (report.turno ? " · " + report.turno : "")
+        : report.type === "parada"
+        ? whenLabel(new Date(report.savedAt)) + " · " + machineLabel(lineOf(report), report.machine)
         : whenLabel(new Date(report.startedAt));
       text.append(title, sub);
       item.append(icon("i-file", "row-icon"), text);
@@ -1337,10 +1639,10 @@
     });
     const shown = reports.find(report => report.id === viewing);
     $("view-title").textContent = titleOf(shown);
-    if (shown.type === "troca" || shown.type === "bloqueio") {
+    if (shown.type === "troca" || shown.type === "bloqueio" || shown.type === "parada") {
       $("view-sub").textContent = "Salvo " + whenLabel(new Date(shown.savedAt)).toLowerCase();
     } else {
-      const total = counts(shown.selections);
+      const total = counts(shown.selections, lineOf(shown));
       $("view-sub").textContent = whenLabel(new Date(shown.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup · " + total.stop + " paradas";
     }
     $("view-text").textContent = shown.text;
@@ -1647,7 +1949,7 @@
     }
     store(KEY_OWNER, account.uid);
     user = account;
-    draft = null; shift = null; block = null;
+    draft = null; shift = null; block = null; parada = null; adminLine = null;
     $("user-name").textContent = account.admin ? "ADM" : account.login;
     $("user-chip").hidden = false;
     paintSync();
@@ -1663,10 +1965,11 @@
     stopOccWatch();
     stopWatching();
     if (unwatchCadastro) { try { unwatchCadastro(); } catch (error) { /* já parado */ } unwatchCadastro = null; }
+    if (unwatchCadastroEst) { try { unwatchCadastroEst(); } catch (error) { /* já parado */ } unwatchCadastroEst = null; }
     if (unwatchMasks) { try { unwatchMasks(); } catch (error) { /* já parado */ } unwatchMasks = null; }
     syncError = null;
     user = null;
-    draft = null; shift = null; block = null;
+    draft = null; shift = null; block = null; parada = null; adminLine = null;
     $("user-chip").hidden = true;
     $("login-pass").value = "";
     go("login");
@@ -1720,39 +2023,61 @@
     Cloud.onUser(account => (account ? onLogin(account) : (onLogout(), loginState("Entrar", false))));
   }
 
-  /* ---------- Cadastro da Injetora vindo da nuvem (todos) ---------- */
+  /* ---------- Cadastro das linhas vindo da nuvem (todos) ----------
+     Injetora: cadastro/injetora. Estamparia: cadastro/estamparia. */
   let unwatchCadastro = null;
+  let unwatchCadastroEst = null;
+  function onCadastro(line, cad) {
+    if (cad) store(KEY_CADASTRO[line], cad); else forget(KEY_CADASTRO[line]);
+    applyCadastro(cad, line);
+    if (screenNow === "home") renderHome();
+    if (screenNow === "machines" && draft && lineOf(draft) === line) { sanitizeDraft(draft); renderMachines(); }
+    if (screenNow === "admin" && adminLine === line) renderAdmin();
+  }
   function watchCadastro() {
-    if (unwatchCadastro || !window.Cloud.watchCadastro) return;
-    unwatchCadastro = Cloud.watchCadastro(cad => {
-      if (cad) store(KEY_CADASTRO, cad); else { try { localStorage.removeItem(KEY_CADASTRO); } catch (error) { /* ok */ } }
-      applyCadastro(cad);
-      if (screenNow === "home") renderHome();
-      if (screenNow === "machines" && draft) { sanitizeDraft(draft); renderMachines(); }
-      if (screenNow === "admin") renderAdmin();
-    }, reportSync);
+    if (!unwatchCadastro && window.Cloud.watchCadastro) unwatchCadastro = Cloud.watchCadastro(cad => onCadastro("injetora", cad), reportSync);
+    if (!unwatchCadastroEst && window.Cloud.watchConfig) unwatchCadastroEst = Cloud.watchConfig("estamparia", cad => onCadastro("estamparia", cad), reportSync);
   }
 
   /* ---------- Administrador: peças das máquinas ----------
-     O ADM edita uma cópia (adminDraft, guardada em rq.adminDraft.v1). Nada muda
-     para os outros até tocar em "Publicar", que grava cadastro/injetora. */
-  const KEY_ADMIN_DRAFT = "rq.adminDraft.v1";
-  let adminDraft = load(KEY_ADMIN_DRAFT, null);
+     O ADM edita uma cópia (adminDrafts[linha]). Nada muda
+     para os outros até tocar em "Publicar", que grava cadastro/injetora ou cadastro/estamparia. */
+  /* Ao entrar na área do administrador, o ADM escolhe a área: Injetora ou Estamparia.
+     Cada área tem o seu rascunho (rq.adminDraft.v1 e rq.adminDraft.est.v1). */
+  const KEY_ADMIN_DRAFT = { injetora: "rq.adminDraft.v1", estamparia: "rq.adminDraft.est.v1" };
+  const adminDrafts = { injetora: load(KEY_ADMIN_DRAFT.injetora, null), estamparia: load(KEY_ADMIN_DRAFT.estamparia, null) };
+  let adminLine = null;
   let adminMachineId = null;
 
   function adminWork() {
-    if (!adminDraft) adminDraft = currentCadastro();
-    return adminDraft;
+    if (!adminDrafts[adminLine]) adminDrafts[adminLine] = currentCadastro(adminLine);
+    return adminDrafts[adminLine];
   }
-  function saveAdminDraft() { store(KEY_ADMIN_DRAFT, adminDraft); }
-  function adminDirty() {
-    return Boolean(adminDraft) && JSON.stringify(adminDraft) !== JSON.stringify(currentCadastro());
+  function saveAdminDraft() { store(KEY_ADMIN_DRAFT[adminLine], adminDrafts[adminLine]); }
+  function adminDirty(line) {
+    line = line || adminLine;
+    if (!line) return adminDirty("injetora") || adminDirty("estamparia");
+    return Boolean(adminDrafts[line]) && JSON.stringify(adminDrafts[line]) !== JSON.stringify(currentCadastro(line));
   }
   function changedMachines() {
-    if (!adminDraft) return new Set();
-    const now = new Map(machines.map(machine => [machine.id, JSON.stringify(machine.items)]));
-    return new Set(adminDraft.machines.filter(machine => now.get(machine.id) !== JSON.stringify(machine.items)).map(machine => machine.id));
+    const work = adminDrafts[adminLine];
+    if (!work) return new Set();
+    const now = new Map(machinesOf(adminLine).map(machine => [machine.id, JSON.stringify(machine.items)]));
+    return new Set(work.machines.filter(machine => now.get(machine.id) !== JSON.stringify(machine.items)).map(machine => machine.id));
   }
+
+  /* Tela de escolha da área */
+  function renderAdminLine() {
+    Object.keys(LINES).forEach(line => {
+      const sub = document.querySelector('[data-admin-line-sub="' + line + '"]');
+      if (sub) sub.textContent = adminDirty(line) ? "Há mudanças ainda não publicadas" : LINES[line].sub + " · " + machinesOf(line).length + " máquinas";
+    });
+  }
+  document.querySelectorAll("[data-admin-line]").forEach(button => button.addEventListener("click", () => {
+    adminLine = button.dataset.adminLine;
+    document.querySelectorAll("[data-admin-line-name]").forEach(element => { element.textContent = LINES[adminLine].name; });
+    go("admin-home");
+  }));
 
   function renderPending() {
     const changed = changedMachines();
@@ -1777,7 +2102,7 @@
       button.type = "button";
       button.className = "admin-machine" + (changed.has(machine.id) ? " changed" : "");
       const title = document.createElement("strong");
-      title.textContent = "Máquina " + machine.id;
+      title.textContent = mName(machine);
       const list = document.createElement("small");
       list.textContent = machine.items.length ? machine.items.join(" · ") : "Nenhuma peça";
       button.append(title, list);
@@ -1798,7 +2123,7 @@
 
   function renderAdminMachine() {
     const machine = adminMachine();
-    $("am-title").textContent = "Máquina " + machine.id;
+    $("am-title").textContent = mName(machine);
     const list = $("am-items");
     list.innerHTML = "";
     if (!machine.items.length) {
@@ -1815,13 +2140,13 @@
       const remove = document.createElement("button");
       remove.type = "button";
       remove.className = "remove";
-      remove.setAttribute("aria-label", "Tirar " + label + " da máquina " + machine.id);
+      remove.setAttribute("aria-label", "Tirar " + label + " de " + mName(machine));
       remove.appendChild(icon("i-trash"));
       remove.addEventListener("click", () => {
         machine.items = machine.items.filter(other => other !== label);
         saveAdminDraft();
         renderAdminMachine();
-        toast(label + " saiu da máquina " + machine.id);
+        toast(label + " saiu de " + mName(machine));
       });
       row.append(name, remove);
       list.appendChild(row);
@@ -1855,7 +2180,7 @@
       const codes = document.createElement("small");
       codes.textContent = adminWork().items[label].filter(Boolean).join(" · ") || "sem código";
       option.append(name, codes);
-      option.addEventListener("click", () => { addToMachine(label); itemSheet.close(); toast(label + " entrou na máquina " + machine.id); });
+      option.addEventListener("click", () => { addToMachine(label); itemSheet.close(); toast(label + " entrou em " + mName(machine)); });
       list.appendChild(option);
     });
     if (!labels.length) {
@@ -1983,14 +2308,15 @@
     const problems = validateCadastro(work);
     if (problems.length) { alert("Corrija antes de publicar:\n\n- " + problems.join("\n- ")); return; }
     const changed = changedMachines();
-    if (!confirm("Publicar para todos? " + (changed.size ? changed.size + " máquina(s) alterada(s)." : "") + "\nQuem estiver usando o app recebe a mudança na hora.")) return;
+    if (!confirm("Publicar " + LINES[adminLine].name + " para todos? " + (changed.size ? changed.size + " máquina(s) alterada(s)." : "") + "\nQuem estiver usando o app recebe a mudança na hora.")) return;
     button.disabled = true;
     try {
-      await withTimeout(Cloud.saveCadastro(work));
-      store(KEY_CADASTRO, work);
-      applyCadastro(work);
-      adminDraft = null;
-      try { localStorage.removeItem(KEY_ADMIN_DRAFT); } catch (error) { /* ok */ }
+      const line = adminLine;
+      await withTimeout(line === "estamparia" ? Cloud.saveConfig("estamparia", work) : Cloud.saveCadastro(work));
+      store(KEY_CADASTRO[line], work);
+      applyCadastro(work, line);
+      adminDrafts[line] = null;
+      forget(KEY_ADMIN_DRAFT[line]);
       refreshAdminScreen();
       toast("Publicado! Já vale para todos.");
     } catch (error) {
@@ -2009,16 +2335,16 @@
   }
   document.querySelectorAll("[data-publish]").forEach(button => button.addEventListener("click", () => publishCadastro(button)));
   document.querySelectorAll("[data-discard]").forEach(button => button.addEventListener("click", () => {
-    if (!confirm("Descartar todas as mudanças não publicadas?")) return;
-    adminDraft = null;
-    try { localStorage.removeItem(KEY_ADMIN_DRAFT); } catch (error) { /* ok */ }
+    if (!confirm("Descartar todas as mudanças não publicadas da " + LINES[adminLine].name + "?")) return;
+    adminDrafts[adminLine] = null;
+    forget(KEY_ADMIN_DRAFT[adminLine]);
     refreshAdminScreen();
     toast("Mudanças descartadas");
   }));
 
   /* ---------- ADM: peças cadastradas (editar nome/código, apagar, cadastrar) ---------- */
   function machinesWith(label) {
-    return adminWork().machines.filter(machine => machine.items.includes(label)).map(machine => machine.id);
+    return adminWork().machines.filter(machine => machine.items.includes(label)).map(machine => (machine.name ? machine.name : machine.id));
   }
   function renderAdminParts() {
     renderPending();
@@ -2120,13 +2446,13 @@
   function renderMasksList() {
     const list = $("masks-list");
     list.innerHTML = "";
-    Object.keys(MASK_DEFAULTS).forEach(type => {
+    Object.keys(MASK_DEFAULTS).filter(type => MASK_LINE[type] === adminLine || MASK_LINE[type] === "ambas").forEach(type => {
       const row = document.createElement("button");
       row.type = "button";
       row.className = "admin-item clickable";
       const text = document.createElement("span");
       const name = document.createElement("strong");
-      name.textContent = MASK_LABELS[type].name;
+      name.textContent = MASK_LABELS[type].name + (MASK_LINE[type] === "ambas" ? " (Injetora e Estamparia)" : "");
       const info = document.createElement("small");
       const changed = Object.keys(MASK_DEFAULTS[type]).filter(key => MASK[type][key] !== MASK_DEFAULTS[type][key]).length;
       info.textContent = changed ? changed + " texto(s) diferente(s) do padrão" : "Igual ao padrão";
@@ -2137,21 +2463,27 @@
     });
   }
 
-  function maskSample(type) {
+  function maskSample(key) {
+    const line = MASK_LINE[key] === "estamparia" ? "estamparia" : MASK_LINE[key] === "ambas" ? adminLine || "injetora" : "injetora";
+    const type = key.replace(/_est$/, "");
     if (type === "inicio") {
       const selections = {};
-      machines.forEach((machine, index) => { selections[machine.id] = index === 0 && machine.items[0] ? machine.items[0] : index === 1 ? SETUP : STOPPED; });
-      return { type, startedAt: new Date().toISOString(), turno: "T1", selections };
+      machinesOf(line).forEach((machine, index) => { selections[machine.id] = index === 0 && machine.items[0] ? machine.items[0] : index === 1 ? SETUP : STOPPED; });
+      return { type, line, startedAt: new Date().toISOString(), turno: "T1", selections };
     }
     if (type === "troca") {
-      return { type, date: todayKey(), turno: "T1", fields: { relatorio: "- EXEMPLO DE TEXTO", atencao: "", pendencias: "", bloqueio: "- EXEMPLO DE TEXTO", marcacoes: "" } };
+      return { type, line, date: todayKey(), turno: "T1", fields: { relatorio: "- EXEMPLO DE TEXTO", atencao: "", pendencias: "", bloqueio: "- EXEMPLO DE TEXTO", marcacoes: "" } };
+    }
+    if (type === "parada") {
+      const machine = machinesOf(line)[0];
+      return { type, line, date: todayKey(), turno: "T1", machine: machine.id, part: machine.items[0] || NO_PART, fields: { motivo: "- EXEMPLO DE TEXTO" } };
     }
     const fields = {};
     BLOCK_FIELDS.forEach(field => { fields[field.key] = field.key === "motivo" ? "- EXEMPLO DE TEXTO" : ""; });
     fields.dataProducao = todayKey();
     fields.criticidade = "ALTA";
     fields.scrap = "NÃO";
-    return { type, fields, photos: {} };
+    return { type, line, fields, photos: {} };
   }
   function maskPreview() {
     const saved = MASK[maskType];
@@ -2159,8 +2491,8 @@
     let text;
     try {
       text = textOf(maskSample(maskType));
-      if (maskType === "bloqueio") {
-        text += "\n\n" + PHOTO_BLOCKS.map(item => MASK.bloqueio[item.key] + "\n[foto]").join("\n\n");
+      if (maskType === "bloqueio" || maskType === "bloqueio_est") {
+        text += "\n\n" + PHOTO_BLOCKS.map(item => MASK[maskType][item.key] + "\n[foto]").join("\n\n");
       }
     } finally {
       MASK[maskType] = saved;
@@ -2254,43 +2586,15 @@
 
   function renderOccNew() {
     if (!occ.turno) occ.turno = occTurnoGuess();
+    setLine(LINE);
     document.querySelectorAll("[data-oturno]").forEach(button => button.setAttribute("aria-checked", String(button.dataset.oturno === occ.turno)));
-    const grid = $("occ-machines");
-    grid.innerHTML = "";
-    machines.forEach(machine => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "occ-machine";
-      button.textContent = machine.id;
-      button.setAttribute("role", "radio");
-      button.setAttribute("aria-label", "Máquina " + machine.id);
-      button.setAttribute("aria-checked", String(occ.machine === machine.id));
-      button.addEventListener("click", () => {
-        if (occ.machine !== machine.id) { occ.machine = machine.id; occ.part = null; }
-        renderOccNew();
-      });
-      grid.appendChild(button);
+    fillMachineGrid($("occ-machines"), LINE, occ.machine, machine => {
+      if (occ.machine !== machine.id) { occ.machine = machine.id; occ.part = null; }
+      renderOccNew();
     });
     const machine = machines.find(item => item.id === occ.machine);
     $("occ-part-field").hidden = !machine;
-    const parts = $("occ-parts");
-    parts.innerHTML = "";
-    if (machine) {
-      const options = machine.items.length ? machine.items : [];
-      options.concat(["Nenhuma peça (máquina parada)"]).forEach(label => {
-        const option = document.createElement("button");
-        option.type = "button";
-        option.className = "choice";
-        option.setAttribute("role", "radio");
-        option.setAttribute("aria-checked", String(occ.part === label));
-        const dot = document.createElement("span");
-        dot.className = "dot";
-        dot.appendChild(icon("i-check"));
-        option.append(dot, document.createTextNode(label));
-        option.addEventListener("click", () => { occ.part = label; renderOccNew(); });
-        parts.appendChild(option);
-      });
-    }
+    fillPartChoices($("occ-parts"), machine, occ.part, label => { occ.part = label; renderOccNew(); }, "Nenhuma peça (máquina parada)");
     $("occ-problem-field").hidden = !occ.part;
     const problems = $("occ-problems");
     problems.innerHTML = "";
@@ -2339,14 +2643,14 @@
     if (!occ.problem) { $("occ-problem-text").focus(); toast("Diga qual é o problema"); return; }
     const now = new Date();
     const item = {
-      id: newId(), line: "injetora", type: "ocorrencia", at: now.toISOString(), date: todayKey(),
-      turno: occ.turno, machine: occ.machine, part: occ.part, problem: occ.problem, by: user ? user.login : ""
+      id: newId(), line: LINE, type: "ocorrencia", at: now.toISOString(), date: todayKey(),
+      turno: occ.turno, machine: occ.machine, machineName: machineLabel(LINE, occ.machine), part: occ.part, problem: occ.problem, by: user ? user.login : ""
     };
     const all = load(KEY_OCC, []);
     all.unshift(item);
     store(KEY_OCC, all.slice(0, 500));
     queuePush("o", item.id);
-    toast("Ocorrência lançada: máquina " + item.machine);
+    toast("Ocorrência lançada: " + item.machineName);
     // pronto para a próxima: mantém o turno
     occ = { turno: occ.turno, machine: null, part: null, problem: "" };
     $("occ-problem-text").value = "";
@@ -2373,6 +2677,7 @@
     return date.getFullYear() + "-" + String(date.getMonth() + 1).padStart(2, "0") + "-" + String(date.getDate()).padStart(2, "0");
   }
   function renderOccList() {
+    setLine(LINE);
     if (!occDate) occDate = todayKey();
     $("occ-date").value = occDate;
     $("occ-next").disabled = occDate >= todayKey();
@@ -2388,7 +2693,7 @@
     const byId = new Map(occRemote.map(item => [String(item.id), item]));
     load(KEY_OCC, []).filter(item => item.date === occDate && (pending["o:" + item.id] || !cloudOk()))
       .forEach(item => { if (!byId.has(String(item.id))) byId.set(String(item.id), { ...item, pending: true }); });
-    return Array.from(byId.values()).filter(item => !pending["x:o:" + item.id])
+    return Array.from(byId.values()).filter(item => !pending["x:o:" + item.id] && lineOf(item) === LINE)
       .sort((a, b) => String(b.at).localeCompare(String(a.at)));
   }
 
@@ -2444,7 +2749,7 @@
       });
     turnos.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
     bars($("occ-by-problem"), count(item => item.problem), items.length);
-    bars($("occ-by-machine"), count(item => "Máquina " + item.machine), items.length);
+    bars($("occ-by-machine"), count(item => item.machineName || machineLabel(lineOf(item), item.machine)), items.length);
 
     const list = $("occ-items");
     list.innerHTML = "";
@@ -2460,7 +2765,7 @@
       const top = document.createElement("div");
       top.className = "occ-item-top";
       const title = document.createElement("strong");
-      title.textContent = "Máquina " + item.machine + " · " + item.problem;
+      title.textContent = (item.machineName || machineLabel(lineOf(item), item.machine)) + " · " + item.problem;
       top.appendChild(title);
       const mine = user && (item.owner === user.uid || item.pending || item.by === user.login);
       if (mine || (user && user.admin)) {
@@ -2487,7 +2792,8 @@
   }
 
   /* ---------- Começo ---------- */
-  applyCadastro(load(KEY_CADASTRO, null));
+  applyCadastro(load(KEY_CADASTRO.injetora, null), "injetora");
+  applyCadastro(load(KEY_CADASTRO.estamparia, null), "estamparia");
   applyMasks(load(KEY_MASKS, null));
   migrateOldDrafts();
   go("login");

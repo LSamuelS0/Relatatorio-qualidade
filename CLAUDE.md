@@ -31,18 +31,26 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 |---|---|
 | `index.html` | Estrutura da tela |
 | `styles.css` | Visual e adaptação ao celular |
-| `data.js` | Cadastro: catálogo de peças, itens e máquinas |
+| `data.js` | Cadastro: catálogo de peças, itens e máquinas da Injetora e da Estamparia (`estamparia`) |
 | `app.js` | Navegação entre telas, rascunho, salvar no aparelho, sincronização com a nuvem, texto, copiar/enviar, validação do cadastro |
 | `cloud.js` | Conexão com o Firebase (login, relatórios, rascunhos, fotos); expõe `window.Cloud` |
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.0`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
 - **Injetora (plástico)** — em uso. 19 máquinas fixas, sempre na ordem 1 a 19.
-- **Estamparia (metal)** — ainda não implementada; terá cadastro próprio, independente da Injetora.
+- **Estamparia (metal)** — em uso desde 12/11/2026. Cadastro próprio, independente da Injetora (seção "Estamparia" abaixo).
+
+### Como o app separa as linhas (12/11/2026)
+- Tela inicial: os dois cartões (Injetora e Estamparia) escolhem a linha (`setLine()` no `app.js`; `LINE` = linha escolhida, `machines` = máquinas dela).
+- Todo relatório, rascunho e ocorrência guarda `line` (`"injetora"` ou `"estamparia"`; sem `line` = injetora). O texto é montado com as máquinas e a máscara **da linha do relatório** (`lineOf`, `machinesOf`, `mk(tipo, linha)`).
+- Máscaras: `inicio`, `troca`, `bloqueio` (Injetora) · `inicio_est`, `troca_est`, `bloqueio_est` (Estamparia) · `parada` (as duas). `MASK_LINE` diz de qual linha é cada uma.
+- **Regras de formatação, caixas de texto e layout são as mesmas nas duas linhas** (pedido do dono): só mudam máquinas, peças e textos das máscaras.
+- Marcações e help chain automáticos puxam do último relatório **da mesma linha**. "Puxar último bloqueio" também (na nuvem: `compartilhado/ultimoBloqueio`, Injetora no próprio documento e Estamparia no campo `estamparia`).
+- Ocorrências: cada linha vê só as suas no "Ocorrências do dia". Guardam também `machineName`.
 
 ## O que já funciona (Injetora)
 
@@ -179,6 +187,52 @@ Conforme e Não conforme: 1 foto cada (a nova substitui a anterior). Localizaç�
 - Rascunho: vale a regra geral; bloqueio sem nenhum campo e sem foto não vira rascunho.
 - Com o Firebase, as fotos precisarão ir para o Firebase Storage para aparecer no computador.
 
+## Estamparia (cadastro em `data.js` → `estamparia`, confirmado pelo dono em 12/11/2026)
+
+Máquinas com nome (não número). Cada uma tem `id` fixo (não mudar: os relatórios guardam por ele), `name`, `badge` (quadradinho) e `group` (título do grupo na lista):
+
+| Grupo | Máquina (`id`) | Peças |
+|---|---|---|
+| Balancer | Balancer 01–04 (`BAL01`–`BAL04`) | Balancer 580 · 601 |
+| Balancer | Balancer 05–06 (`BAL05`, `BAL06`) | Balancer 550 · 580 · 601 · 640 |
+| Linhas dos cestos | Linha do Cesto 01 (automática), 02 (manual), 03 (automática) (`CES01`–`CES03`) | **ainda não informadas** — o ADM adiciona |
+| Prensas | Prensa Progressiva (`PROG`) | Chapa Inox 550 · 580 com Canaleta · 580 sem Canaleta · 601 com Canaleta · 601 sem Canaleta · 640 |
+| Prensas | Prensa Transfer (`TRANS`) | Chapa do Gabinete 550 · 580 com/sem Canaleta · 601 com/sem Canaleta · 640 |
+| Prensas | Linha do Gabinete (`GAB`) | Gabinete 550 Branco · 580 Branco · 580 Titânio · 601 Branco · 601 Titânio · 640 Branco |
+| Prensas | Prensa 80/110 (`P80`) | Placa de Conexão Superior 640 · Placa de Conexão Inferior 640 |
+
+- Regra da vírgula vale aqui também: cada modelo/variante é um item separado.
+- Balancer: mesmos códigos da Injetora (Ring Up + Ring Down); Balancer 640 sem código. As outras peças da Estamparia ainda não têm código (`null`).
+- No Bloqueio da Estamparia, "Escolher produto" lista as peças da Estamparia (com código quando houver).
+- Relatório de funcionamento da Estamparia: igual ao da Injetora, mas cada linha começa com o nome da máquina (`Balancer 01: ...`, `Prensa Transfer: ...`).
+
+Máscaras da Estamparia (texto padrão; o ADM muda pelo editor):
+
+```
+Ⓜ️ALINHAMENTO PQC ESTAMPARIA | PQC 冲压校准
+DATA 日期: / TURNO 日期: / 📌RELATÓRIO 报告: / ⚠️PONTOS DE ATENÇÃO 注意事项: / 🚨PENDÊNCIAS 待处理问题: / 🛑STATUS DE BLOQUEIO 封锁状态:
+
+🔒BLOQUEIO ESTAMPARIA | 封锁警报 🔒
+DATA DA PRODUÇÃO 生产日期: / CÓDIGO DO MATERIAL 物料编码: / MOTIVO 问题描述: / QUANTIDADE 数量: / RESPONSÁVEL 责任部门: /
+CRITICIDADE 关键性: / SCRAP 废料: / POSIÇÃO 物料所在位置: / HELP CHAIN帮助链:  (+ fotos Conforme, Não conforme, Localização)
+```
+
+Mesmos campos, regras e fotos da Injetora (N/A, linha em branco após título, marcações, help chain etc.).
+
+## Parada de máquina (as duas linhas, 12/11/2026)
+
+- Bloco "Parada de máquina" no "O que você vai registrar?". Turno (obrigatório), máquina (botões com as máquinas **da linha**), peça (as peças daquela máquina + "Nenhuma peça") e motivo (caixa de texto no padrão de escrita). Segue a regra geral de Rascunhos e Salvar.
+- Máscara `parada`, **a mesma nas duas linhas**. **Texto PROVISÓRIO** (o dono disse que a máscara é a mesma, mas ainda não enviou o texto oficial):
+  ```
+  ⛔PARADA DE MÁQUINA | 停机
+  LINHA 生产线: / DATA 日期: / TURNO 班次: / MÁQUINA 机器: / PEÇA 零件: / MOTIVO 原因:
+  ```
+  Quando o dono mandar o texto oficial, ajustar `MASK_DEFAULTS.parada` (e os campos, se mudarem).
+
+## Auditoria 6M
+
+- Bloco "Auditoria 6M" nas duas linhas: por enquanto só um espaço reservado ("em construção"), pedido do dono em 12/11/2026. Aguardando o dono definir o conteúdo.
+
 ## Ocorrências (projeto do dono, iniciado em 11/11/2026)
 
 Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais acontecem mais, quantas vezes foi preciso pedir ajuste de máquina, troca de molde ou manutenção da ferramentaria, e atacar a causa raiz.
@@ -201,7 +255,7 @@ Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais 
 - **Funcionamento (aparelho primeiro, nuvem em seguida):** o app continua guardando no aparelho (`rq.reports.v1`, `rq.drafts.v1`, fotos no IndexedDB `rq-photos`) e envia para a nuvem assim que possível. Pendências em `rq.pending.v1` (`d:id`, `r:id`, `x:d:id` para apagar). Ao entrar, o app envia o que está pendente e baixa relatórios, rascunhos e fotos da conta (`pull()`); depois fica **em tempo real** (`Cloud.watchMine` com `onSnapshot`): o que é salvo num aparelho aparece no outro sem recarregar. Também busca de novo ao voltar para o app. Sem internet, tudo continua funcionando e é enviado depois.
 - **Bolinha ao lado do usuário:** verde = tudo na nuvem; laranja = enviando; cinza = sem internet; **vermelha = a nuvem recusou ou não respondeu** (tocar mostra o motivo, ex.: regras não publicadas `permission-denied`, banco não criado `not-found`, servidor mudo `timeout`). Ao entrar, o app faz um teste no servidor (`Cloud.ping()`), e envio e download rodam separados, com limite de tempo (`withTimeout`), para um não travar o outro. Tocar na bolinha vermelha refaz o teste e o download (`reconnect()`): se o erro já foi resolvido (ex.: regras publicadas depois), ela volta a ficar verde sem recarregar a página. Regras novas no Firebase levam até ~1 min para valer.
 - **Troca de pessoa no mesmo aparelho:** `rq.owner.v1` guarda o dono da cópia local; se outra conta entrar, a cópia local da anterior é limpa. Na primeira entrada, o que foi feito antes do login vai para a conta que entrou.
-- **Cadastro da Injetora:** `cadastro/injetora` (máquinas, itens e `extraParts`), todos leem e só o ADM grava. O app aplica ao entrar e em tempo real (`watchCadastro`/`applyCadastro`), com cópia no aparelho (`rq.cadastro.v1`). Sem nada na nuvem, vale o `data.js`.
+- **Cadastro das linhas:** `cadastro/injetora` e `cadastro/estamparia` (máquinas, itens e `extraParts`), todos leem e só o ADM grava (a regra `cadastro/{doc}` já cobre os dois). O app aplica ao entrar e em tempo real (`watchCadastro` e `watchConfig("estamparia")` → `applyCadastro(cad, linha)`), com cópia no aparelho (`rq.cadastro.v1` e `rq.cadastro.est.v1`). Sem nada na nuvem, vale o `data.js`.
 - **Ainda não feito:** tela do administrador para ver os relatórios de todos (hoje: pelo painel do Firebase), criar contas pelo app, e apagar da nuvem fotos que não são mais usadas (só são apagadas do aparelho). Redefinir senha de outra pessoa só pelo painel do Firebase (pelo app exigiria o plano Blaze).
 
 ## Regras obrigatórias
@@ -282,7 +336,8 @@ principal por tela, status nunca só por cor, sem informação solta.
    - Algumas exigem **imagens**. Ex.: na de **Bloqueio**, primeiro o produto **conforme** com a imagem logo abaixo, depois o produto **não conforme** com a sua imagem.
    - Aguardando o dono enviar os modelos das máscaras.
 3. **Menu de administrador** — **Peças das máquinas FEITO** (11/11/2026): na tela inicial, só para o ADM, o bloco "Administrador → Peças das máquinas" lista as 19 máquinas; em cada uma dá para tirar peças, adicionar peças já cadastradas (lista com filtro) e cadastrar peça nova (nome + modelos + barra/vírgula + código da CTQ opcional). As mudanças ficam numa cópia (`rq.adminDraft.v1`, máquinas alteradas em laranja) até tocar em **Publicar**, que confere as regras (`validateCadastro`) e grava `cadastro/injetora`; **Descartar** volta ao publicado. Também feito (11/11/2026):
-   - **Painel do administrador** (tela inicial → "Painel do administrador"): atalhos para Peças das máquinas, Peças cadastradas e Máscaras. O aviso laranja "não publicado" aparece em todas as telas do ADM.
+   - **Escolha da área (12/11/2026):** ao tocar em "Painel do administrador", o app pergunta "Em qual área você quer fazer alterações?" — **Injetora** ou **Estamparia**. Tudo depois disso (peças das máquinas, peças cadastradas, máscaras, publicar/descartar) vale só para a área escolhida; "Trocar área" volta à pergunta. Rascunho do ADM por área: `rq.adminDraft.v1` (Injetora) e `rq.adminDraft.est.v1` (Estamparia). Máscaras: cada área mostra as suas + "Parada de máquina (Injetora e Estamparia)".
+   - **Painel do administrador** (tela inicial → "Painel do administrador" → área): atalhos para Peças das máquinas, Peças cadastradas e Máscaras. O aviso laranja "não publicado" aparece em todas as telas do ADM.
    - **Peças cadastradas:** lista com busca (nome ou código) mostrando códigos e em quais máquinas cada peça roda. Tocar abre o editor: mudar o nome (muda em todas as máquinas), os códigos da CTQ (separados por vírgula; nome com barra só aceita 1 código) e **Apagar** (sai de todas as máquinas). "Cadastrar peça nova" daqui só cadastra (não põe em máquina). Tudo entra no mesmo rascunho do ADM e só vale depois de **Publicar**.
    - **Máscaras:** os textos fixos dos 3 relatórios ficam em `MASK_DEFAULTS` (padrão, no `app.js`) e o ADM pode publicar outros em `cadastro/mascaras` (só as diferenças). Editor com cada texto, "Padrão" para voltar um texto, prévia ao vivo e **Publicar máscara** (vale na hora para todos; cópia no aparelho `rq.mascaras.v1`). Só os textos mudam; a ordem dos campos, o padrão de escrita e as regras continuam no código. Relatórios já salvos guardam o texto da época.
    - Ainda falta: contas e usuários. Esboço original:
@@ -293,7 +348,7 @@ principal por tela, status nunca só por cor, sem informação solta.
    Case do Ímã 550 e 580/601, Tub D 550, Body-B Titânio 580/601, Tub D MAL 120/140,
    Pulsador Impeller, Capa do Pulsador Impeller, Dispenser Case B e Dispenser Case Soldado.
 5. Pesos por material (coluna PP C/TALCO cortada nas fotos) e regra de peso acima de 1 kg.
-6. Linha de Estamparia.
+6. ~~Linha de Estamparia~~ — feito (12/11/2026). Falta: peças das Linhas dos cestos 01–03, códigos das peças da Estamparia, texto oficial da Parada de máquina e conteúdo da Auditoria 6M.
 7. Avaliar se o repositório deve ficar privado (códigos internos da Midea estão públicos).
 
 ## Ao trabalhar neste projeto
