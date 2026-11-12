@@ -635,6 +635,7 @@
       listDrafts().forEach(collect);
       load(KEY_REPORTS, []).forEach(collect);
       collect(block);
+      collect(parada);
       const ids = await allPhotoIds();
       await Promise.all((ids || []).filter(id => !used.has(id)).map(id => deletePhoto(id)));
     } catch (error) { /* sem IndexedDB: nada a limpar */ }
@@ -984,7 +985,7 @@
     parada = { id: newId(), line: LINE, type: "parada", startedAt: new Date().toISOString(), date: todayKey(),
       machine: null, part: null,
       fields: { horario: nowTime(), motivo: "", solicitante: SOLICITANTES.length === 1 ? SOLICITANTES[0].text : "", helpChain: lastTags("parada", "helpChain", LINE) },
-      horarioManual: false, savedId: null };
+      photos: { evidencias: [] }, horarioManual: false, savedId: null };
   }
 
   /* Horário: acompanha o relógio do aparelho até a pessoa editar (horarioManual).
@@ -1001,7 +1002,7 @@
 
   function isEmptyParada(item) {
     const fields = item.fields || {};
-    return !item.machine && !["motivo", "solicitante"].some(key => (fields[key] || "").trim());
+    return !item.machine && !(fields.motivo || "").trim() && !idsOf(item, "evidencias").length;
   }
 
   function buildParadaText(report) {
@@ -1056,7 +1057,69 @@
       if (input.value !== value) input.value = value;
       if (input.tagName === "TEXTAREA") fit(input);
     });
+    renderEvidence();
   }
+
+  /* Evidências: fotos opcionais, sem limite. No relatório saem só as fotos,
+     depois do texto, sem título (o nome "Evidências" aparece só no app). */
+  async function renderEvidence() {
+    if (!parada) return;
+    if (!parada.photos) parada.photos = { evidencias: [] };
+    const ids = idsOf(parada, "evidencias");
+    const gallery = $("evidence-gallery");
+    gallery.innerHTML = "";
+    for (const [index, id] of ids.entries()) {
+      const url = await photoUrl(id);
+      if (!url) continue;
+      const figure = document.createElement("figure");
+      figure.className = "gallery-item";
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Evidência, foto " + (index + 1);
+      const caption = document.createElement("figcaption");
+      const label = document.createElement("span");
+      label.textContent = "Foto " + (index + 1) + " de " + ids.length;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "btn btn-quiet danger btn-small";
+      remove.append(icon("i-trash"), document.createTextNode("Remover"));
+      remove.addEventListener("click", async () => {
+        parada.photos.evidencias = idsOf(parada, "evidencias").filter(other => other !== id);
+        keepDraft(parada);
+        await renderEvidence();
+        cleanPhotos();
+      });
+      caption.append(label, remove);
+      figure.append(img, caption);
+      gallery.appendChild(figure);
+    }
+    $("evidence-add-label").textContent = ids.length ? "Adicionar mais fotos" : "Adicionar foto";
+  }
+
+  $("evidence-input").addEventListener("change", async () => {
+    const input = $("evidence-input");
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if (!files.length || !parada) return;
+    toast(files.length > 1 ? "Guardando as fotos…" : "Guardando a foto…");
+    try {
+      const added = [];
+      for (const file of files) {
+        const blob = await shrinkPhoto(file);
+        const id = newId();
+        await putPhoto(id, blob);
+        added.push(id);
+      }
+      if (!parada.photos) parada.photos = { evidencias: [] };
+      parada.photos.evidencias = idsOf(parada, "evidencias").concat(added);
+      keepDraft(parada);
+      await renderEvidence();
+      cleanPhotos();
+      toast(added.length > 1 ? added.length + " fotos adicionadas" : "Foto adicionada");
+    } catch (error) {
+      toast("Não deu para guardar a foto neste aparelho");
+    }
+  });
 
   document.querySelectorAll("[data-pfield]").forEach(input => input.addEventListener("input", () => {
     if (input.tagName === "INPUT" && input.type !== "time") {
@@ -1080,6 +1143,7 @@
     dropDraft(parada.id);
     newParada();
     renderParada();
+    cleanPhotos();
     toast("Campos limpos");
   });
   $("stop-done").addEventListener("click", () => {
@@ -1092,6 +1156,7 @@
   /* Blocos de foto do relatório pronto / Meus relatórios: título + foto + copiar/enviar. */
   async function renderPhotoBlocks(container, report) {
     container.innerHTML = "";
+    if (report.type === "parada") return renderEvidenceBlock(container, report);
     container.hidden = report.type !== "bloqueio";
     if (report.type !== "bloqueio") return;
     for (const item of PHOTO_BLOCKS) {
@@ -1150,6 +1215,53 @@
     }
   }
 
+  /* Parada de máquina: as evidências saem só como fotos (sem título no relatório).
+     "Evidências" aparece aqui só para identificar; não tem botão de copiar título. */
+  async function renderEvidenceBlock(container, report) {
+    const ids = idsOf(report, "evidencias");
+    container.hidden = !ids.length;
+    if (!ids.length) return;
+    const card = document.createElement("div");
+    card.className = "photo-block";
+    const head = document.createElement("div");
+    head.className = "photo-block-head";
+    const title = document.createElement("strong");
+    title.textContent = "Evidências";
+    const note = document.createElement("small");
+    note.className = "muted";
+    note.textContent = "só as fotos, sem título";
+    head.append(title, note);
+    card.appendChild(head);
+    for (const [index, id] of ids.entries()) {
+      const url = await photoUrl(id);
+      if (!url) continue;
+      if (ids.length > 1) {
+        const sub = document.createElement("span");
+        sub.className = "photo-block-sub";
+        sub.textContent = "Foto " + (index + 1) + " de " + ids.length;
+        card.appendChild(sub);
+      }
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Evidência " + (index + 1);
+      const row = document.createElement("div");
+      row.className = "actions-row";
+      const copyPhoto = document.createElement("button");
+      copyPhoto.type = "button";
+      copyPhoto.className = "btn btn-outline btn-small";
+      copyPhoto.append(icon("i-copy"), document.createTextNode("Copiar foto"));
+      copyPhoto.addEventListener("click", () => copyImage(id, "evidencia-" + (index + 1)));
+      const sendPhoto = document.createElement("button");
+      sendPhoto.type = "button";
+      sendPhoto.className = "btn btn-outline btn-small";
+      sendPhoto.append(icon("i-share"), document.createTextNode("Enviar foto"));
+      sendPhoto.addEventListener("click", () => sharePhotos([id], null, ["evidencia-" + (index + 1)], "parada"));
+      row.append(copyPhoto, sendPhoto);
+      card.append(img, row);
+    }
+    container.appendChild(card);
+  }
+
   async function photoFile(id, name) {
     const blob = await getPhoto(id);
     return blob ? new File([blob], name + ".jpg", { type: blob.type || "image/jpeg" }) : null;
@@ -1164,8 +1276,8 @@
     link.remove();
   }
 
-  async function sharePhotos(ids, text, names) {
-    const files = (await Promise.all(ids.map((id, i) => (id ? photoFile(id, "bloqueio-" + names[i]) : null)))).filter(Boolean);
+  async function sharePhotos(ids, text, names, prefix) {
+    const files = (await Promise.all(ids.map((id, i) => (id ? photoFile(id, (prefix || "bloqueio") + "-" + names[i]) : null)))).filter(Boolean);
     if (files.length && navigator.canShare && navigator.canShare({ files })) {
       try { await navigator.share(text ? { files, text } : { files }); }
       catch (error) { if (error && error.name !== "AbortError") toast("Não deu para abrir o envio"); }
@@ -1288,7 +1400,9 @@
   function draftSummary(item) {
     if (item.type === "parada") {
       const machine = machinesOf(lineOf(item)).find(other => other.id === item.machine);
-      return whenLabel(new Date(item.startedAt)) + " · " + (machine ? mName(machine) : "máquina não escolhida");
+      const photos = idsOf(item, "evidencias").length;
+      return whenLabel(new Date(item.startedAt)) + " · " + (machine ? mName(machine) : "máquina não escolhida")
+        + (photos ? " · " + photos + (photos === 1 ? " foto" : " fotos") : "");
     }
     if (item.type === "bloqueio") {
       const code = (item.fields.codigo || "").split(" - ")[0] || "sem código";
@@ -1593,6 +1707,7 @@
       report.fields = { ...source.fields };
     } else if (source.type === "parada") {
       report.date = source.date;
+      report.photos = { evidencias: idsOf(source, "evidencias") };
       report.machine = source.machine;
       report.part = source.part;
       report.fields = { ...source.fields };
@@ -1641,6 +1756,7 @@
       copy.machine = report.machine || null;
       copy.part = report.part || null;
       copy.fields = { horario: "", motivo: "", solicitante: "", helpChain: "", ...(report.fields || {}) };
+      copy.photos = { evidencias: idsOf(report, "evidencias") };
       copy.horarioManual = true; // cópia de um salvo mantém o horário original
     } else {
       copy.selections = { ...(report.selections || {}) };
@@ -1761,6 +1877,12 @@
         const ids = [], names = [];
         PHOTO_BLOCKS.forEach(item => idsOf(report, item.key).forEach((id, i) => { ids.push(id); names.push(item.key + "-" + (i + 1)); }));
         await sharePhotos(ids, text, names);
+        return;
+      }
+      // Parada de máquina: texto + evidências (as fotos vão depois do texto, sem título)
+      if (report && report.type === "parada" && idsOf(report, "evidencias").length) {
+        const ids = idsOf(report, "evidencias");
+        await sharePhotos(ids, text, ids.map((id, i) => "evidencia-" + (i + 1)), "parada");
         return;
       }
       if (navigator.share) {

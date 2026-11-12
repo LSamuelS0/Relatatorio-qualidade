@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=5.5">
+  <link rel="stylesheet" href="styles.css?v=5.6">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -540,6 +540,15 @@
         <input class="text-input" id="p-helpChain" data-pfield="helpChain" autocapitalize="characters" autocomplete="off" spellcheck="false">
       </label>
 
+      <div class="photo-slot field">
+        <span class="field-label">📷 Evidências <small>opcional · quantas fotos quiser</small></span>
+        <div class="photo-gallery" id="evidence-gallery"></div>
+        <label class="photo-add">
+          <input type="file" accept="image/*" multiple id="evidence-input" hidden>
+          <svg><use href="#i-camera"/></svg><span id="evidence-add-label">Adicionar foto</span>
+        </label>
+      </div>
+
       <div class="bottom-bar">
         <button class="btn btn-primary" type="button" id="stop-done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
       </div>
@@ -787,8 +796,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=5.5"></script>
-  <script src="app.js?v=5.5"></script>
-  <script type="module" src="cloud.js?v=5.5"></script>
+  <script src="data.js?v=5.6"></script>
+  <script src="app.js?v=5.6"></script>
+  <script type="module" src="cloud.js?v=5.6"></script>
 </body>
 </html>
