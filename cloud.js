@@ -13,6 +13,7 @@
     cadastro/estamparia máquinas e peças da Estamparia (idem)
      cadastro/mascaras   textos fixos dos relatórios publicados pelo ADM
      ocorrencias/{id}    ocorrências da linha (todos leem; cada um lança as suas)
+    fotosOcorrencias/{id} fotos das ocorrências (todos leem; cada um envia as suas)
 
    O firebaseConfig NÃO é segredo: quem protege os dados são as regras de
    acesso (firestore.rules). A senha do ADM nunca fica no código.
@@ -140,21 +141,22 @@ const Cloud = {
   },
 
   /* Fotos: base64 dentro do banco (plano grátis). Máx. ~1 MB por documento. */
-  async putPhoto(id, blob) {
+  /* where: "fotos" (só o dono vê) ou "fotosOcorrencias" (fotos das ocorrências: todos logados veem). */
+  async putPhoto(id, blob, where) {
     const owner = needUser();
     const data = await blobToBase64(blob);
-    await setDoc(doc(db, "fotos", id), { owner, type: blob.type || "image/jpeg", data, size: blob.size });
+    await setDoc(doc(db, where || "fotos", id), { owner, type: blob.type || "image/jpeg", data, size: blob.size });
   },
-  async getPhoto(id) {
+  async getPhoto(id, where) {
     needUser();
-    const snapshot = await getDoc(doc(db, "fotos", id));
+    const snapshot = await getDoc(doc(db, where || "fotos", id));
     if (!snapshot.exists()) return null;
     const value = snapshot.data();
     return base64ToBlob(value.data, value.type);
   },
-  async removePhoto(id) {
+  async removePhoto(id, where) {
     needUser();
-    await deleteDoc(doc(db, "fotos", id));
+    await deleteDoc(doc(db, where || "fotos", id));
   },
 
   /* Cadastro da Injetora (máquinas e peças): todos leem, só o ADM grava. */

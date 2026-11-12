@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=5.6">
+  <link rel="stylesheet" href="styles.css?v=5.7">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -602,6 +602,25 @@
         <input class="text-input" id="occ-problem-text" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="DESCREVA O PROBLEMA">
       </div>
 
+      <label class="field" for="occ-solution">
+        <span class="field-label">Solução <small>解决方案 · se ainda não tem, sai "EM ANÁLISE"</small></span>
+        <textarea id="occ-solution" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- O QUE FOI FEITO?"></textarea>
+      </label>
+
+      <label class="field" for="occ-obs">
+        <span class="field-label">Observações <small>备注 · opcional</small></span>
+        <textarea id="occ-obs" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- ALGO A MAIS?"></textarea>
+      </label>
+
+      <div class="photo-slot field">
+        <span class="field-label">📷 Fotos <small>opcional · quantas quiser</small></span>
+        <div class="photo-gallery" id="occ-gallery"></div>
+        <label class="photo-add">
+          <input type="file" accept="image/*" multiple id="occ-photo-input" hidden>
+          <svg><use href="#i-camera"/></svg><span id="occ-add-label">Adicionar foto</span>
+        </label>
+      </div>
+
       <div class="bottom-bar">
         <button class="btn btn-primary" type="button" id="occ-save"><svg><use href="#i-check"/></svg>Lançar ocorrência</button>
       </div>
@@ -634,6 +653,47 @@
       <div class="occ-section">
         <h2 class="subtitle">Todas as ocorrências</h2>
         <div class="admin-list" id="occ-items"></div>
+      </div>
+    </section>
+
+    <!-- 3f. Detalhe de uma ocorrência -->
+    <section class="screen screen-shift" id="screen-occ-view" data-screen="occ-view" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="occ-list" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Ocorrência</h1>
+          <span id="ov-sub">—</span>
+        </div>
+      </div>
+      <pre class="report-text" id="ov-text" tabindex="0"></pre>
+      <div class="actions-row">
+        <button class="btn btn-outline" type="button" id="ov-copy"><svg><use href="#i-copy"/></svg>Copiar</button>
+        <button class="btn btn-outline" type="button" id="ov-share"><svg><use href="#i-share"/></svg>Enviar</button>
+      </div>
+      <div class="field" id="ov-photos-field">
+        <span class="field-label">📷 Fotos</span>
+        <div class="photo-gallery" id="ov-gallery"></div>
+      </div>
+
+      <div id="ov-edit" class="ov-edit" hidden>
+        <h2 class="subtitle">Atualizar (só quem lançou)</h2>
+        <label class="field" for="ov-solution">
+          <span class="field-label">Solução <small>解决方案 · vazio = "EM ANÁLISE"</small></span>
+          <textarea id="ov-solution" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- O QUE FOI FEITO?"></textarea>
+        </label>
+        <label class="field" for="ov-obs">
+          <span class="field-label">Observações <small>备注</small></span>
+          <textarea id="ov-obs" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- ALGO A MAIS?"></textarea>
+        </label>
+        <div class="photo-slot field">
+          <span class="field-label">📷 Fotos <small>opcional · quantas quiser</small></span>
+          <div class="photo-gallery" id="ov-edit-gallery"></div>
+          <label class="photo-add">
+            <input type="file" accept="image/*" multiple id="ov-photo-input" hidden>
+            <svg><use href="#i-camera"/></svg><span id="ov-add-label">Adicionar foto</span>
+          </label>
+        </div>
+        <button class="btn btn-primary" type="button" id="ov-save"><svg><use href="#i-save"/></svg>Salvar alterações</button>
       </div>
     </section>
 
@@ -796,8 +856,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=5.6"></script>
-  <script src="app.js?v=5.6"></script>
-  <script type="module" src="cloud.js?v=5.6"></script>
+  <script src="data.js?v=5.7"></script>
+  <script src="app.js?v=5.7"></script>
+  <script type="module" src="cloud.js?v=5.7"></script>
 </body>
 </html>

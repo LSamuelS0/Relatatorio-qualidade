@@ -41,7 +41,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=5.6`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.7`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -263,7 +263,16 @@ Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais 
 - **Lançar ocorrência:** turno (T1/T2/T3; fica escolhido para a próxima), máquina (botões 1–19), peça (só as peças daquela máquina, + "Nenhuma peça (máquina parada)") e problema. Um toque em **Lançar ocorrência** salva na hora (não tem rascunho nem tela de relatório pronto) e limpa máquina/peça/problema para lançar a próxima.
 - **Problemas:** `problemas` no `data.js`. **Vazio por enquanto** → o problema é escrito à mão (maiúsculas). O dono vai passar a lista; com itens, viram botões + campo "Outro problema".
 - **Ocorrências do dia:** escolher a data (setas ou calendário); totais por turno; barras "Problemas que mais aconteceram" e "Por máquina" (quantidade e %); lista com hora, turno, peça e quem lançou. Mostra as ocorrências de **todas as pessoas**, em tempo real. Quem lançou (ou o ADM) pode apagar.
-- **Dados:** `ocorrencias/{id}` no Firestore = `{ id, date (aaaa-mm-dd), at, turno, machine, part, problem, by (matrícula/ADM), owner }`. Cópia no aparelho `rq.occ.v1`; envio pela fila de pendências (`o:id`). Regras: todos logados leem; cada um cria as suas; dono ou ADM apaga.
+- **Solução, observações e fotos (12/11/2026):** no lançamento, além de turno/máquina/peça/problema: **Solução** (caixa de texto; vazia = "- EM ANÁLISE"), **Observações** (opcional; vazia = "- N/A") e **Fotos** (opcionais, sem limite).
+- **Máscara `ocorrencia`** (a mesma nas duas linhas, editável pelo ADM em Máscaras):
+  ```
+  ⚠️OCORRÊNCIA DO DIA | 当日异常
+  TURNO 班次: / MÁQUINA 机器: / PEÇA 零件: / MOTIVO DO PROBLEMA 问题描述: / SOLUÇÃO 解决方案: / OBSERVAÇÕES 备注:
+  ```
+  (linha em branco entre os campos; motivo, solução e observações com "- " embaixo do título). As fotos não entram no texto.
+- **Detalhe:** no "Ocorrências do dia", tocar numa ocorrência abre a tela `occ-view` com a máscara pronta (Copiar / Enviar com as fotos), as fotos (Copiar / Enviar cada uma) e as observações. **Quem lançou** pode voltar e atualizar solução, observações e fotos ("Salvar alterações"); os outros só veem. A lista mostra "em análise" / "com solução" e 📷 com a quantidade de fotos.
+- **Fotos das ocorrências na nuvem:** coleção própria `fotosOcorrencias/{id}` (todos logados leem, para quem abre a ocorrência ver a foto), diferente de `fotos` (só o dono). **Exigiu regra nova no Firebase (12/11/2026).** Apagar a ocorrência apaga as fotos dela na nuvem.
+- **Dados:** `ocorrencias/{id}` no Firestore = `{ id, date (aaaa-mm-dd), at, turno, machine, machineName, part, problem, solution, obs, photos: { fotos: [ids] }, by (matrícula/ADM), owner, updatedAt? }`. Cópia no aparelho `rq.occ.v1`; envio pela fila de pendências (`o:id`). Regras: todos logados leem; cada um cria as suas; dono ou ADM apaga.
 - **Próximos passos:** lista de problemas do dono; depois, relatório/painel por período (semana, mês), por tipo de problema e por máquina.
 
 ## Banco de dados (Firebase)
@@ -272,6 +281,7 @@ Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais 
 - **Administrador:** UID `Rxejtj0jgEUEGfTup3yK9ngMvtH3` (conta ADM). Está em `cloud.js` e em `firestore.rules`.
 - **Firestore (plano grátis Spark):**
   - `relatorios/{id}` e `rascunhos/{id}`: o mesmo objeto do app + `owner` (uid de quem fez).
+  - `fotosOcorrencias/{id}`: fotos das ocorrências, mesmo formato de `fotos`, mas todos logados leem.
   - `fotos/{id}`: foto em base64 (`data`), `type`, `owner`. Uma foto por documento; o app reduz cada foto para caber (< 700 KB). Escolhido pelo plano grátis: Cloud Storage exige o plano Blaze desde set/2024.
   - `compartilhado/ultimoBloqueio`: último Status de bloqueio salvo numa troca de turno, de qualquer pessoa (botão "Puxar último bloqueio").
 - **Regras (`firestore.rules`):** cada pessoa lê/grava só o que é dela; o ADM lê/edita/apaga tudo; `compartilhado/ultimoBloqueio` qualquer pessoa logada.

@@ -56,6 +56,14 @@ service cloud.firestore {
       allow update, delete: if isAdmin() || ownsExisting();
     }
 
+    // Fotos das ocorrências: todas as pessoas logadas veem (abrem a ocorrência no
+    // "Ocorrências do dia"); cada um envia as suas; quem enviou ou o ADM apaga.
+    match /fotosOcorrencias/{id} {
+      allow read: if signedIn();
+      allow create: if ownsNew() && request.resource.data.data.size() < 1000000;
+      allow update, delete: if isAdmin() || ownsExisting();
+    }
+
     // Cadastro da Injetora (quais peças rodam em cada máquina): todos leem, só o ADM altera.
     match /cadastro/{doc} {
       allow read: if signedIn();

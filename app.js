@@ -149,9 +149,21 @@
       helpChain: "HELP CHAIN帮助链:"
     }
   };
+  /* ---- Ocorrência do dia: a mesma máscara para as duas linhas ---- */
+  MASK_DEFAULTS.ocorrencia = {
+    cabecalho: "⚠️OCORRÊNCIA DO DIA | 当日异常",
+    turno: "TURNO 班次:",
+    maquina: "MÁQUINA 机器:",
+    peca: "PEÇA 零件:",
+    motivo: "MOTIVO DO PROBLEMA 问题描述:",
+    solucao: "SOLUÇÃO 解决方案:",
+    emAnalise: "- EM ANÁLISE",
+    observacoes: "OBSERVAÇÕES 备注:",
+    vazio: "- N/A"
+  };
   // Em qual linha cada máscara vale (o editor do ADM mostra só as da área escolhida)
   const MASK_LINE = { inicio: "injetora", troca: "injetora", bloqueio: "injetora",
-    inicio_est: "estamparia", troca_est: "estamparia", bloqueio_est: "estamparia", parada: "ambas" };
+    inicio_est: "estamparia", troca_est: "estamparia", bloqueio_est: "estamparia", parada: "ambas", ocorrencia: "ambas" };
   // Chave da máscara de um tipo de relatório numa linha: troca + estamparia → troca_est
   const mk = (type, line) => (type === "parada" ? "parada" : line === "estamparia" ? type + "_est" : type);
   // Nome de cada texto no editor do administrador
@@ -165,6 +177,8 @@
       conforme: "Título da foto: Conforme", naoConforme: "Título da foto: Não conforme", localizacao: "Título das fotos: Localização" },
     parada: { name: "Parada de máquina", cabecalho: "Cabeçalho", maquina: "Máquina", horario: "Horário", motivo: "Motivo", solicitante: "Solicitante", helpChain: "Help chain" }
   };
+  MASK_LABELS.ocorrencia = { name: "Ocorrência do dia", cabecalho: "Cabeçalho", turno: "Turno", maquina: "Máquina", peca: "Peça",
+    motivo: "Motivo do problema", solucao: "Solução", emAnalise: "Quando não tem solução", observacoes: "Observações", vazio: "Quando não tem observação" };
   // Estamparia usa os mesmos nomes de campo da Injetora
   MASK_LABELS.inicio_est = { ...MASK_LABELS.inicio };
   delete MASK_LABELS.inicio_est.maquina;
@@ -636,6 +650,9 @@
       load(KEY_REPORTS, []).forEach(collect);
       collect(block);
       collect(parada);
+      load(KEY_OCC, []).forEach(collect);
+      collect(occ);
+      occRemote.forEach(collect);
       const ids = await allPhotoIds();
       await Promise.all((ids || []).filter(id => !used.has(id)).map(id => deletePhoto(id)));
     } catch (error) { /* sem IndexedDB: nada a limpar */ }
@@ -1358,6 +1375,7 @@
     if (name === "block") renderBlock();
     if (name === "stop") renderParada();
     if (name === "drafts") renderDrafts();
+    if (name === "occ-view") renderOccView();
     if (name === "done") renderDone();
     if (name === "reports") renderReports();
     if (name === "admin") renderAdmin();
@@ -1509,7 +1527,7 @@
   /* ---------- Escolher a linha (Injetora / Estamparia) ---------- */
   document.querySelectorAll("[data-line-start]").forEach(button => button.addEventListener("click", () => {
     setLine(button.dataset.lineStart);
-    occ = { turno: null, machine: null, part: null, problem: "" };
+    occ = occBlank();
     go("type");
   }));
 
@@ -1665,7 +1683,7 @@
   /* ---------- Relatório pronto ---------- */
   const current = () => (active === "troca" ? shift : active === "bloqueio" ? block : active === "parada" ? parada : draft);
   const textOf = report => (report.type === "bloqueio" ? buildBlockText(report) : report.type === "troca" ? buildShiftText(report)
-    : report.type === "parada" ? buildParadaText(report) : buildText(report));
+    : report.type === "parada" ? buildParadaText(report) : report.type === "ocorrencia" ? buildOccText(report) : buildText(report));
   const TITLES = { inicio: "Funcionamento de máquinas", troca: "Troca de turno", bloqueio: "Bloqueio", parada: "Parada de máquina" };
   const titleOf = report => (TITLES[report.type] || "Relatório") + " · " + LINES[lineOf(report)].name;
   const editScreen = () => (active === "troca" ? "shift" : active === "bloqueio" ? "block" : active === "parada" ? "stop" : "machines");
@@ -1935,11 +1953,12 @@
 
   async function uploadPhotosOf(item) {
     const uploaded = load(KEY_UPLOADED, {});
+    const where = item.type === "ocorrencia" ? "fotosOcorrencias" : "fotos";
     for (const id of allIdsOf(item)) {
       if (uploaded[id]) continue;
       const blob = await getPhoto(id);
       if (!blob) continue;
-      await Cloud.putPhoto(id, blob);
+      await Cloud.putPhoto(id, blob, where);
       uploaded[id] = true;
       store(KEY_UPLOADED, uploaded);
     }
@@ -2651,6 +2670,11 @@
     if (type === "troca") {
       return { type, line, date: todayKey(), turno: "T1", fields: { relatorio: "- EXEMPLO DE TEXTO", atencao: "", pendencias: "", bloqueio: "- EXEMPLO DE TEXTO", marcacoes: "" } };
     }
+    if (type === "ocorrencia") {
+      const machine = machinesOf(line)[0];
+      return { type, line, turno: "T1", machine: machine.id, part: machine.items[0] || "", problem: "EXEMPLO DE PROBLEMA",
+        solution: "", obs: "", at: new Date().toISOString(), date: todayKey() };
+    }
     if (type === "parada") {
       const machine = machinesOf(line)[0];
       return { type, line, date: todayKey(), machine: machine.id, part: machine.items[0] || NO_PART,
@@ -2755,7 +2779,9 @@
      ocorrencias/{id} (todos leem) com cópia no aparelho (rq.occ.v1) até ser enviada.
      Problemas: DATA.problemas (botões) ou texto livre enquanto a lista estiver vazia. */
   const KEY_OCC = "rq.occ.v1";
-  let occ = { turno: null, machine: null, part: null, problem: "" };
+  const occBlank = turno => ({ turno: turno || null, machine: null, part: null, problem: "", solution: "", obs: "", photos: { fotos: [] } });
+  let occ = occBlank();
+  let occView = null; // ocorrência aberta no "Ocorrências do dia"
 
   function occTurnoGuess() {
     const last = load(KEY_OCC, [])[0];
@@ -2793,6 +2819,122 @@
     });
     $("occ-problem-text").placeholder = list.length ? "OUTRO PROBLEMA (ESCREVA)" : "DESCREVA O PROBLEMA";
     if (!list.includes(occ.problem)) $("occ-problem-text").value = occ.problem;
+    ["solution", "obs"].forEach(key => {
+      const area = $("occ-" + key);
+      if (area.value !== (occ[key] || "")) area.value = occ[key] || "";
+      fit(area);
+    });
+    renderOccPhotos($("occ-gallery"), occ, true, () => renderOccNew());
+    $("occ-add-label").textContent = idsOf(occ, "fotos").length ? "Adicionar mais fotos" : "Adicionar foto";
+  }
+
+  /* Fotos da ocorrência: opcionais, sem limite. Ficam em fotosOcorrencias na nuvem
+     (todos veem). Foto de outra pessoa é baixada na hora de abrir. */
+  async function occPhotoUrl(id) {
+    let url = await photoUrl(id);
+    if (url || !cloudOk()) return url;
+    try {
+      const blob = await withTimeout(Cloud.getPhoto(id, "fotosOcorrencias"));
+      if (!blob) return null;
+      await putPhoto(id, blob);
+      const uploaded = load(KEY_UPLOADED, {});
+      uploaded[id] = true; // já está na nuvem
+      store(KEY_UPLOADED, uploaded);
+      url = await photoUrl(id);
+    } catch (error) { url = null; }
+    return url;
+  }
+  async function renderOccPhotos(gallery, item, editable, onChange) {
+    const ids = idsOf(item, "fotos");
+    gallery.innerHTML = "";
+    for (const [index, id] of ids.entries()) {
+      const figure = document.createElement("figure");
+      figure.className = "gallery-item";
+      gallery.appendChild(figure);
+      const url = await occPhotoUrl(id);
+      if (!url) {
+        const missing = document.createElement("p");
+        missing.className = "photo-missing";
+        missing.textContent = "Foto " + (index + 1) + " ainda não chegou";
+        figure.appendChild(missing);
+        continue;
+      }
+      const img = document.createElement("img");
+      img.src = url;
+      img.alt = "Foto da ocorrência " + (index + 1);
+      const caption = document.createElement("figcaption");
+      const label = document.createElement("span");
+      label.textContent = "Foto " + (index + 1) + " de " + ids.length;
+      caption.appendChild(label);
+      if (editable) {
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "btn btn-quiet danger btn-small";
+        remove.append(icon("i-trash"), document.createTextNode("Remover"));
+        remove.addEventListener("click", () => {
+          item.photos.fotos = idsOf(item, "fotos").filter(other => other !== id);
+          onChange();
+        });
+        caption.appendChild(remove);
+      } else {
+        const row = document.createElement("span");
+        row.className = "occ-photo-actions";
+        const copyPhoto = document.createElement("button");
+        copyPhoto.type = "button";
+        copyPhoto.className = "btn btn-outline btn-small";
+        copyPhoto.append(icon("i-copy"), document.createTextNode("Copiar"));
+        copyPhoto.addEventListener("click", () => copyImage(id, "ocorrencia-" + (index + 1)));
+        const sendPhoto = document.createElement("button");
+        sendPhoto.type = "button";
+        sendPhoto.className = "btn btn-outline btn-small";
+        sendPhoto.append(icon("i-share"), document.createTextNode("Enviar"));
+        sendPhoto.addEventListener("click", () => sharePhotos([id], null, [String(index + 1)], "ocorrencia"));
+        row.append(copyPhoto, sendPhoto);
+        caption.appendChild(row);
+      }
+      figure.append(img, caption);
+    }
+  }
+  async function addOccPhotos(input, item, after) {
+    const files = Array.from(input.files || []);
+    input.value = "";
+    if (!files.length) return;
+    toast(files.length > 1 ? "Guardando as fotos…" : "Guardando a foto…");
+    try {
+      const added = [];
+      for (const file of files) {
+        const blob = await shrinkPhoto(file);
+        const id = newId();
+        await putPhoto(id, blob);
+        added.push(id);
+      }
+      if (!item.photos) item.photos = { fotos: [] };
+      item.photos.fotos = idsOf(item, "fotos").concat(added);
+      after();
+      toast(added.length > 1 ? added.length + " fotos adicionadas" : "Foto adicionada");
+    } catch (error) {
+      toast("Não deu para guardar a foto neste aparelho");
+    }
+  }
+  $("occ-photo-input").addEventListener("change", () => addOccPhotos($("occ-photo-input"), occ, () => renderOccNew()));
+  $("occ-solution").addEventListener("input", event => { occ.solution = event.target.value; });
+  $("occ-obs").addEventListener("input", event => { occ.obs = event.target.value; });
+
+  /* Máscara da ocorrência (a mesma nas duas linhas). Sem solução → "- EM ANÁLISE". */
+  function buildOccText(item) {
+    const O = MASK.ocorrencia;
+    const up = text => String(text || "").toLocaleUpperCase("pt-BR").trim();
+    const single = (title, value) => title + (value ? " " + value : " ");
+    const lines = [
+      O.cabecalho, "",
+      single(O.turno, up(item.turno)), "",
+      single(O.maquina, up(item.machineName || machineLabel(lineOf(item), item.machine))), "",
+      single(O.peca, up(item.part)), "",
+      O.motivo, cleanMulti(item.problem) || O.vazio, "",
+      O.solucao, cleanMulti(item.solution) || O.emAnalise, "",
+      O.observacoes, cleanMulti(item.obs) || O.vazio
+    ];
+    return lines.join("\n");
   }
 
   document.querySelectorAll("[data-oturno]").forEach(button => button.addEventListener("click", () => {
@@ -2809,10 +2951,10 @@
     document.querySelectorAll("#occ-problems .choice").forEach(option => option.setAttribute("aria-checked", "false"));
   });
   $("start-ocorrencia").addEventListener("click", () => {
-    occ = { turno: occ.turno, machine: null, part: null, problem: "" };
+    occ = occBlank(occ.turno);
     go("occ-new");
   });
-  $("occ-new-btn").addEventListener("click", () => { occ = { turno: occ.turno, machine: null, part: null, problem: "" }; go("occ-new"); });
+  $("occ-new-btn").addEventListener("click", () => { occ = occBlank(occ.turno); go("occ-new"); });
 
   $("occ-save").addEventListener("click", () => {
     if (!occ.turno) { document.querySelector(".occ-turno").classList.add("need"); window.scrollTo({ top: 0, behavior: "smooth" }); toast("Escolha o turno"); return; }
@@ -2822,7 +2964,9 @@
     const now = new Date();
     const item = {
       id: newId(), line: LINE, type: "ocorrencia", at: now.toISOString(), date: todayKey(),
-      turno: occ.turno, machine: occ.machine, machineName: machineLabel(LINE, occ.machine), part: occ.part, problem: occ.problem, by: user ? user.login : ""
+      turno: occ.turno, machine: occ.machine, machineName: machineLabel(LINE, occ.machine), part: occ.part, problem: occ.problem,
+      solution: standardize(occ.solution || "").trim(), obs: standardize(occ.obs || "").trim(), photos: { fotos: idsOf(occ, "fotos") },
+      by: user ? user.login : ""
     };
     const all = load(KEY_OCC, []);
     all.unshift(item);
@@ -2830,7 +2974,7 @@
     queuePush("o", item.id);
     toast("Ocorrência lançada: " + item.machineName);
     // pronto para a próxima: mantém o turno
-    occ = { turno: occ.turno, machine: null, part: null, problem: "" };
+    occ = occBlank(occ.turno);
     $("occ-problem-text").value = "";
     renderOccNew();
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -2957,17 +3101,93 @@
           store(KEY_OCC, load(KEY_OCC, []).filter(other => String(other.id) !== String(item.id)));
           occRemote = occRemote.filter(other => String(other.id) !== String(item.id));
           queueDelete("o", item.id);
+          if (cloudOk()) idsOf(item, "fotos").forEach(id => Cloud.removePhoto(id, "fotosOcorrencias").catch(() => {}));
           paintOccList();
           toast("Ocorrência apagada");
         });
         top.appendChild(remove);
       }
       const info = document.createElement("small");
-      info.textContent = formatTime(new Date(item.at)) + " · " + item.turno + " · " + item.part + (item.by ? " · " + item.by : "") + (item.pending ? " · enviando…" : "");
-      card.append(top, info);
+      const photos = idsOf(item, "fotos").length;
+      info.textContent = formatTime(new Date(item.at)) + " · " + item.turno + " · " + item.part + (item.by ? " · " + item.by : "")
+        + " · " + (item.solution ? "com solução" : "em análise") + (photos ? " · 📷 " + photos : "") + (item.pending ? " · enviando…" : "");
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "occ-open";
+      open.textContent = "Ver detalhes, fotos e observações";
+      // tocar em qualquer parte da ocorrência (menos na lixeira) abre o detalhe
+      card.classList.add("clickable");
+      card.addEventListener("click", event => {
+        if (event.target.closest(".remove")) return;
+        occView = String(item.id);
+        go("occ-view");
+      });
+      card.append(top, info, open);
       list.appendChild(card);
     });
   }
+
+  /* ---------- Detalhe de uma ocorrência ----------
+     Mostra a máscara pronta (copiar/enviar), as fotos e as observações.
+     Quem lançou pode voltar depois e mudar a solução, as observações e as fotos. */
+  let occEdit = null;
+  function findOcc(id) {
+    const local = load(KEY_OCC, []).find(item => String(item.id) === id);
+    const remote = occRemote.find(item => String(item.id) === id);
+    return local || remote || null;
+  }
+  async function renderOccView() {
+    const item = findOcc(occView);
+    if (!item) { go("occ-list"); return; }
+    const mine = Boolean(user && (item.owner === user.uid || item.by === user.login));
+    $("ov-sub").textContent = formatDate(dateFromKey(item.date)) + " · " + formatTime(new Date(item.at)) + (item.by ? " · " + item.by : "");
+    $("ov-text").textContent = buildOccText(item);
+    $("ov-edit").hidden = !mine;
+    if (mine) {
+      occEdit = { solution: item.solution || "", obs: item.obs || "", photos: { fotos: idsOf(item, "fotos") } };
+      ["solution", "obs"].forEach(key => { const area = $("ov-" + key); area.value = occEdit[key]; fit(area); });
+      await renderOccEditPhotos();
+    }
+    $("ov-photos-field").hidden = !idsOf(item, "fotos").length;
+    await renderOccPhotos($("ov-gallery"), item, false);
+  }
+  async function renderOccEditPhotos() {
+    await renderOccPhotos($("ov-edit-gallery"), occEdit, true, () => renderOccEditPhotos());
+    $("ov-add-label").textContent = idsOf(occEdit, "fotos").length ? "Adicionar mais fotos" : "Adicionar foto";
+  }
+  $("ov-photo-input").addEventListener("change", () => addOccPhotos($("ov-photo-input"), occEdit, () => renderOccEditPhotos()));
+  $("ov-solution").addEventListener("input", event => { if (occEdit) occEdit.solution = event.target.value; });
+  $("ov-obs").addEventListener("input", event => { if (occEdit) occEdit.obs = event.target.value; });
+  $("ov-save").addEventListener("click", () => {
+    const item = findOcc(occView);
+    if (!item || !occEdit) return;
+    const updated = { ...item, solution: standardize(occEdit.solution || "").trim(), obs: standardize(occEdit.obs || "").trim(),
+      photos: { fotos: idsOf(occEdit, "fotos") }, updatedAt: new Date().toISOString() };
+    delete updated.pending;
+    const all = load(KEY_OCC, []).filter(other => String(other.id) !== occView);
+    all.unshift(updated);
+    store(KEY_OCC, all.slice(0, 500));
+    occRemote = occRemote.map(other => (String(other.id) === occView ? updated : other));
+    queuePush("o", updated.id);
+    toast("Ocorrência atualizada");
+    renderOccView();
+    cleanPhotos();
+  });
+  $("ov-copy").addEventListener("click", async () => {
+    const item = findOcc(occView);
+    if (item) toast((await copyText(buildOccText(item))) ? "Copiado! Agora é só colar no Meixin" : "Não deu para copiar");
+  });
+  $("ov-share").addEventListener("click", async () => {
+    const item = findOcc(occView);
+    if (!item) return;
+    const text = buildOccText(item);
+    const ids = idsOf(item, "fotos");
+    if (ids.length) { await sharePhotos(ids, text, ids.map((id, i) => String(i + 1)), "ocorrencia"); return; }
+    if (navigator.share) {
+      try { await navigator.share({ title: "Ocorrência", text }); }
+      catch (error) { if (error && error.name !== "AbortError") toast("Não deu para abrir o envio"); }
+    } else toast((await copyText(text)) ? "Este aparelho não envia direto. O texto foi copiado." : "Não deu para enviar");
+  });
 
   /* ---------- Começo ---------- */
   applyCadastro(load(KEY_CADASTRO.injetora, null), "injetora");
