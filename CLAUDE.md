@@ -37,7 +37,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=5.0`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.1`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -221,13 +221,30 @@ Mesmos campos, regras e fotos da Injetora (N/A, linha em branco após título, m
 
 ## Parada de máquina (as duas linhas, 12/11/2026)
 
-- Bloco "Parada de máquina" no "O que você vai registrar?". Turno (obrigatório), máquina (botões com as máquinas **da linha**), peça (as peças daquela máquina + "Nenhuma peça") e motivo (caixa de texto no padrão de escrita). Segue a regra geral de Rascunhos e Salvar.
-- Máscara `parada`, **a mesma nas duas linhas**. **Texto PROVISÓRIO** (o dono disse que a máscara é a mesma, mas ainda não enviou o texto oficial):
-  ```
-  ⛔PARADA DE MÁQUINA | 停机
-  LINHA 生产线: / DATA 日期: / TURNO 班次: / MÁQUINA 机器: / PEÇA 零件: / MOTIVO 原因:
-  ```
-  Quando o dono mandar o texto oficial, ajustar `MASK_DEFAULTS.parada` (e os campos, se mudarem).
+Máscara `parada`, **oficial (enviada pelo dono em 12/11/2026) e a mesma nas duas linhas**:
+
+```
+🚨ALERTA PARADA DE MÁQUINA PQC | 机器停止警报 PQC🚨
+
+MÁQUINA 机器: <máquina> - <peça>
+
+HORÁRIO 时间: <hh:mm>
+
+MOTIVO 问题描述:
+- <texto livre, padrão de escrita>
+
+SOLICITANTE 请求者: <INJETORA | ESTAMPARIA>
+
+HELP CHAIN帮助链: <nomes>
+```
+
+- Bloco "Parada de máquina" no "O que você vai registrar?" das duas linhas. Segue a regra geral de Rascunhos e Salvar.
+- **Máquina:** botões com as máquinas **da linha** (caixa própria de cada linha) e depois as peças daquela máquina + "Nenhuma peça". No texto, a peça vai junto da máquina, separada por " - " (sem peça = só a máquina). Obrigatório escolher a máquina.
+- **Horário:** começa com a hora em que o relatório foi aberto; botão "Agora" atualiza.
+- **Motivo:** caixa de texto no padrão de escrita ("- TEXTO").
+- **Solicitante:** dois botões, **Injetora** e **Estamparia** (pedido do dono); tocar de novo desmarca.
+- **Help chain:** já vem com o da última parada salva da mesma linha (como no Bloqueio).
+- Não tem turno nem data no texto (a data fica guardada no relatório para as listas).
 
 ## Auditoria 6M
 
@@ -348,7 +365,7 @@ principal por tela, status nunca só por cor, sem informação solta.
    Case do Ímã 550 e 580/601, Tub D 550, Body-B Titânio 580/601, Tub D MAL 120/140,
    Pulsador Impeller, Capa do Pulsador Impeller, Dispenser Case B e Dispenser Case Soldado.
 5. Pesos por material (coluna PP C/TALCO cortada nas fotos) e regra de peso acima de 1 kg.
-6. ~~Linha de Estamparia~~ — feito (12/11/2026). Falta: peças das Linhas dos cestos 01–03, códigos das peças da Estamparia, texto oficial da Parada de máquina e conteúdo da Auditoria 6M.
+6. ~~Linha de Estamparia~~ — feito (12/11/2026). Falta: peças das Linhas dos cestos 01–03, códigos das peças da Estamparia, conteúdo da Auditoria 6M.
 7. Avaliar se o repositório deve ficar privado (códigos internos da Midea estão públicos).
 
 ## Ao trabalhar neste projeto

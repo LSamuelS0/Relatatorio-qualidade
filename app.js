@@ -139,16 +139,14 @@
       naoConforme: "NÃO CONFORME: ❌",
       localizacao: "LOCALIZAÇÃO: 📍"
     },
-    /* ---- Parada de máquina: a mesma máscara para as duas linhas.
-       PROVISÓRIA: o dono ainda vai passar o texto oficial (dá para trocar pelo editor de Máscaras). */
+    /* ---- Parada de máquina: a mesma máscara para as duas linhas (oficial, enviada pelo dono em 12/11/2026) ---- */
     parada: {
-      cabecalho: "⛔PARADA DE MÁQUINA | 停机",
-      linha: "LINHA 生产线:",
-      data: "DATA 日期:",
-      turno: "TURNO 班次:",
+      cabecalho: "🚨ALERTA PARADA DE MÁQUINA PQC | 机器停止警报 PQC🚨",
       maquina: "MÁQUINA 机器:",
-      peca: "PEÇA 零件:",
-      motivo: "MOTIVO 原因:"
+      horario: "HORÁRIO 时间:",
+      motivo: "MOTIVO 问题描述:",
+      solicitante: "SOLICITANTE 请求者:",
+      helpChain: "HELP CHAIN帮助链:"
     }
   };
   // Em qual linha cada máscara vale (o editor do ADM mostra só as da área escolhida)
@@ -165,7 +163,7 @@
     bloqueio: { name: "Bloqueio", cabecalho: "Cabeçalho", dataProducao: "Data da produção", codigo: "Código do material", motivo: "Motivo", quantidade: "Quantidade",
       responsavel: "Responsável", criticidade: "Criticidade", scrap: "Scrap", posicao: "Posição", helpChain: "Help chain",
       conforme: "Título da foto: Conforme", naoConforme: "Título da foto: Não conforme", localizacao: "Título das fotos: Localização" },
-    parada: { name: "Parada de máquina", cabecalho: "Cabeçalho", linha: "Linha", data: "Data", turno: "Turno", maquina: "Máquina", peca: "Peça", motivo: "Motivo" }
+    parada: { name: "Parada de máquina", cabecalho: "Cabeçalho", maquina: "Máquina", horario: "Horário", motivo: "Motivo", solicitante: "Solicitante", helpChain: "Help chain" }
   };
   // Estamparia usa os mesmos nomes de campo da Injetora
   MASK_LABELS.inicio_est = { ...MASK_LABELS.inicio };
@@ -973,47 +971,42 @@
 
   /* ---------- Parada de máquina ----------
      Mesma máscara (MASK.parada) para Injetora e Estamparia; as caixas de máquina e de
-     peça mostram o cadastro da linha do relatório. Texto PROVISÓRIO até o dono enviar o oficial. */
+     peça mostram o cadastro da linha do relatório. No texto, a peça vai junto da máquina:
+     "MÁQUINA 机器: PRENSA TRANSFER - CHAPA DO GABINETE 580 COM CANALETA".
+     Horário começa com a hora atual; help chain vem da última parada salva da mesma linha. */
   const NO_PART = "Nenhuma peça";
   let parada = null;
+  const nowTime = () => formatTime(new Date());
 
   function newParada() {
     parada = { id: newId(), line: LINE, type: "parada", startedAt: new Date().toISOString(), date: todayKey(),
-      turno: null, machine: null, part: null, fields: { motivo: "" }, savedId: null };
+      machine: null, part: null,
+      fields: { horario: nowTime(), motivo: "", solicitante: "", helpChain: lastTags("parada", "helpChain", LINE) }, savedId: null };
   }
 
   function isEmptyParada(item) {
-    return !item.turno && !item.machine && !(item.fields && (item.fields.motivo || "").trim());
+    const fields = item.fields || {};
+    return !item.machine && !["motivo", "solicitante"].some(key => (fields[key] || "").trim());
   }
 
   function buildParadaText(report) {
     const P = MASK.parada;
     const line = lineOf(report);
-    const up = text => String(text || "").toLocaleUpperCase("pt-BR");
-    const lines = [
-      P.cabecalho,
-      "",
-      P.linha + " " + up(LINES[line].name),
-      "",
-      P.data + " " + formatDate(dateFromKey(report.date)),
-      "",
-      P.turno + " " + (report.turno || ""),
-      "",
-      P.maquina + " " + (report.machine ? up(machineLabel(line, report.machine)) : ""),
-      "",
-      P.peca + " " + up(report.part),
-      "",
-      P.motivo
-    ];
-    const motivo = cleanMulti((report.fields || {}).motivo);
+    const fields = report.fields || {};
+    const up = text => String(text || "").toLocaleUpperCase("pt-BR").trim();
+    let machine = report.machine ? up(machineLabel(line, report.machine)) : "";
+    if (machine && report.part && report.part !== NO_PART) machine += " - " + up(report.part);
+    const single = (title, value) => title + (value ? " " + value : " ");
+    const lines = [P.cabecalho, "", single(P.maquina, machine), "", single(P.horario, up(fields.horario)), "", P.motivo];
+    const motivo = cleanMulti(fields.motivo);
     if (motivo) lines.push(motivo);
+    lines.push("", single(P.solicitante, up(fields.solicitante)), "", single(P.helpChain, up(fields.helpChain)));
     return lines.join("\n");
   }
 
   function renderParada() {
     setLine(lineOf(parada));
     $("stop-date").textContent = LINES[LINE].name + " · " + formatDate(dateFromKey(parada.date));
-    document.querySelectorAll("[data-pturno]").forEach(button => button.setAttribute("aria-checked", String(button.dataset.pturno === parada.turno)));
     fillMachineGrid($("stop-machines"), lineOf(parada), parada.machine, machine => {
       if (String(parada.machine) !== String(machine.id)) { parada.machine = machine.id; parada.part = null; }
       $("stop-machines").classList.remove("need");
@@ -1023,20 +1016,36 @@
     const machine = machinesOf(lineOf(parada)).find(other => String(other.id) === String(parada.machine));
     $("stop-part-field").hidden = !machine;
     fillPartChoices($("stop-parts"), machine, parada.part, label => { parada.part = label; keepDraft(parada); renderParada(); }, NO_PART);
-    const area = $("p-motivo");
-    if (area.value !== (parada.fields.motivo || "")) area.value = parada.fields.motivo || "";
-    fit(area);
+    document.querySelectorAll("[data-pchoice]").forEach(button => {
+      button.setAttribute("aria-checked", String(parada.fields[button.dataset.pchoice] === button.dataset.value));
+    });
+    document.querySelectorAll("[data-pfield]").forEach(input => {
+      const value = parada.fields[input.dataset.pfield] || "";
+      if (input.value !== value) input.value = value;
+      if (input.tagName === "TEXTAREA") fit(input);
+    });
   }
 
-  document.querySelectorAll("[data-pturno]").forEach(button => button.addEventListener("click", () => {
-    parada.turno = button.dataset.pturno;
-    document.querySelector(".stop-turno").classList.remove("need");
+  document.querySelectorAll("[data-pfield]").forEach(input => input.addEventListener("input", () => {
+    if (input.tagName === "INPUT" && input.type !== "time") {
+      const caret = input.selectionStart;
+      const upper = input.value.toLocaleUpperCase("pt-BR");
+      if (upper !== input.value) { input.value = upper; input.setSelectionRange(caret, caret); }
+    }
+    parada.fields[input.dataset.pfield] = input.value;
+    keepDraft(parada);
+  }));
+  /* Solicitante: Injetora ou Estamparia (tocar de novo desmarca) */
+  document.querySelectorAll("[data-pchoice]").forEach(button => button.addEventListener("click", () => {
+    const key = button.dataset.pchoice;
+    parada.fields[key] = parada.fields[key] === button.dataset.value ? "" : button.dataset.value;
     keepDraft(parada);
     renderParada();
   }));
-  $("p-motivo").addEventListener("input", event => {
-    parada.fields.motivo = event.target.value;
+  $("stop-now").addEventListener("click", () => {
+    parada.fields.horario = nowTime();
     keepDraft(parada);
+    renderParada();
   });
   $("start-parada").addEventListener("click", () => { newParada(); go("stop"); });
   $("stop-restart").addEventListener("click", () => {
@@ -1047,8 +1056,7 @@
     toast("Campos limpos");
   });
   $("stop-done").addEventListener("click", () => {
-    if (!parada.turno) { document.querySelector(".stop-turno").classList.add("need"); window.scrollTo({ top: 0, behavior: "smooth" }); toast("Escolha o turno primeiro"); return; }
-    if (!parada.machine) { $("stop-machines").classList.add("need"); toast("Escolha a máquina"); return; }
+    if (!parada.machine) { $("stop-machines").classList.add("need"); window.scrollTo({ top: 0, behavior: "smooth" }); toast("Escolha a máquina"); return; }
     active = "parada";
     go("done");
   });
@@ -1537,7 +1545,6 @@
       report.fields = { ...source.fields };
     } else if (source.type === "parada") {
       report.date = source.date;
-      report.turno = source.turno;
       report.machine = source.machine;
       report.part = source.part;
       report.fields = { ...source.fields };
@@ -1583,10 +1590,9 @@
       copy.fields = { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: "", ...(report.fields || {}) };
     } else if (report.type === "parada") {
       copy.date = report.date;
-      copy.turno = report.turno || null;
       copy.machine = report.machine || null;
       copy.part = report.part || null;
-      copy.fields = { motivo: "", ...(report.fields || {}) };
+      copy.fields = { horario: "", motivo: "", solicitante: "", helpChain: "", ...(report.fields || {}) };
     } else {
       copy.selections = { ...(report.selections || {}) };
       copy.turno = report.turno || null;
@@ -2476,7 +2482,8 @@
     }
     if (type === "parada") {
       const machine = machinesOf(line)[0];
-      return { type, line, date: todayKey(), turno: "T1", machine: machine.id, part: machine.items[0] || NO_PART, fields: { motivo: "- EXEMPLO DE TEXTO" } };
+      return { type, line, date: todayKey(), machine: machine.id, part: machine.items[0] || NO_PART,
+        fields: { horario: "05:30", motivo: "- EXEMPLO DE TEXTO", solicitante: "ESTAMPARIA", helpChain: "" } };
     }
     const fields = {};
     BLOCK_FIELDS.forEach(field => { fields[field.key] = field.key === "motivo" ? "- EXEMPLO DE TEXTO" : ""; });

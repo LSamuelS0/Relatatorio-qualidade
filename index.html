@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=5.0">
+  <link rel="stylesheet" href="styles.css?v=5.1">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -500,15 +500,6 @@
       </div>
 
       <div class="field">
-        <span class="field-label">Qual é o seu turno? <small>班次</small></span>
-        <div class="turno-pick stop-turno" role="radiogroup" aria-label="Turno">
-          <button type="button" class="turno" data-pturno="T1" role="radio">T1</button>
-          <button type="button" class="turno" data-pturno="T2" role="radio">T2</button>
-          <button type="button" class="turno" data-pturno="T3" role="radio">T3</button>
-        </div>
-      </div>
-
-      <div class="field">
         <span class="field-label">Qual máquina parou? <small>机器</small></span>
         <div class="occ-machines" id="stop-machines" role="radiogroup" aria-label="Máquina"></div>
       </div>
@@ -518,9 +509,27 @@
         <div class="choice-list" id="stop-parts" role="radiogroup" aria-label="Peça"></div>
       </div>
 
+      <div class="field">
+        <label class="field-label" for="p-horario">Horário <small>时间</small></label>
+        <div class="time-row">
+          <input class="text-input" type="time" id="p-horario" data-pfield="horario">
+          <button class="btn btn-outline btn-small-tall" type="button" id="stop-now">Agora</button>
+        </div>
+      </div>
       <label class="field" for="p-motivo">
-        <span class="field-label">Motivo <small>原因</small></span>
-        <textarea id="p-motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- POR QUE A MÁQUINA PAROU?"></textarea>
+        <span class="field-label">Motivo <small>问题描述</small></span>
+        <textarea id="p-motivo" data-pfield="motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- POR QUE A MÁQUINA PAROU?"></textarea>
+      </label>
+      <div class="field">
+        <span class="field-label">Solicitante <small>请求者</small></span>
+        <div class="turno-pick two" role="radiogroup" aria-label="Solicitante">
+          <button type="button" class="turno crit" data-pchoice="solicitante" data-value="INJETORA" role="radio">Injetora</button>
+          <button type="button" class="turno crit" data-pchoice="solicitante" data-value="ESTAMPARIA" role="radio">Estamparia</button>
+        </div>
+      </div>
+      <label class="field" for="p-helpChain">
+        <span class="field-label">Help chain <small>帮助链</small></span>
+        <input class="text-input" id="p-helpChain" data-pfield="helpChain" autocapitalize="characters" autocomplete="off" spellcheck="false">
       </label>
 
       <div class="bottom-bar">
@@ -762,8 +771,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=5.0"></script>
-  <script src="app.js?v=5.0"></script>
-  <script type="module" src="cloud.js?v=5.0"></script>
+  <script src="data.js?v=5.1"></script>
+  <script src="app.js?v=5.1"></script>
+  <script type="module" src="cloud.js?v=5.1"></script>
 </body>
 </html>
