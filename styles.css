@@ -364,3 +364,9 @@ h1,h2,p{margin:0}
 .bottom-bar.two #machines-register{flex:0 0 auto;width:auto;padding-left:16px;padding-right:16px}
 .bottom-bar.two #machines-done{flex:1;max-width:420px}
 .map-legend .lg.mark{position:static;margin:0;border:0;width:12px;height:12px}
+.map-shift-name{height:18px;font-size:9px;color:var(--muted)}
+.map-shifts{position:relative;height:18px}
+.map-shifts .shift{position:absolute;top:1px;height:16px;border-radius:5px;font-size:10px;font-weight:800;line-height:16px;padding:0 4px;white-space:nowrap;overflow:hidden;box-sizing:border-box}
+.shift.t1{background:#E3F1EA;color:#14513B;border:1px solid #9CCBB2}
+.shift.t2{background:#FFF0DD;color:#8A4200;border:1px solid #F3C98F}
+.shift.t3{background:#E6E8F4;color:#2F3A73;border:1px solid #B7BEE0}

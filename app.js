@@ -3229,6 +3229,25 @@
     const date = new Date(iso);
     return date.getHours() * 60 + date.getMinutes();
   }
+  /* Horário dos turnos (passado pelo dono em 12/11/2026). Dia: 0 = domingo … 6 = sábado.
+     Horas em minutos desde 00:00; "até 01:30" do T2 cai no dia seguinte (aparece lá, de 00:00 a 01:30). */
+  const SHIFTS = {
+    1: [{ t: "T1", from: 360, to: 960 }, { t: "T2", from: 960, to: 1530 }],                                   // segunda
+    2: [{ t: "T3", from: 0, to: 420 }, { t: "T1", from: 360, to: 960 }, { t: "T2", from: 960, to: 1530 }],     // terça
+    3: [{ t: "T3", from: 0, to: 420 }, { t: "T1", from: 360, to: 960 }, { t: "T2", from: 960, to: 1530 }],     // quarta
+    4: [{ t: "T3", from: 0, to: 420 }, { t: "T1", from: 360, to: 960 }, { t: "T2", from: 960, to: 1530 }],     // quinta
+    5: [{ t: "T3", from: 0, to: 420 }, { t: "T1", from: 360, to: 900 }, { t: "T2", from: 900, to: 1470 }],     // sexta
+    6: [{ t: "T3", from: 0, to: 480 }]                                                                         // sábado
+  };
+  // Faixas de turno de um dia: os do próprio dia + o fim do T2 do dia anterior (depois da meia-noite)
+  function shiftBands(dateKey) {
+    const day = dateFromKey(dateKey).getDay();
+    const bands = [];
+    (SHIFTS[(day + 6) % 7] || []).forEach(shift => { if (shift.to > 1440) bands.push({ t: shift.t, from: 0, to: shift.to - 1440, realFrom: shift.from, realTo: shift.to }); });
+    (SHIFTS[day] || []).forEach(shift => bands.push({ t: shift.t, from: shift.from, to: Math.min(shift.to, 1440), realFrom: shift.from, realTo: shift.to }));
+    return bands;
+  }
+
   function renderDayMap(everything) {
     const box = $("occ-map");
     box.innerHTML = "";
@@ -3254,6 +3273,24 @@
       axis.appendChild(tick);
     }
     grid.append(corner, axis);
+    // faixa dos turnos: T1/T2 numa linha, T3 noutra (porque se sobrepõem)
+    [["T1", "T2"], ["T3"]].forEach(group => {
+      const label = document.createElement("div");
+      label.className = "map-name map-shift-name";
+      label.textContent = group.join("/");
+      const band = document.createElement("div");
+      band.className = "map-shifts";
+      shiftBands(occDate).filter(shift => group.includes(shift.t)).forEach(shift => {
+        const piece = document.createElement("span");
+        piece.className = "shift " + shift.t.toLowerCase();
+        piece.style.left = px(shift.from) + "px";
+        piece.style.width = px(shift.to - shift.from) + "px";
+        const fmt = minutes => String(Math.floor(minutes / 60) % 24).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
+        piece.textContent = shift.t + " " + fmt(shift.realFrom) + "–" + fmt(shift.realTo);
+        band.appendChild(piece);
+      });
+      grid.append(label, band);
+    });
 
     machines.forEach(machine => {
       const name = document.createElement("div");
@@ -3304,7 +3341,7 @@
     });
     box.appendChild(grid);
     // mostra a hora atual (ou o começo do dia)
-    const focus = occDate === todayKey() ? px(end) - box.clientWidth / 2 : 0;
+    const focus = occDate === todayKey() ? px(end) - box.clientWidth / 2 : px(6 * 60) - 8; // outro dia: começa no T1 (06h)
     box.scrollLeft = Math.max(0, focus);
   }
 

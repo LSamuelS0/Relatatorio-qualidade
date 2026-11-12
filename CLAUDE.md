@@ -41,7 +41,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=5.81`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.9`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -275,7 +275,12 @@ Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais 
 - **Peça ou situação (12/11/2026):** depois da máquina, a lista mostra as peças da máquina (rodando), "Nenhuma peça (máquina parada)" e mais três situações: **Setup**, **Manutenção** (abre "Quem está fazendo?": Engenharia, Manutenção, Eletrônica, Ferramentaria — `MAINT_WHO`) e **Troca de molde** (abre "Qual peça vai entrar?": primeiro as peças da máquina, "Mostrar outras peças" lista todas as da linha). O problema é obrigatório para peça e parada; opcional para setup, manutenção e troca. Guardado em `kind` (`peca`, `parada`, `setup`, `manutencao`, `troca`), `who`, `newPart`; `part` guarda o texto que vai na máscara (ex.: "MANUTENÇÃO (Ferramentaria)", "TROCA DE MOLDE → Tub D 601").
 - **Mapa do dia (topo do "Ocorrências do dia"):** máquinas na vertical (da linha escolhida), horas na horizontal (00h–24h, arrasta para o lado; abre na hora atual). Cada máquina mantém a situação do último acontecimento até o próximo: barras verde (rodando, com o nome da peça), laranja (setup), cinza (parada), azul (manutenção), roxa (troca de molde). Ocorrências viram uma marca vermelha "!" na hora em que foram lançadas; tocar abre a ocorrência. Linha vermelha = agora (no dia de hoje).
 - **Botão "Registrar"** (Funcionamento de máquinas, ao lado de "Ver relatório pronto"): grava a situação de **todas** as máquinas naquela hora no mapa (pede o turno). Vai para `ocorrencias` com `type: "registro"` e `selections` — por isso não precisou de regra nova. Registros não aparecem na lista nem nas contas de ocorrências, só no mapa.
-- **Pendente com o dono:** horário dos turnos (o mapa mostra o dia inteiro, 00h–24h); confirmar as opções de quem faz a manutenção.
+- **Turnos (passados pelo dono em 12/11/2026)** — `SHIFTS` no `app.js`:
+  - Segunda a quinta: T1 06:00–16:00 · T2 16:00–01:30
+  - Sexta: T1 06:00–15:00 · T2 15:00–00:30
+  - Terça a sexta: T3 00:00–07:00 · Sábado: T3 00:00–08:00
+  - O mapa continua no dia do calendário (00h–24h, porque o T3 começa à meia-noite) com uma faixa de turnos por cima (T1/T2 numa linha, T3 noutra; o fim do T2 do dia anterior aparece de 00:00 até 01:30/00:30). Abre na hora atual (hoje) ou às 06h (outros dias).
+- **Pendente com o dono:** confirmar as opções de quem faz a manutenção.
 - **Dados:** `ocorrencias/{id}` no Firestore = `{ id, date (aaaa-mm-dd), at, turno, machine, machineName, part, problem, solution, obs, photos: { fotos: [ids] }, by (matrícula/ADM), owner, updatedAt? }`. Cópia no aparelho `rq.occ.v1`; envio pela fila de pendências (`o:id`). Regras: todos logados leem; cada um cria as suas; dono ou ADM apaga.
 - **Próximos passos:** lista de problemas do dono; depois, relatório/painel por período (semana, mês), por tipo de problema e por máquina.
 
