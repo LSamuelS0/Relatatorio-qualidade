@@ -981,8 +981,21 @@
   function newParada() {
     parada = { id: newId(), line: LINE, type: "parada", startedAt: new Date().toISOString(), date: todayKey(),
       machine: null, part: null,
-      fields: { horario: nowTime(), motivo: "", solicitante: "", helpChain: lastTags("parada", "helpChain", LINE) }, savedId: null };
+      fields: { horario: nowTime(), motivo: "", solicitante: "", helpChain: lastTags("parada", "helpChain", LINE) },
+      horarioManual: false, savedId: null };
   }
+
+  /* Horário: acompanha o relógio do aparelho até a pessoa editar (horarioManual).
+     "Agora" volta a acompanhar o relógio. */
+  function followClock() {
+    if (!parada || parada.horarioManual || parada.savedId) return;
+    const now = nowTime();
+    if (parada.fields.horario === now) return;
+    parada.fields.horario = now;
+    const input = $("p-horario");
+    if (input && document.activeElement !== input) input.value = now;
+  }
+  setInterval(() => { if (screenNow === "stop") followClock(); }, 15000);
 
   function isEmptyParada(item) {
     const fields = item.fields || {};
@@ -1006,6 +1019,7 @@
 
   function renderParada() {
     setLine(lineOf(parada));
+    followClock();
     $("stop-date").textContent = LINES[LINE].name + " · " + formatDate(dateFromKey(parada.date));
     fillMachineGrid($("stop-machines"), lineOf(parada), parada.machine, machine => {
       if (String(parada.machine) !== String(machine.id)) { parada.machine = machine.id; parada.part = null; }
@@ -1033,6 +1047,7 @@
       if (upper !== input.value) { input.value = upper; input.setSelectionRange(caret, caret); }
     }
     parada.fields[input.dataset.pfield] = input.value;
+    if (input.dataset.pfield === "horario") parada.horarioManual = true;
     keepDraft(parada);
   }));
   /* Solicitante: Injetora ou Estamparia (tocar de novo desmarca) */
@@ -1044,6 +1059,7 @@
   }));
   $("stop-now").addEventListener("click", () => {
     parada.fields.horario = nowTime();
+    parada.horarioManual = false;
     keepDraft(parada);
     renderParada();
   });
@@ -1057,6 +1073,7 @@
   });
   $("stop-done").addEventListener("click", () => {
     if (!parada.machine) { $("stop-machines").classList.add("need"); window.scrollTo({ top: 0, behavior: "smooth" }); toast("Escolha a máquina"); return; }
+    followClock();
     active = "parada";
     go("done");
   });
@@ -1593,6 +1610,7 @@
       copy.machine = report.machine || null;
       copy.part = report.part || null;
       copy.fields = { horario: "", motivo: "", solicitante: "", helpChain: "", ...(report.fields || {}) };
+      copy.horarioManual = true; // cópia de um salvo mantém o horário original
     } else {
       copy.selections = { ...(report.selections || {}) };
       copy.turno = report.turno || null;

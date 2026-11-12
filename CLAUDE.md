@@ -37,7 +37,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=5.1`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.2`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -240,7 +240,7 @@ HELP CHAIN帮助链: <nomes>
 
 - Bloco "Parada de máquina" no "O que você vai registrar?" das duas linhas. Segue a regra geral de Rascunhos e Salvar.
 - **Máquina:** botões com as máquinas **da linha** (caixa própria de cada linha) e depois as peças daquela máquina + "Nenhuma peça". No texto, a peça vai junto da máquina, separada por " - " (sem peça = só a máquina). Obrigatório escolher a máquina.
-- **Horário:** começa com a hora em que o relatório foi aberto; botão "Agora" atualiza.
+- **Horário:** hora atual do aparelho, editável. Enquanto a pessoa não mexe, acompanha o relógio (atualiza a cada 15 s, ao reabrir o rascunho e ao tocar em "Ver relatório pronto"); depois de editado, fica o que ela escreveu (`horarioManual`). Botão "Hora atual" volta a acompanhar o relógio. Cópia de relatório salvo mantém o horário original.
 - **Motivo:** caixa de texto no padrão de escrita ("- TEXTO").
 - **Solicitante:** dois botões, **Injetora** e **Estamparia** (pedido do dono); tocar de novo desmarca.
 - **Help chain:** já vem com o da última parada salva da mesma linha (como no Bloqueio).
