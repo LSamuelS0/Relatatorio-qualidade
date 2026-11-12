@@ -9,6 +9,7 @@
      fotos/{id}        foto em base64      (owner = uid; 1 foto por documento)
      compartilhado/ultimoBloqueio   último Status de bloqueio da troca de turno
                                     (qualquer pessoa logada lê e grava)
+     cadastro/injetora   máquinas e peças da Injetora (todos leem; só o ADM grava)
 
    O firebaseConfig NÃO é segredo: quem protege os dados são as regras de
    acesso (firestore.rules). A senha do ADM nunca fica no código.
@@ -143,6 +144,23 @@ const Cloud = {
   async removePhoto(id) {
     needUser();
     await deleteDoc(doc(db, "fotos", id));
+  },
+
+  /* Cadastro da Injetora (máquinas e peças): todos leem, só o ADM grava. */
+  async getCadastro() {
+    needUser();
+    const snapshot = await getDoc(doc(db, "cadastro", "injetora"));
+    return snapshot.exists() ? snapshot.data() : null;
+  },
+  watchCadastro(onData, onError) {
+    needUser();
+    return onSnapshot(doc(db, "cadastro", "injetora"),
+      snapshot => onData(snapshot.exists() ? snapshot.data() : null),
+      error => onError && onError(error));
+  },
+  async saveCadastro(value) {
+    needUser();
+    await setDoc(doc(db, "cadastro", "injetora"), clean({ ...value, updatedAt: new Date().toISOString(), by: uid() }));
   },
 
   /* Último Status de bloqueio da troca de turno (de qualquer pessoa). */

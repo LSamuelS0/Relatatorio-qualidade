@@ -48,8 +48,8 @@ Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os 
 
 Telas (versão 2.0, visual simplificado):
 1. **Em qual linha você está?** — Injetora (ativa) e Estamparia (em breve) + atalho "Meus relatórios" (só os salvos) + lista **Rascunhos**.
-2. **O que você vai registrar?** — blocos grandes: Início de turno, Troca de turno e Bloqueio (ativos); Scrap e Liberação (em breve).
-3. **Máquinas** — contadores Rodando / Setup / Paradas e um cartão por máquina com número grande. Status por cor **e** texto.
+2. **O que você vai registrar?** — blocos grandes: Funcionamento de máquinas (antigo "Início de turno"), Troca de turno e Bloqueio (ativos); Scrap e Liberação (em breve).
+3. **Máquinas** — turno (T1/T2/T3, obrigatório), contadores Rodando / Setup / Paradas e um cartão por máquina com número grande. Status por cor **e** texto.
 4. **Janela da máquina** — botões grandes com as peças daquela máquina + Setup / Parada + Confirmar.
 4b. **Troca de turno** — máscara "Alinhamento PQC Injetora" (detalhes abaixo).
 4c. **Bloqueio** — máscara "Bloqueio Injetora" com 3 fotos (detalhes abaixo).
@@ -72,14 +72,18 @@ Regras de funcionamento:
 - **Sem barra de rolagem (regra geral, todos os relatórios):** o texto do relatório aparece inteiro e toda caixa de texto cresce sozinha com o que é escrito. Máscaras novas devem seguir isso (o `app.js` aplica a qualquer `textarea`).
 - **Login e nuvem (Firebase, projeto `relatorio-qualidade`)** — ver seção "Banco de dados" abaixo.
 
-Formato do texto gerado:
+Formato do texto gerado (relatório de **Funcionamento de máquinas**, pedido do dono em 11/11/2026; as quantidades são os mesmos números dos contadores da tela):
 
 ```
-RELATÓRIO DE INÍCIO DE TURNO DA INJETORA
+RELATÓRIO DE FUNCIONAMENTO DE MÁQUINAS DA INJETORA
 (FABRICAÇÃO DE PLÁSTICO)
 
 Data: dd/mm/aaaa
-Horário de início: hh:mm
+Turno: T1 | T2 | T3
+
+Máquinas rodando: <qtd>
+Máquinas em setup: <qtd>
+Máquinas paradas: <qtd>
 
 MÁQUINAS QUE ESTÃO RODANDO NESTE MOMENTO:
 
@@ -187,6 +191,7 @@ Conforme e Não conforme: 1 foto cada (a nova substitui a anterior). Localizaç�
 - **Funcionamento (aparelho primeiro, nuvem em seguida):** o app continua guardando no aparelho (`rq.reports.v1`, `rq.drafts.v1`, fotos no IndexedDB `rq-photos`) e envia para a nuvem assim que possível. Pendências em `rq.pending.v1` (`d:id`, `r:id`, `x:d:id` para apagar). Ao entrar, o app envia o que está pendente e baixa relatórios, rascunhos e fotos da conta (`pull()`); depois fica **em tempo real** (`Cloud.watchMine` com `onSnapshot`): o que é salvo num aparelho aparece no outro sem recarregar. Também busca de novo ao voltar para o app. Sem internet, tudo continua funcionando e é enviado depois.
 - **Bolinha ao lado do usuário:** verde = tudo na nuvem; laranja = enviando; cinza = sem internet; **vermelha = a nuvem recusou ou não respondeu** (tocar mostra o motivo, ex.: regras não publicadas `permission-denied`, banco não criado `not-found`, servidor mudo `timeout`). Ao entrar, o app faz um teste no servidor (`Cloud.ping()`), e envio e download rodam separados, com limite de tempo (`withTimeout`), para um não travar o outro. Tocar na bolinha vermelha refaz o teste e o download (`reconnect()`): se o erro já foi resolvido (ex.: regras publicadas depois), ela volta a ficar verde sem recarregar a página. Regras novas no Firebase levam até ~1 min para valer.
 - **Troca de pessoa no mesmo aparelho:** `rq.owner.v1` guarda o dono da cópia local; se outra conta entrar, a cópia local da anterior é limpa. Na primeira entrada, o que foi feito antes do login vai para a conta que entrou.
+- **Cadastro da Injetora:** `cadastro/injetora` (máquinas, itens e `extraParts`), todos leem e só o ADM grava. O app aplica ao entrar e em tempo real (`watchCadastro`/`applyCadastro`), com cópia no aparelho (`rq.cadastro.v1`). Sem nada na nuvem, vale o `data.js`.
 - **Ainda não feito:** tela do administrador para ver os relatórios de todos (hoje: pelo painel do Firebase), criar contas pelo app, e apagar da nuvem fotos que não são mais usadas (só são apagadas do aparelho). Redefinir senha de outra pessoa só pelo painel do Firebase (pelo app exigiria o plano Blaze).
 
 ## Regras obrigatórias
@@ -266,7 +271,7 @@ principal por tela, status nunca só por cor, sem informação solta.
    - Cada máscara tem uma parte **fixa** (texto em português e chinês) que nunca muda, e campos que a pessoa preenche.
    - Algumas exigem **imagens**. Ex.: na de **Bloqueio**, primeiro o produto **conforme** com a imagem logo abaixo, depois o produto **não conforme** com a sua imagem.
    - Aguardando o dono enviar os modelos das máscaras.
-3. **Menu de administrador** (esboço aprovado para discussão em 11/11/2026; ainda não implementado):
+3. **Menu de administrador** — **Peças das máquinas FEITO** (11/11/2026): na tela inicial, só para o ADM, o bloco "Administrador → Peças das máquinas" lista as 19 máquinas; em cada uma dá para tirar peças, adicionar peças já cadastradas (lista com filtro) e cadastrar peça nova (nome + modelos + barra/vírgula + código da CTQ opcional). As mudanças ficam numa cópia (`rq.adminDraft.v1`, máquinas alteradas em laranja) até tocar em **Publicar**, que confere as regras (`validateCadastro`) e grava `cadastro/injetora`; **Descartar** volta ao publicado. Ainda falta: contas e usuários, e "ajustar as máscaras" (dono vai explicar o que quer ajustar). Esboço original:
    - Só a conta de administrador (usuário `ADM`) acessa. **A senha nunca vai para o código nem para este arquivo**: o repositório é público e qualquer pessoa leria. Ela fica só no serviço de login (Firebase).
    - Telas: Painel (atalhos + aviso de mudanças não publicadas) → Peças das máquinas (escolher máquina, remover e adicionar itens do catálogo) → Catálogo (cadastrar peça nova, perguntando se é uma peça só para os modelos — barra — ou uma por modelo — vírgula — e o código da CTQ de cada uma) → Contas e usuários (criar com matrícula, nome, senha inicial e tipo Operador/Administrador; redefinir senha; desativar) → Revisar e publicar (lista do que entra e sai, valida a regra da barra, publica).
    - Publicar = gravar o cadastro e o app atualizar para todos. Opção prevista: guardar máquinas/peças no Firestore (o app lê de lá), em vez de editar `data.js` pelo navegador — publicar direto na `main` exigiria um token do GitHub dentro do app, o que não é seguro num site público.

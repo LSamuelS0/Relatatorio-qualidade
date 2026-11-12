@@ -48,6 +48,12 @@ service cloud.firestore {
       allow read, write: if signedIn();
     }
 
+    // Cadastro da Injetora (quais peças rodam em cada máquina): todos leem, só o ADM altera.
+    match /cadastro/{doc} {
+      allow read: if signedIn();
+      allow write: if isAdmin();
+    }
+
     match /usuarios/{uid} {
       allow read: if isAdmin() || (signedIn() && request.auth.uid == uid);
       allow write: if isAdmin();

@@ -17,11 +17,12 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 
 - Visual simplificado, com botões grandes e uma ação por tela, pensado para quem tem pouco contato com computador.
 - Fluxo: escolher a linha → tipo de relatório → preencher → relatório pronto.
-- Relatórios da Injetora: **Início de turno**, **Troca de turno** (máscara Alinhamento PQC, com botão para puxar o último status de bloqueio) e **Bloqueio** (máscara com 3 fotos: conforme, não conforme e localização).
+- Relatórios da Injetora: **Funcionamento de máquinas** (turno + quantidade de máquinas rodando, em setup e paradas), **Troca de turno** (máscara Alinhamento PQC, com botão para puxar o último status de bloqueio) e **Bloqueio** (máscara com 3 fotos: conforme, não conforme e localização).
 - 19 máquinas fixas; cada uma começa como `MÁQUINA PARADA` e é alterada numa janela com as peças daquela máquina.
 - Contadores de máquinas rodando, em setup e paradas.
 - Data e horário registrados ao iniciar o relatório.
 - Salvar relatório, Copiar e Enviar; lista **Meus relatórios** (por enquanto salvos no próprio aparelho).
+- Administrador (conta ADM): ajusta quais peças rodam em cada máquina e publica para todos.
 - Login com matrícula e senha; relatórios, rascunhos e fotos salvos no Firebase (celular e computador com a mesma conta).
 - **Rascunhos** na tela inicial: tudo o que foi começado e não salvo, de qualquer tipo.
 - Textos e caixas de texto crescem com o conteúdo, sem barra de rolagem.

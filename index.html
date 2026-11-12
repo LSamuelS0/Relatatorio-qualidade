@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=3.7">
+  <link rel="stylesheet" href="styles.css?v=3.9">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -106,6 +106,53 @@
         <h2 class="subtitle">Rascunhos</h2>
         <div id="draft-list" class="report-list"></div>
       </div>
+
+      <div class="home-reports" id="home-admin" hidden>
+        <h2 class="subtitle">Administrador</h2>
+        <button class="row-card admin-card" type="button" data-go="admin">
+          <svg class="row-icon"><use href="#i-shield"/></svg>
+          <span class="row-text"><strong>Peças das máquinas</strong><small id="home-admin-sub">Ajustar o que roda em cada máquina da Injetora</small></span>
+          <svg class="chev"><use href="#i-next"/></svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- A1. Administrador: máquinas da Injetora -->
+    <section class="screen screen-admin" id="screen-admin" data-screen="admin" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Peças das máquinas</h1>
+          <span>Injetora · administrador</span>
+        </div>
+      </div>
+      <div class="admin-pending" id="admin-pending" hidden>
+        <strong id="admin-pending-text">Mudanças ainda não publicadas</strong>
+        <span>Só valem para todos depois de publicar.</span>
+        <div class="actions-row">
+          <button class="btn btn-primary btn-small-tall" type="button" id="admin-publish"><svg><use href="#i-check"/></svg>Publicar</button>
+          <button class="btn btn-quiet danger btn-small-tall" type="button" id="admin-discard">Descartar</button>
+        </div>
+      </div>
+      <p class="hint">Toque na máquina para tirar ou colocar peças.</p>
+      <div class="admin-grid" id="admin-machines"></div>
+    </section>
+
+    <!-- A2. Administrador: uma máquina -->
+    <section class="screen screen-admin" id="screen-admin-machine" data-screen="admin-machine" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="admin" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1 id="am-title">Máquina</h1>
+          <span>O que esta máquina pode rodar</span>
+        </div>
+      </div>
+      <div class="admin-list" id="am-items"></div>
+      <div class="actions">
+        <button class="btn btn-outline" type="button" id="am-add"><svg><use href="#i-plus"/></svg>Adicionar peça</button>
+        <button class="btn btn-quiet" type="button" id="am-new"><svg><use href="#i-edit"/></svg>Cadastrar peça nova</button>
+        <button class="btn btn-primary" type="button" data-go="admin">Pronto<svg><use href="#i-check"/></svg></button>
+      </div>
     </section>
 
     <!-- 2. Tipo de relatório -->
@@ -116,7 +163,7 @@
       <div class="tiles">
         <button class="tile" type="button" id="start-turno">
           <span class="tile-icon"><svg><use href="#i-sun"/></svg></span>
-          <strong>Início de turno</strong>
+          <strong>Funcionamento de máquinas</strong>
         </button>
         <button class="tile" type="button" id="start-troca">
           <span class="tile-icon"><svg><use href="#i-swap"/></svg></span>
@@ -143,10 +190,15 @@
         <div class="head-row">
           <button class="icon-btn" type="button" data-go="type" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
           <div class="head-text">
-            <h1>Início de turno</h1>
+            <h1>Funcionamento de máquinas</h1>
             <span id="draft-when">--/--/---- · --:--</span>
           </div>
           <button class="text-btn" type="button" id="restart">Recomeçar</button>
+        </div>
+        <div class="turno-pick turno-pick-machines" role="radiogroup" aria-label="Turno">
+          <button type="button" class="turno" data-mturno="T1" role="radio">T1</button>
+          <button type="button" class="turno" data-mturno="T2" role="radio">T2</button>
+          <button type="button" class="turno" data-mturno="T3" role="radio">T3</button>
         </div>
         <div class="counters">
           <div class="counter run"><strong id="count-run">0</strong><span>Rodando</span></div>
@@ -157,7 +209,7 @@
       <p class="hint">Toque na máquina para dizer o que ela está rodando.</p>
       <div id="machine-list" class="machine-list"></div>
       <div class="bottom-bar">
-        <button class="btn btn-primary" type="button" data-go="done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
+        <button class="btn btn-primary" type="button" id="machines-done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
       </div>
     </section>
 
@@ -339,7 +391,7 @@
       <div class="reports-layout">
         <div id="report-list" class="report-list"></div>
         <div class="report-view" id="report-view" hidden>
-          <h2 id="view-title">Início de turno · Injetora</h2>
+          <h2 id="view-title">Relatório</h2>
           <p class="muted" id="view-sub"></p>
           <pre class="report-text" id="view-text" tabindex="0"></pre>
           <div class="photo-blocks" id="view-photos" hidden></div>
@@ -353,6 +405,57 @@
       </div>
     </section>
   </main>
+
+  <!-- Janela (ADM): adicionar peça já cadastrada a uma máquina -->
+  <dialog id="item-sheet" class="sheet product-sheet" aria-labelledby="item-title">
+    <div class="sheet-body">
+      <span class="grip" aria-hidden="true"></span>
+      <div class="sheet-head">
+        <div><h2 id="item-title">Adicionar peça</h2><p class="muted">Peças já cadastradas. Escreva para filtrar.</p></div>
+      </div>
+      <label class="search-box" for="item-search">
+        <svg><use href="#i-search"/></svg>
+        <input id="item-search" type="search" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="NOME DA PEÇA">
+      </label>
+      <div class="product-list" id="item-list" role="listbox" aria-label="Peças"></div>
+      <button class="btn btn-quiet" type="button" id="item-close">Fechar</button>
+    </div>
+  </dialog>
+
+  <!-- Janela (ADM): cadastrar peça nova -->
+  <dialog id="newpart-sheet" class="sheet" aria-labelledby="newpart-title">
+    <div class="sheet-body">
+      <span class="grip" aria-hidden="true"></span>
+      <h2 id="newpart-title" class="sheet-title">Cadastrar peça nova</h2>
+      <label class="field" for="np-name">
+        <span class="field-label">Nome da peça <small>sem o modelo</small></span>
+        <input class="text-input" id="np-name" autocomplete="off" spellcheck="false" placeholder="EX.: CASE DO ÍMÃ">
+      </label>
+      <div class="field">
+        <span class="field-label">Para quais modelos?</span>
+        <div class="model-pick" id="np-models">
+          <button type="button" class="turno" data-model="550">550</button>
+          <button type="button" class="turno" data-model="580">580</button>
+          <button type="button" class="turno" data-model="601">601</button>
+          <button type="button" class="turno" data-model="640">640</button>
+        </div>
+      </div>
+      <div class="field" id="np-kind-field">
+        <span class="field-label">É a mesma peça para esses modelos?</span>
+        <button type="button" class="kind-option" data-kind="shared"><strong>Sim, uma peça só (barra)</strong><small>Um código. Ex.: Pulsador 580/601</small></button>
+        <button type="button" class="kind-option" data-kind="split"><strong>Não, uma peça por modelo (vírgula)</strong><small>Um código cada. Ex.: Tub D 580 e Tub D 601</small></button>
+      </div>
+      <div class="field">
+        <span class="field-label">Vai aparecer assim <small>código da CTQ (opcional)</small></span>
+        <div class="np-preview" id="np-preview"></div>
+      </div>
+      <p class="login-error" id="np-error" hidden></p>
+      <div class="actions-row">
+        <button class="btn btn-quiet" type="button" id="np-cancel">Cancelar</button>
+        <button class="btn btn-primary" type="button" id="np-save">Adicionar</button>
+      </div>
+    </div>
+  </dialog>
 
   <!-- Janela: escolher produto (código do material) -->
   <dialog id="product-sheet" class="sheet product-sheet" aria-labelledby="product-title">
@@ -389,8 +492,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=3.7"></script>
-  <script src="app.js?v=3.7"></script>
-  <script type="module" src="cloud.js?v=3.7"></script>
+  <script src="data.js?v=3.9"></script>
+  <script src="app.js?v=3.9"></script>
+  <script type="module" src="cloud.js?v=3.9"></script>
 </body>
 </html>

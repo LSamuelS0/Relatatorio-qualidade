@@ -4,6 +4,45 @@
   const DATA = window.QUALITY_REPORT_DATA;
   const machines = DATA.machines;
   const partsByCode = new Map(DATA.parts.map(part => [part.code, part]));
+
+  /* ---------- Cadastro da Injetora ----------
+     Base: data.js. O administrador pode publicar outra versão na nuvem
+     (cadastro/injetora), que substitui máquinas e itens para todos e pode
+     acrescentar peças novas ao catálogo (extraParts). Cópia no aparelho: rq.cadastro.v1. */
+  const KEY_CADASTRO = "rq.cadastro.v1";
+  const clone = value => JSON.parse(JSON.stringify(value));
+  const BASE = { machines: clone(DATA.machines), items: clone(DATA.items), parts: clone(DATA.parts) };
+
+  function currentCadastro() {
+    const extraParts = DATA.parts.filter(part => !BASE.parts.some(base => base.code === part.code));
+    return clone({ machines: machines, items: DATA.items, extraParts });
+  }
+
+  function applyCadastro(cad) {
+    const source = cad && Array.isArray(cad.machines) && cad.items ? cad : { machines: BASE.machines, items: BASE.items, extraParts: [] };
+    machines.splice(0, machines.length, ...clone(source.machines));
+    Object.keys(DATA.items).forEach(key => delete DATA.items[key]);
+    Object.assign(DATA.items, clone(source.items));
+    DATA.parts.splice(0, DATA.parts.length, ...clone(BASE.parts));
+    (source.extraParts || []).forEach(part => { if (part && part.code && !partsByCode.has(part.code) || !BASE.parts.some(base => base.code === part.code)) DATA.parts.push(part); });
+    partsByCode.clear();
+    DATA.parts.forEach(part => partsByCode.set(part.code, part));
+    if (typeof refreshProducts === "function") refreshProducts();
+  }
+
+  /* Confere um cadastro antes de publicar (mesmas regras do validateData). */
+  function validateCadastro(cad) {
+    const problems = [];
+    const codes = new Set(BASE.parts.map(part => part.code).concat((cad.extraParts || []).map(part => part.code)));
+    cad.machines.forEach(machine => machine.items.forEach(label => {
+      if (!(label in cad.items)) problems.push("Máquina " + machine.id + ": peça sem cadastro → " + label);
+    }));
+    Object.entries(cad.items).forEach(([label, list]) => {
+      list.forEach(code => { if (code !== null && !codes.has(code)) problems.push(label + ": código sem cadastro → " + code); });
+      if (/\d\/\d/.test(label) && new Set(list).size !== 1) problems.push(label + ": usa barra, mas tem mais de um código");
+    });
+    return problems;
+  }
   const STOPPED = "MÁQUINA PARADA";
   const SETUP = "SETUP";
   const KEY_REPORTS = "rq.reports.v1";
@@ -75,7 +114,7 @@
   function newDraft() {
     const selections = {};
     machines.forEach(machine => { selections[machine.id] = STOPPED; });
-    draft = { id: newId(), line: "injetora", type: "inicio", startedAt: new Date().toISOString(), selections, savedId: null };
+    draft = { id: newId(), line: "injetora", type: "inicio", startedAt: new Date().toISOString(), turno: null, selections, savedId: null };
   }
 
   function sanitizeDraft(item) {
@@ -113,12 +152,17 @@
 
   function buildText(report) {
     const started = new Date(report.startedAt);
+    const total = counts(report.selections);
     const lines = [
-      "RELATÓRIO DE INÍCIO DE TURNO DA INJETORA",
+      "RELATÓRIO DE FUNCIONAMENTO DE MÁQUINAS DA INJETORA",
       "(FABRICAÇÃO DE PLÁSTICO)",
       "",
       "Data: " + formatDate(started),
-      "Horário de início: " + formatTime(started),
+      "Turno: " + (report.turno || ""),
+      "",
+      "Máquinas rodando: " + total.run,
+      "Máquinas em setup: " + total.setup,
+      "Máquinas paradas: " + total.stop,
       "",
       "MÁQUINAS QUE ESTÃO RODANDO NESTE MOMENTO:",
       ""
@@ -501,8 +545,12 @@
 
   /* Escolher produto: lista do catálogo da CTQ que filtra enquanto a pessoa escreve.
      Valor gravado: "CÓDIGO - NOME" (ou o texto que a pessoa escreveu). */
-  const PRODUCTS = DATA.parts.map(part => ({ code: part.code, name: part.name.toLocaleUpperCase("pt-BR"),
-    label: part.code + " - " + part.name.toLocaleUpperCase("pt-BR") }));
+  const PRODUCTS = [];
+  function refreshProducts() {
+    PRODUCTS.splice(0, PRODUCTS.length, ...DATA.parts.map(part => ({ code: part.code, name: part.name.toLocaleUpperCase("pt-BR"),
+      label: part.code + " - " + part.name.toLocaleUpperCase("pt-BR") })));
+  }
+  refreshProducts();
   const plain = text => text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
   const productSheet = $("product-sheet");
 
@@ -846,6 +894,8 @@
     if (name === "shift" && !shift) newShift();
     if (name === "block" && !block) newBlock();
     if (name === "done" && !current()) { go("type"); return; }
+    if (name.startsWith("admin") && !(user && user.admin)) { go("home"); return; }
+    if (name === "admin-machine" && !adminMachineId) { go("admin"); return; }
     screens.forEach(screen => { screen.hidden = screen.dataset.screen !== name; });
     if (name === "home") renderHome();
     if (name === "machines") renderMachines();
@@ -853,6 +903,8 @@
     if (name === "block") renderBlock();
     if (name === "done") renderDone();
     if (name === "reports") renderReports();
+    if (name === "admin") renderAdmin();
+    if (name === "admin-machine") renderAdminMachine();
     window.scrollTo(0, 0);
   }
   document.addEventListener("click", event => {
@@ -862,6 +914,8 @@
 
   /* ---------- Início ---------- */
   function renderHome() {
+    $("home-admin").hidden = !(user && user.admin);
+    if (user && user.admin) $("home-admin-sub").textContent = adminDirty() ? "Há mudanças ainda não publicadas" : "Ajustar o que roda em cada máquina da Injetora";
     const reports = load(KEY_REPORTS, []);
     if (reports.length) {
       const last = reports[0];
@@ -968,6 +1022,8 @@
     $("count-run").textContent = total.run;
     $("count-setup").textContent = total.setup;
     $("count-stop").textContent = total.stop;
+    document.querySelectorAll("[data-mturno]").forEach(button => button.setAttribute("aria-checked", String(button.dataset.mturno === draft.turno)));
+    document.querySelector(".turno-pick-machines").classList.remove("need");
 
     const list = $("machine-list");
     list.innerHTML = "";
@@ -1006,6 +1062,23 @@
     svg.appendChild(use);
     return svg;
   }
+
+  /* Turno do relatório de funcionamento de máquinas (obrigatório) */
+  document.querySelectorAll("[data-mturno]").forEach(button => button.addEventListener("click", () => {
+    if (draft.turno === button.dataset.mturno) return;
+    draft.turno = button.dataset.mturno;
+    keepDraft(draft);
+    renderMachines();
+  }));
+  $("machines-done").addEventListener("click", () => {
+    if (!draft.turno) {
+      document.querySelector(".turno-pick-machines").classList.add("need");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      toast("Escolha o turno primeiro");
+      return;
+    }
+    go("done");
+  });
 
   $("restart").addEventListener("click", () => {
     if (confirm("Recomeçar o relatório? Todas as máquinas voltam para PARADA e a data/hora é atualizada.")) {
@@ -1070,7 +1143,7 @@
   /* ---------- Relatório pronto ---------- */
   const current = () => (active === "troca" ? shift : active === "bloqueio" ? block : draft);
   const textOf = report => (report.type === "bloqueio" ? buildBlockText(report) : report.type === "troca" ? buildShiftText(report) : buildText(report));
-  const TITLES = { inicio: "Início de turno", troca: "Troca de turno", bloqueio: "Bloqueio" };
+  const TITLES = { inicio: "Funcionamento de máquinas", troca: "Troca de turno", bloqueio: "Bloqueio" };
   const titleOf = report => (TITLES[report.type] || "Relatório") + " · Injetora";
   const editScreen = () => (active === "troca" ? "shift" : active === "bloqueio" ? "block" : "machines");
 
@@ -1109,6 +1182,7 @@
       report.turno = source.turno;
       report.fields = { ...source.fields };
     } else {
+      report.turno = source.turno || null;
       report.selections = { ...source.selections };
     }
     reports.unshift(report);
@@ -1148,6 +1222,7 @@
       copy.fields = { relatorio: "", atencao: "", pendencias: "", bloqueio: "", marcacoes: "", ...(report.fields || {}) };
     } else {
       copy.selections = { ...(report.selections || {}) };
+      copy.turno = report.turno || null;
     }
     keepDraft(copy);
     toast("Cópia aberta como rascunho. O salvo não muda.");
@@ -1283,7 +1358,6 @@
     toastTimer = setTimeout(() => element.classList.remove("show"), 2600);
   }
 
-  /* ---------- Começo ---------- */
   /* ---------- Nuvem (Firebase): login e sincronização ----------
      O aparelho guarda uma cópia (funciona sem internet) e tudo é enviado para o
      Firebase assim que possível. Ao entrar, o app baixa os relatórios, rascunhos
@@ -1481,6 +1555,7 @@
     try {
       await pull();
       startWatching();
+      watchCadastro();
     } catch (error) {
       reportSync(error);
       return false;
@@ -1518,6 +1593,7 @@
 
   function onLogout() {
     stopWatching();
+    if (unwatchCadastro) { try { unwatchCadastro(); } catch (error) { /* já parado */ } unwatchCadastro = null; }
     syncError = null;
     user = null;
     draft = null; shift = null; block = null;
@@ -1574,7 +1650,286 @@
     Cloud.onUser(account => (account ? onLogin(account) : (onLogout(), loginState("Entrar", false))));
   }
 
+  /* ---------- Cadastro da Injetora vindo da nuvem (todos) ---------- */
+  let unwatchCadastro = null;
+  function watchCadastro() {
+    if (unwatchCadastro || !window.Cloud.watchCadastro) return;
+    unwatchCadastro = Cloud.watchCadastro(cad => {
+      if (cad) store(KEY_CADASTRO, cad); else { try { localStorage.removeItem(KEY_CADASTRO); } catch (error) { /* ok */ } }
+      applyCadastro(cad);
+      if (screenNow === "home") renderHome();
+      if (screenNow === "machines" && draft) { sanitizeDraft(draft); renderMachines(); }
+      if (screenNow === "admin") renderAdmin();
+    }, reportSync);
+  }
+
+  /* ---------- Administrador: peças das máquinas ----------
+     O ADM edita uma cópia (adminDraft, guardada em rq.adminDraft.v1). Nada muda
+     para os outros até tocar em "Publicar", que grava cadastro/injetora. */
+  const KEY_ADMIN_DRAFT = "rq.adminDraft.v1";
+  let adminDraft = load(KEY_ADMIN_DRAFT, null);
+  let adminMachineId = null;
+
+  function adminWork() {
+    if (!adminDraft) adminDraft = currentCadastro();
+    return adminDraft;
+  }
+  function saveAdminDraft() { store(KEY_ADMIN_DRAFT, adminDraft); }
+  function adminDirty() {
+    return Boolean(adminDraft) && JSON.stringify(adminDraft) !== JSON.stringify(currentCadastro());
+  }
+  function changedMachines() {
+    if (!adminDraft) return new Set();
+    const now = new Map(machines.map(machine => [machine.id, JSON.stringify(machine.items)]));
+    return new Set(adminDraft.machines.filter(machine => now.get(machine.id) !== JSON.stringify(machine.items)).map(machine => machine.id));
+  }
+
+  function renderAdmin() {
+    const work = adminWork();
+    const changed = changedMachines();
+    const dirty = adminDirty();
+    $("admin-pending").hidden = !dirty;
+    $("admin-pending-text").textContent = changed.size
+      ? (changed.size === 1 ? "1 máquina alterada" : changed.size + " máquinas alteradas") + " · ainda não publicado"
+      : "Mudanças ainda não publicadas";
+    const grid = $("admin-machines");
+    grid.innerHTML = "";
+    work.machines.forEach(machine => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "admin-machine" + (changed.has(machine.id) ? " changed" : "");
+      const title = document.createElement("strong");
+      title.textContent = "Máquina " + machine.id;
+      const list = document.createElement("small");
+      list.textContent = machine.items.length ? machine.items.join(" · ") : "Nenhuma peça";
+      button.append(title, list);
+      if (changed.has(machine.id)) {
+        const tag = document.createElement("span");
+        tag.className = "tag";
+        tag.textContent = "ALTERADA";
+        button.appendChild(tag);
+      }
+      button.addEventListener("click", () => { adminMachineId = machine.id; go("admin-machine"); });
+      grid.appendChild(button);
+    });
+  }
+
+  function adminMachine() {
+    return adminWork().machines.find(machine => machine.id === adminMachineId);
+  }
+
+  function renderAdminMachine() {
+    const machine = adminMachine();
+    $("am-title").textContent = "Máquina " + machine.id;
+    const list = $("am-items");
+    list.innerHTML = "";
+    if (!machine.items.length) {
+      const empty = document.createElement("p");
+      empty.className = "admin-empty";
+      empty.textContent = "Nenhuma peça. Toque em Adicionar peça.";
+      list.appendChild(empty);
+    }
+    machine.items.forEach(label => {
+      const row = document.createElement("div");
+      row.className = "admin-item";
+      const name = document.createElement("span");
+      name.textContent = label;
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.className = "remove";
+      remove.setAttribute("aria-label", "Tirar " + label + " da máquina " + machine.id);
+      remove.appendChild(icon("i-trash"));
+      remove.addEventListener("click", () => {
+        machine.items = machine.items.filter(other => other !== label);
+        saveAdminDraft();
+        renderAdminMachine();
+        toast(label + " saiu da máquina " + machine.id);
+      });
+      row.append(name, remove);
+      list.appendChild(row);
+    });
+  }
+
+  function addToMachine(label) {
+    const machine = adminMachine();
+    if (!machine.items.includes(label)) machine.items.push(label);
+    saveAdminDraft();
+    renderAdminMachine();
+  }
+
+  /* Adicionar peça já cadastrada */
+  const itemSheet = $("item-sheet");
+  function renderItemList() {
+    const machine = adminMachine();
+    const words = plain($("item-search").value.trim()).split(/\s+/).filter(Boolean);
+    const list = $("item-list");
+    list.innerHTML = "";
+    const labels = Object.keys(adminWork().items)
+      .filter(label => !machine.items.includes(label))
+      .filter(label => words.every(word => plain(label).includes(word)))
+      .sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+    labels.forEach(label => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "product-option";
+      const name = document.createElement("strong");
+      name.textContent = label;
+      const codes = document.createElement("small");
+      codes.textContent = adminWork().items[label].filter(Boolean).join(" · ") || "sem código";
+      option.append(name, codes);
+      option.addEventListener("click", () => { addToMachine(label); itemSheet.close(); toast(label + " entrou na máquina " + machine.id); });
+      list.appendChild(option);
+    });
+    if (!labels.length) {
+      const empty = document.createElement("p");
+      empty.className = "admin-empty";
+      empty.textContent = "Nenhuma peça encontrada. Use \"Cadastrar peça nova\".";
+      list.appendChild(empty);
+    }
+  }
+  $("am-add").addEventListener("click", () => {
+    $("item-search").value = "";
+    renderItemList();
+    if (typeof itemSheet.showModal === "function") itemSheet.showModal(); else itemSheet.setAttribute("open", "");
+  });
+  $("item-search").addEventListener("input", renderItemList);
+  $("item-close").addEventListener("click", () => itemSheet.close());
+  itemSheet.addEventListener("click", event => { if (event.target === itemSheet) itemSheet.close(); });
+
+  /* Cadastrar peça nova (regra da vírgula e da barra) */
+  const newSheet = $("newpart-sheet");
+  let npModels = [];
+  let npKind = "split";
+  function npLabels() {
+    const name = $("np-name").value.trim().toLocaleUpperCase("pt-BR").replace(/\s+/g, " ");
+    if (!name) return [];
+    // "CASE DO ÍMÃ" → "Case do Ímã" (palavras curtas como do/da/de/e ficam minúsculas, como no cadastro)
+    const small = new Set(["do", "da", "de", "dos", "das", "e", "com", "para"]);
+    const toTitle = text => text.toLocaleLowerCase("pt-BR").split(" ").map((word, index) =>
+      index > 0 && small.has(word) ? word : word.replace(/(^|[/-])(\p{L})/gu, (m, sep, ch) => sep + ch.toLocaleUpperCase("pt-BR"))).join(" ");
+    const base = toTitle(name);
+    const models = npModels.slice().sort();
+    if (!models.length) return [base];
+    return npKind === "shared" && models.length > 1 ? [base + " " + models.join("/")] : models.map(model => base + " " + model);
+  }
+  function renderNewPart() {
+    document.querySelectorAll("[data-model]").forEach(button => button.setAttribute("aria-pressed", String(npModels.includes(button.dataset.model))));
+    $("np-kind-field").hidden = npModels.length < 2;
+    document.querySelectorAll("[data-kind]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.kind === npKind)));
+    const preview = $("np-preview");
+    const typed = {};
+    preview.querySelectorAll("input").forEach(input => { typed[input.dataset.label] = input.value; });
+    preview.innerHTML = "";
+    const labels = npLabels();
+    if (!labels.length) {
+      const empty = document.createElement("p");
+      empty.className = "muted small";
+      empty.textContent = "Escreva o nome da peça.";
+      preview.appendChild(empty);
+    }
+    labels.forEach(label => {
+      const row = document.createElement("div");
+      row.className = "np-row";
+      const name = document.createElement("strong");
+      name.textContent = label;
+      const code = document.createElement("input");
+      code.className = "text-input";
+      code.dataset.label = label;
+      code.placeholder = "CÓDIGO";
+      code.autocomplete = "off";
+      code.setAttribute("aria-label", "Código da CTQ de " + label);
+      const known = (adminWork().items[label] || [])[0];
+      code.value = typed[label] || known || "";
+      row.append(name, code);
+      preview.appendChild(row);
+    });
+    $("np-error").hidden = true;
+  }
+  $("am-new").addEventListener("click", () => {
+    $("np-name").value = "";
+    npModels = [];
+    npKind = "split";
+    renderNewPart();
+    if (typeof newSheet.showModal === "function") newSheet.showModal(); else newSheet.setAttribute("open", "");
+    $("np-name").focus();
+  });
+  $("np-name").addEventListener("input", () => {
+    const input = $("np-name");
+    const caret = input.selectionStart;
+    const upper = input.value.toLocaleUpperCase("pt-BR");
+    if (upper !== input.value) { input.value = upper; input.setSelectionRange(caret, caret); }
+    renderNewPart();
+  });
+  document.querySelectorAll("[data-model]").forEach(button => button.addEventListener("click", () => {
+    const model = button.dataset.model;
+    npModels = npModels.includes(model) ? npModels.filter(other => other !== model) : npModels.concat(model);
+    renderNewPart();
+  }));
+  document.querySelectorAll("[data-kind]").forEach(button => button.addEventListener("click", () => { npKind = button.dataset.kind; renderNewPart(); }));
+  $("np-cancel").addEventListener("click", () => newSheet.close());
+  $("np-save").addEventListener("click", () => {
+    const labels = npLabels();
+    const error = message => { $("np-error").textContent = message; $("np-error").hidden = false; };
+    if (!labels.length) return error("Escreva o nome da peça.");
+    const work = adminWork();
+    const codes = {};
+    for (const input of $("np-preview").querySelectorAll("input")) {
+      const code = input.value.trim().toUpperCase();
+      codes[input.dataset.label] = code || null;
+    }
+    const filled = Object.values(codes).filter(Boolean);
+    if (new Set(filled).size !== filled.length) return error("Peças diferentes não podem ter o mesmo código. Se é a mesma peça, escolha \"uma peça só (barra)\".");
+    labels.forEach(label => {
+      const code = codes[label];
+      if (!work.items[label]) work.items[label] = [code];
+      else if (code) work.items[label] = [code];
+      if (code && !BASE.parts.some(part => part.code === code) && !work.extraParts.some(part => part.code === code)) {
+        work.extraParts.push({ code, name: label, it: null });
+      }
+      addToMachine(label);
+    });
+    saveAdminDraft();
+    newSheet.close();
+    toast(labels.length > 1 ? labels.length + " peças cadastradas" : "Peça cadastrada");
+  });
+  newSheet.addEventListener("click", event => { if (event.target === newSheet) newSheet.close(); });
+
+  /* Publicar / descartar */
+  $("admin-publish").addEventListener("click", async () => {
+    const work = adminWork();
+    const problems = validateCadastro(work);
+    if (problems.length) { alert("Corrija antes de publicar:\n\n- " + problems.join("\n- ")); return; }
+    const changed = changedMachines();
+    if (!confirm("Publicar para todos? " + (changed.size ? changed.size + " máquina(s) alterada(s)." : "") + "\nQuem estiver usando o app recebe a mudança na hora.")) return;
+    const button = $("admin-publish");
+    button.disabled = true;
+    try {
+      await withTimeout(Cloud.saveCadastro(work));
+      store(KEY_CADASTRO, work);
+      applyCadastro(work);
+      adminDraft = null;
+      try { localStorage.removeItem(KEY_ADMIN_DRAFT); } catch (error) { /* ok */ }
+      renderAdmin();
+      toast("Publicado! Já vale para todos.");
+    } catch (error) {
+      reportSync(error);
+      alert(error && error.code === "permission-denied"
+        ? "O Firebase não deixou publicar. Confira se as regras novas (firestore.rules, com a parte \"cadastro\") foram publicadas."
+        : "Não deu para publicar agora. Verifique a internet e tente de novo.");
+    } finally {
+      button.disabled = false;
+    }
+  });
+  $("admin-discard").addEventListener("click", () => {
+    if (!confirm("Descartar todas as mudanças não publicadas?")) return;
+    adminDraft = null;
+    try { localStorage.removeItem(KEY_ADMIN_DRAFT); } catch (error) { /* ok */ }
+    renderAdmin();
+    toast("Mudanças descartadas");
+  });
+
   /* ---------- Começo ---------- */
+  applyCadastro(load(KEY_CADASTRO, null));
   migrateOldDrafts();
   go("login");
   loginState("Conectando…", true);
