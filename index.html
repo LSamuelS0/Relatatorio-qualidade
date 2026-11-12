@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=5.91">
+  <link rel="stylesheet" href="styles.css?v=5.92">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -689,6 +689,7 @@
           <span id="ov-sub">—</span>
         </div>
       </div>
+      <p class="ov-times" id="ov-times">—</p>
       <pre class="report-text" id="ov-text" tabindex="0"></pre>
       <div class="actions-row">
         <button class="btn btn-outline" type="button" id="ov-copy"><svg><use href="#i-copy"/></svg>Copiar</button>
@@ -701,6 +702,14 @@
 
       <div id="ov-edit" class="ov-edit" hidden>
         <h2 class="subtitle">Atualizar (só quem lançou)</h2>
+        <div class="field">
+          <span class="field-label">Horário <small>vai para o mapa do dia</small></span>
+          <div class="time-pair">
+            <label class="time-box" for="ov-start"><span>Início</span><input class="text-input" type="time" id="ov-start"></label>
+            <label class="time-box" for="ov-end"><span>Fim</span><input class="text-input" type="time" id="ov-end"></label>
+          </div>
+          <button class="btn btn-quiet btn-small" type="button" id="ov-end-now">Fim = agora</button>
+        </div>
         <label class="field" for="ov-solution">
           <span class="field-label">Solução <small>解决方案 · vazio = "EM ANÁLISE"</small></span>
           <textarea id="ov-solution" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- O QUE FOI FEITO?"></textarea>
@@ -880,8 +889,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=5.91"></script>
-  <script src="app.js?v=5.91"></script>
-  <script type="module" src="cloud.js?v=5.91"></script>
+  <script src="data.js?v=5.92"></script>
+  <script src="app.js?v=5.92"></script>
+  <script type="module" src="cloud.js?v=5.92"></script>
 </body>
 </html>

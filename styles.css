@@ -373,3 +373,7 @@ h1,h2,p{margin:0}
 .counter.shift-filter{border:2px solid var(--line);font:inherit;cursor:pointer}
 .counter.shift-filter[aria-pressed="true"]{border-color:var(--green)}
 .map-row{background-position:var(--map-off,0) 0}
+.time-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.time-box{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:800;color:var(--muted)}
+.time-box input{font-weight:800}
+.ov-times{margin:0;font-size:15px;font-weight:800}

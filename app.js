@@ -3205,7 +3205,7 @@
       }
       const info = document.createElement("small");
       const photos = idsOf(item, "fotos").length;
-      info.textContent = formatTime(new Date(item.at)) + " · " + item.turno + " · " + occPartText(item) + (item.by ? " · " + item.by : "")
+      info.textContent = occRange(item) + " · " + item.turno + " · " + occPartText(item) + (item.by ? " · " + item.by : "")
         + " · " + (item.solution ? "com solução" : "em análise") + (photos ? " · 📷 " + photos : "") + (item.pending ? " · enviando…" : "");
       const open = document.createElement("button");
       open.type = "button";
@@ -3237,6 +3237,17 @@
     const date = new Date(iso);
     return date.getHours() * 60 + date.getMinutes();
   }
+  /* Horário de início e de fim da ocorrência ("HH:MM", ajustáveis no detalhe).
+     Sem início = hora em que foi lançada. Sem fim = vale até o próximo acontecimento. */
+  const hhmm = text => { const m = /^(\d{1,2}):(\d{2})$/.exec(text || ""); return m ? Number(m[1]) * 60 + Number(m[2]) : null; };
+  const occStart = item => { const v = hhmm(item.startTime); return v === null ? minutesOf(item.at) : v; };
+  function occEnd(item) {
+    const v = hhmm(item.endTime);
+    if (v === null) return null;
+    return v <= occStart(item) ? 1440 : v; // fim depois da meia-noite: até o fim do dia
+  }
+  const occRange = item => formatHM(occStart(item)) + (occEnd(item) !== null ? "–" + (hhmm(item.endTime) === null ? "" : item.endTime) : "");
+  function formatHM(minutes) { return String(Math.floor(minutes / 60)).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0"); }
   /* Horário dos turnos (passado pelo dono em 12/11/2026). Dia: 0 = domingo … 6 = sábado.
      Horas em minutos desde 00:00; "até 01:30" do T2 cai no dia seguinte (aparece lá, de 00:00 a 01:30). */
   const SHIFTS = {
@@ -3320,20 +3331,37 @@
       const row = document.createElement("div");
       row.className = "map-row";
       // acontecimentos desta máquina
-      const changes = [];
+      const raw = [];
       const marks = [];
       events.forEach(event => {
         if (event.type === "registro") {
-          if (event.selections && event.selections[machine.id] !== undefined) changes.push({ at: minutesOf(event.at), ...selectionState(event.selections[machine.id]) });
+          if (event.selections && event.selections[machine.id] !== undefined) raw.push({ at: minutesOf(event.at), ...selectionState(event.selections[machine.id]) });
         } else if (String(event.machine) === String(machine.id)) {
-          changes.push({ at: minutesOf(event.at), ...occState(event) });
+          raw.push({ at: occStart(event), src: event.id, ...occState(event) });
+          // com horário de fim, a máquina volta à situação de antes da ocorrência
+          if (occEnd(event) !== null) raw.push({ at: occEnd(event), restore: event.id });
           marks.push(event);
         }
+      });
+      raw.sort((a, b) => a.at - b.at || (a.restore ? -1 : 0) - (b.restore ? -1 : 0));
+      const changes = [];
+      const before = {};
+      let current = null;
+      raw.forEach(change => {
+        if (change.restore) {
+          if (!current || current.src !== change.restore) return; // algo mais novo já mudou a máquina
+          const back = before[change.restore];
+          current = back ? { ...back, at: change.at, src: null } : { at: change.at, state: "none", label: "", src: null };
+        } else {
+          if (change.src) before[change.src] = current;
+          current = change;
+        }
+        changes.push(current);
       });
       changes.forEach((change, index) => {
         const start = Math.max(change.at, winFrom);
         const until = Math.min(index + 1 < changes.length ? changes[index + 1].at : end, winTo);
-        if (until <= start) return;
+        if (until <= start || change.state === "none") return;
         const bar = document.createElement("div");
         bar.className = "map-bar " + change.state;
         bar.style.left = px(start) + "px";
@@ -3342,12 +3370,12 @@
         bar.textContent = change.label;
         row.appendChild(bar);
       });
-      marks.filter(event => (occShift === "all" || event.turno === occShift) && minutesOf(event.at) >= winFrom && minutesOf(event.at) <= winTo).forEach(event => {
+      marks.filter(event => (occShift === "all" || event.turno === occShift) && occStart(event) >= winFrom && occStart(event) <= winTo).forEach(event => {
         const mark = document.createElement("button");
         mark.type = "button";
         mark.className = "map-mark";
-        mark.style.left = px(minutesOf(event.at)) + "px";
-        mark.setAttribute("aria-label", "Ocorrência " + formatTime(new Date(event.at)) + ": " + (event.problem || occPartText(event)));
+        mark.style.left = px(occStart(event)) + "px";
+        mark.setAttribute("aria-label", "Ocorrência " + occRange(event) + ": " + (event.problem || occPartText(event)));
         mark.textContent = "!";
         mark.addEventListener("click", () => { occView = String(event.id); go("occ-view"); });
         row.appendChild(mark);
@@ -3396,11 +3424,15 @@
     const item = findOcc(occView);
     if (!item) { go("occ-list"); return; }
     const mine = Boolean(user && (item.owner === user.uid || item.by === user.login));
-    $("ov-sub").textContent = formatDate(dateFromKey(item.date)) + " · " + formatTime(new Date(item.at)) + (item.by ? " · " + item.by : "");
+    $("ov-sub").textContent = formatDate(dateFromKey(item.date)) + " · lançada às " + formatTime(new Date(item.at)) + (item.by ? " · " + item.by : "");
+    $("ov-times").textContent = "Início " + formatHM(occStart(item)) + " · Fim " + (item.endTime || "—");
     $("ov-text").textContent = buildOccText(item);
     $("ov-edit").hidden = !mine;
     if (mine) {
-      occEdit = { solution: item.solution || "", obs: item.obs || "", photos: { fotos: idsOf(item, "fotos") } };
+      occEdit = { solution: item.solution || "", obs: item.obs || "", photos: { fotos: idsOf(item, "fotos") },
+        startTime: item.startTime || formatHM(occStart(item)), endTime: item.endTime || "" };
+      $("ov-start").value = occEdit.startTime;
+      $("ov-end").value = occEdit.endTime;
       ["solution", "obs"].forEach(key => { const area = $("ov-" + key); area.value = occEdit[key]; fit(area); });
       await renderOccEditPhotos();
     }
@@ -3414,11 +3446,19 @@
   $("ov-photo-input").addEventListener("change", () => addOccPhotos($("ov-photo-input"), occEdit, () => renderOccEditPhotos()));
   $("ov-solution").addEventListener("input", event => { if (occEdit) occEdit.solution = event.target.value; });
   $("ov-obs").addEventListener("input", event => { if (occEdit) occEdit.obs = event.target.value; });
+  $("ov-start").addEventListener("input", event => { if (occEdit) occEdit.startTime = event.target.value; });
+  $("ov-end").addEventListener("input", event => { if (occEdit) occEdit.endTime = event.target.value; });
+  $("ov-end-now").addEventListener("click", () => {
+    if (!occEdit) return;
+    occEdit.endTime = formatTime(new Date());
+    $("ov-end").value = occEdit.endTime;
+  });
   $("ov-save").addEventListener("click", () => {
     const item = findOcc(occView);
     if (!item || !occEdit) return;
     const updated = { ...item, solution: standardize(occEdit.solution || "").trim(), obs: standardize(occEdit.obs || "").trim(),
-      photos: { fotos: idsOf(occEdit, "fotos") }, updatedAt: new Date().toISOString() };
+      photos: { fotos: idsOf(occEdit, "fotos") }, startTime: hhmm(occEdit.startTime) === null ? null : occEdit.startTime,
+      endTime: hhmm(occEdit.endTime) === null ? null : occEdit.endTime, updatedAt: new Date().toISOString() };
     delete updated.pending;
     const all = load(KEY_OCC, []).filter(other => String(other.id) !== occView);
     all.unshift(updated);
