@@ -337,3 +337,30 @@ h1,h2,p{margin:0}
 #ov-edit-gallery .gallery-item{flex-direction:row;align-items:center}
 #ov-edit-gallery img{width:96px;height:72px;object-fit:cover;border-radius:10px;flex:none}
 #ov-edit-gallery figcaption{flex:1}
+
+/* Mapa do dia: máquinas x horas */
+.map-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border:2px solid var(--line);border-radius:14px;background:var(--card)}
+.map-grid{display:grid;grid-template-columns:44px var(--map-w);row-gap:4px;padding:6px 8px 8px 0;width:max-content}
+.map-name{position:sticky;left:0;z-index:2;background:var(--card);font-size:13px;font-weight:800;display:flex;align-items:center;justify-content:center;height:28px;border-right:1px solid var(--line)}
+.map-corner{font-size:10px;color:var(--muted);height:18px}
+.map-axis{position:relative;height:18px}
+.map-axis span{position:absolute;top:0;transform:translateX(-50%);font-size:11px;font-weight:700;color:var(--muted)}
+.map-axis span:first-child{transform:none}
+.map-row{position:relative;height:28px;background:repeating-linear-gradient(90deg,var(--line) 0 1px,transparent 1px 44px)}
+.map-bar{position:absolute;top:2px;height:24px;border-radius:6px;font-size:11px;font-weight:800;line-height:24px;padding:0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-sizing:border-box}
+.map-bar.run,.lg.run{background:#C9E7D6;color:#14513B}
+.map-bar.setup,.lg.setup{background:var(--orange-soft);color:var(--orange-ink);border:1px solid #F3C98F}
+.map-bar.stop,.lg.stop{background:#E4E4E1;color:#555}
+.map-bar.maint,.lg.maint{background:#DCE8F8;color:#17457A}
+.map-bar.change,.lg.change{background:#EAE3F8;color:#4A2F86}
+.map-mark,.lg.mark{position:absolute;top:4px;width:20px;height:20px;margin-left:-10px;border-radius:50%;border:2px solid #fff;background:var(--danger);color:#fff;font-size:12px;font-weight:900;line-height:16px;padding:0;z-index:1;cursor:pointer}
+.map-now{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--danger);opacity:.6}
+.map-legend{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12px;color:var(--muted);font-weight:700;margin-top:8px}
+.map-legend span{display:flex;align-items:center;gap:5px}
+.lg{display:inline-block;width:12px;height:12px;border-radius:3px;position:static;border:0;margin:0}
+.lg.mark{width:12px;height:12px;border-radius:50%}
+.bottom-bar.two{display:flex;gap:8px;justify-content:center}
+.bottom-bar.two .btn{margin:0}
+.bottom-bar.two #machines-register{flex:0 0 auto;width:auto;padding-left:16px;padding-right:16px}
+.bottom-bar.two #machines-done{flex:1;max-width:420px}
+.map-legend .lg.mark{position:static;margin:0;border:0;width:12px;height:12px}

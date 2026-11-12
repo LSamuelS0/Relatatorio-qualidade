@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=5.7">
+  <link rel="stylesheet" href="styles.css?v=5.81">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -343,7 +343,8 @@
       </div>
       <p class="hint">Toque na máquina para dizer o que ela está rodando.</p>
       <div id="machine-list" class="machine-list"></div>
-      <div class="bottom-bar">
+      <div class="bottom-bar two">
+        <button class="btn btn-outline" type="button" id="machines-register"><svg><use href="#i-chart"/></svg>Registrar</button>
         <button class="btn btn-primary" type="button" id="machines-done">Ver relatório pronto<svg><use href="#i-arrow"/></svg></button>
       </div>
     </section>
@@ -592,12 +593,22 @@
       </div>
 
       <div class="field" id="occ-part-field" hidden>
-        <span class="field-label">Peça que está rodando</span>
-        <div class="choice-list" id="occ-parts" role="radiogroup" aria-label="Peça"></div>
+        <span class="field-label">Peça que está rodando ou situação</span>
+        <div class="choice-list" id="occ-parts" role="radiogroup" aria-label="Peça ou situação"></div>
+      </div>
+
+      <div class="field" id="occ-who-field" hidden>
+        <span class="field-label">Quem está fazendo a manutenção?</span>
+        <div class="choice-list" id="occ-who" role="radiogroup" aria-label="Quem faz a manutenção"></div>
+      </div>
+
+      <div class="field" id="occ-newpart-field" hidden>
+        <span class="field-label">Qual peça vai entrar?</span>
+        <div class="choice-list" id="occ-newparts" role="radiogroup" aria-label="Peça que vai entrar"></div>
       </div>
 
       <div class="field" id="occ-problem-field" hidden>
-        <span class="field-label">Qual é o problema?</span>
+        <span class="field-label" id="occ-problem-label">Qual é o problema?</span>
         <div class="choice-list" id="occ-problems" role="radiogroup" aria-label="Problema"></div>
         <input class="text-input" id="occ-problem-text" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="DESCREVA O PROBLEMA">
       </div>
@@ -640,6 +651,15 @@
         <button class="icon-btn" type="button" id="occ-prev" aria-label="Dia anterior"><svg><use href="#i-back"/></svg></button>
         <label class="occ-date-input" for="occ-date"><span class="sr-only">Data</span><input class="text-input" type="date" id="occ-date"></label>
         <button class="icon-btn" type="button" id="occ-next" aria-label="Próximo dia"><svg><use href="#i-next"/></svg></button>
+      </div>
+      <div class="occ-section">
+        <h2 class="subtitle">Mapa do dia</h2>
+        <div class="map-scroll" id="occ-map"></div>
+        <p class="muted small" id="occ-map-empty">Nada registrado neste dia. Use "Registrar" no Funcionamento de máquinas ou lance uma ocorrência.</p>
+        <div class="map-legend">
+          <span><i class="lg run"></i>Rodando (peça)</span><span><i class="lg setup"></i>Setup</span><span><i class="lg stop"></i>Parada</span>
+          <span><i class="lg maint"></i>Manutenção</span><span><i class="lg change"></i>Troca de molde</span><span><i class="lg mark"></i>Ocorrência</span>
+        </div>
       </div>
       <div class="counters occ-counters" id="occ-turnos"></div>
       <div class="occ-section">
@@ -856,8 +876,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=5.7"></script>
-  <script src="app.js?v=5.7"></script>
-  <script type="module" src="cloud.js?v=5.7"></script>
+  <script src="data.js?v=5.81"></script>
+  <script src="app.js?v=5.81"></script>
+  <script type="module" src="cloud.js?v=5.81"></script>
 </body>
 </html>

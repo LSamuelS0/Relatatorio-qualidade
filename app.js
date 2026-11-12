@@ -2779,7 +2779,33 @@
      ocorrencias/{id} (todos leem) com cópia no aparelho (rq.occ.v1) até ser enviada.
      Problemas: DATA.problemas (botões) ou texto livre enquanto a lista estiver vazia. */
   const KEY_OCC = "rq.occ.v1";
-  const occBlank = turno => ({ turno: turno || null, machine: null, part: null, problem: "", solution: "", obs: "", photos: { fotos: [] } });
+  const occBlank = turno => ({ turno: turno || null, machine: null, kind: null, part: null, who: null, newPart: null, showAll: false,
+    problem: "", solution: "", obs: "", photos: { fotos: [] } });
+
+  /* Situação da máquina na ocorrência (12/11/2026):
+     peca (uma das peças da máquina, rodando) · parada · setup · manutencao (com quem faz) · troca (troca de molde, com a peça que entra). */
+  const OCC_STOP = "Nenhuma peça (máquina parada)";
+  const OCC_EXTRA = [
+    { kind: "setup", label: "Setup" },
+    { kind: "manutencao", label: "Manutenção" },
+    { kind: "troca", label: "Troca de molde" }
+  ];
+  const MAINT_WHO = ["Engenharia", "Manutenção", "Eletrônica", "Ferramentaria"];
+  // Texto da "peça" no relatório e na lista: a peça, ou a situação
+  function occPartText(item) {
+    if (item.kind === "setup") return "SETUP";
+    if (item.kind === "manutencao") return "MANUTENÇÃO" + (item.who ? " (" + item.who + ")" : "");
+    if (item.kind === "troca") return "TROCA DE MOLDE → " + (item.newPart || "");
+    return item.part || "";
+  }
+  // Situação no mapa: run (rodando), setup, stop (parada), maint (manutenção), change (troca de molde)
+  function occState(item) {
+    if (item.kind === "setup") return { state: "setup", label: "Setup" };
+    if (item.kind === "manutencao") return { state: "maint", label: "Manutenção" + (item.who ? " · " + item.who : "") };
+    if (item.kind === "troca") return { state: "change", label: "Troca de molde → " + (item.newPart || "") };
+    if (item.kind === "parada" || item.part === OCC_STOP) return { state: "stop", label: "Parada" };
+    return { state: "run", label: item.part || "" };
+  }
   let occ = occBlank();
   let occView = null; // ocorrência aberta no "Ocorrências do dia"
 
@@ -2798,8 +2824,9 @@
     });
     const machine = machines.find(item => item.id === occ.machine);
     $("occ-part-field").hidden = !machine;
-    fillPartChoices($("occ-parts"), machine, occ.part, label => { occ.part = label; renderOccNew(); }, "Nenhuma peça (máquina parada)");
-    $("occ-problem-field").hidden = !occ.part;
+    renderOccSituation(machine);
+    $("occ-problem-field").hidden = !occ.kind;
+    $("occ-problem-label").textContent = ["peca", "parada"].includes(occ.kind) ? "Qual é o problema?" : "Qual é o problema? (opcional)";
     const problems = $("occ-problems");
     problems.innerHTML = "";
     const list = DATA.problemas || [];
@@ -2826,6 +2853,61 @@
     });
     renderOccPhotos($("occ-gallery"), occ, true, () => renderOccNew());
     $("occ-add-label").textContent = idsOf(occ, "fotos").length ? "Adicionar mais fotos" : "Adicionar foto";
+  }
+
+  function choiceButton(label, checked, onPick, extraClass) {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "choice" + (extraClass ? " " + extraClass : "");
+    option.setAttribute("role", "radio");
+    option.setAttribute("aria-checked", String(checked));
+    const dot = document.createElement("span");
+    dot.className = "dot";
+    dot.appendChild(icon("i-check"));
+    option.append(dot, document.createTextNode(label));
+    option.addEventListener("click", onPick);
+    return option;
+  }
+  function renderOccSituation(machine) {
+    const box = $("occ-parts");
+    box.innerHTML = "";
+    if (!machine) return;
+    const pick = (kind, part) => () => {
+      if (occ.kind !== kind) { occ.who = null; occ.newPart = null; occ.showAll = false; }
+      occ.kind = kind;
+      occ.part = part;
+      renderOccNew();
+    };
+    machine.items.forEach(label => box.appendChild(choiceButton(label, occ.kind === "peca" && occ.part === label, pick("peca", label))));
+    box.appendChild(choiceButton(OCC_STOP, occ.kind === "parada", pick("parada", OCC_STOP)));
+    OCC_EXTRA.forEach(extra => box.appendChild(choiceButton(extra.label, occ.kind === extra.kind, pick(extra.kind, extra.label), "situation")));
+
+    // Manutenção: quem está fazendo
+    $("occ-who-field").hidden = occ.kind !== "manutencao";
+    const who = $("occ-who");
+    who.innerHTML = "";
+    MAINT_WHO.forEach(name => who.appendChild(choiceButton(name, occ.who === name, () => { occ.who = name; renderOccNew(); })));
+
+    // Troca de molde: qual peça vai entrar (primeiro as da máquina; as outras da linha num toque)
+    $("occ-newpart-field").hidden = occ.kind !== "troca";
+    const parts = $("occ-newparts");
+    parts.innerHTML = "";
+    if (occ.kind === "troca") {
+      const all = Object.keys(itemsOf(LINE)).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+      const others = all.filter(label => !machine.items.includes(label));
+      const choose = label => () => { occ.newPart = label; renderOccNew(); };
+      machine.items.forEach(label => parts.appendChild(choiceButton(label, occ.newPart === label, choose(label))));
+      if (occ.newPart && !machine.items.includes(occ.newPart) && !occ.showAll) parts.appendChild(choiceButton(occ.newPart, true, choose(occ.newPart)));
+      if (others.length) {
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "btn btn-quiet btn-small";
+        toggle.textContent = occ.showAll ? "Esconder outras peças" : "Mostrar outras peças da " + LINES[LINE].name;
+        toggle.addEventListener("click", () => { occ.showAll = !occ.showAll; renderOccNew(); });
+        parts.appendChild(toggle);
+        if (occ.showAll) others.forEach(label => parts.appendChild(choiceButton(label, occ.newPart === label, choose(label))));
+      }
+    }
   }
 
   /* Fotos da ocorrência: opcionais, sem limite. Ficam em fotosOcorrencias na nuvem
@@ -2929,7 +3011,7 @@
       O.cabecalho, "",
       single(O.turno, up(item.turno)), "",
       single(O.maquina, up(item.machineName || machineLabel(lineOf(item), item.machine))), "",
-      single(O.peca, up(item.part)), "",
+      single(O.peca, up(occPartText(item))), "",
       O.motivo, cleanMulti(item.problem) || O.vazio, "",
       O.solucao, cleanMulti(item.solution) || O.emAnalise, "",
       O.observacoes, cleanMulti(item.obs) || O.vazio
@@ -2959,18 +3041,22 @@
   $("occ-save").addEventListener("click", () => {
     if (!occ.turno) { document.querySelector(".occ-turno").classList.add("need"); window.scrollTo({ top: 0, behavior: "smooth" }); toast("Escolha o turno"); return; }
     if (!occ.machine) { toast("Escolha a máquina"); return; }
-    if (!occ.part) { toast("Escolha a peça"); return; }
-    if (!occ.problem) { $("occ-problem-text").focus(); toast("Diga qual é o problema"); return; }
+    if (!occ.kind) { toast("Escolha a peça ou a situação"); return; }
+    if (occ.kind === "manutencao" && !occ.who) { toast("Escolha quem está fazendo a manutenção"); return; }
+    if (occ.kind === "troca" && !occ.newPart) { toast("Escolha a peça que vai entrar"); return; }
+    if (["peca", "parada"].includes(occ.kind) && !occ.problem) { $("occ-problem-text").focus(); toast("Diga qual é o problema"); return; }
     const now = new Date();
     const item = {
       id: newId(), line: LINE, type: "ocorrencia", at: now.toISOString(), date: todayKey(),
-      turno: occ.turno, machine: occ.machine, machineName: machineLabel(LINE, occ.machine), part: occ.part, problem: occ.problem,
+      turno: occ.turno, machine: occ.machine, machineName: machineLabel(LINE, occ.machine),
+      kind: occ.kind, who: occ.who || null, newPart: occ.newPart || null, part: null, problem: occ.problem,
       solution: standardize(occ.solution || "").trim(), obs: standardize(occ.obs || "").trim(), photos: { fotos: idsOf(occ, "fotos") },
       by: user ? user.login : ""
     };
+    item.part = occ.kind === "peca" || occ.kind === "parada" ? occ.part : occPartText(item);
     const all = load(KEY_OCC, []);
     all.unshift(item);
-    store(KEY_OCC, all.slice(0, 500));
+    store(KEY_OCC, all.slice(0, 1500));
     queuePush("o", item.id);
     toast("Ocorrência lançada: " + item.machineName);
     // pronto para a próxima: mantém o turno
@@ -3050,7 +3136,9 @@
 
   function paintOccList() {
     if (screenNow !== "occ-list") return;
-    const items = occOfDay();
+    const everything = occOfDay();
+    const items = everything.filter(item => item.type !== "registro");
+    renderDayMap(everything);
     const count = key => {
       const map = new Map();
       items.forEach(item => map.set(key(item), (map.get(key(item)) || 0) + 1));
@@ -3070,7 +3158,7 @@
         turnos.appendChild(box);
       });
     turnos.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
-    bars($("occ-by-problem"), count(item => item.problem), items.length);
+    bars($("occ-by-problem"), count(item => item.problem || occPartText(item)), items.length);
     bars($("occ-by-machine"), count(item => item.machineName || machineLabel(lineOf(item), item.machine)), items.length);
 
     const list = $("occ-items");
@@ -3087,7 +3175,7 @@
       const top = document.createElement("div");
       top.className = "occ-item-top";
       const title = document.createElement("strong");
-      title.textContent = (item.machineName || machineLabel(lineOf(item), item.machine)) + " · " + item.problem;
+      title.textContent = (item.machineName || machineLabel(lineOf(item), item.machine)) + " · " + (item.problem || occPartText(item));
       top.appendChild(title);
       const mine = user && (item.owner === user.uid || item.pending || item.by === user.login);
       if (mine || (user && user.admin)) {
@@ -3109,7 +3197,7 @@
       }
       const info = document.createElement("small");
       const photos = idsOf(item, "fotos").length;
-      info.textContent = formatTime(new Date(item.at)) + " · " + item.turno + " · " + item.part + (item.by ? " · " + item.by : "")
+      info.textContent = formatTime(new Date(item.at)) + " · " + item.turno + " · " + occPartText(item) + (item.by ? " · " + item.by : "")
         + " · " + (item.solution ? "com solução" : "em análise") + (photos ? " · 📷 " + photos : "") + (item.pending ? " · enviando…" : "");
       const open = document.createElement("button");
       open.type = "button";
@@ -3126,6 +3214,115 @@
       list.appendChild(card);
     });
   }
+
+  /* ---------- Mapa do dia (12/11/2026) ----------
+     Máquinas na vertical, horas na horizontal (00h–24h). Cada máquina mantém a situação do
+     último acontecimento até o próximo: "Registrar" do Funcionamento de máquinas (foto de
+     todas as máquinas, type "registro") e cada ocorrência lançada (situação da ocorrência).
+     Ocorrências aparecem como uma marca; tocar na marca abre a ocorrência. */
+  const MAP_HOUR = 44; // largura de 1 hora em px
+  function selectionState(value) {
+    const kind = kindOf(value || STOPPED);
+    return kind === "run" ? { state: "run", label: value } : kind === "setup" ? { state: "setup", label: "Setup" } : { state: "stop", label: "Parada" };
+  }
+  function minutesOf(iso) {
+    const date = new Date(iso);
+    return date.getHours() * 60 + date.getMinutes();
+  }
+  function renderDayMap(everything) {
+    const box = $("occ-map");
+    box.innerHTML = "";
+    const events = everything.slice().sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    $("occ-map-empty").hidden = events.length > 0;
+    const end = occDate === todayKey() ? minutesOf(new Date().toISOString()) : 24 * 60;
+    const width = 24 * MAP_HOUR;
+    const px = minutes => (minutes / 60) * MAP_HOUR;
+
+    const grid = document.createElement("div");
+    grid.className = "map-grid";
+    grid.style.setProperty("--map-w", width + "px");
+    // eixo das horas
+    const corner = document.createElement("div");
+    corner.className = "map-name map-corner";
+    corner.textContent = "Máquina";
+    const axis = document.createElement("div");
+    axis.className = "map-axis";
+    for (let h = 0; h <= 24; h += 2) {
+      const tick = document.createElement("span");
+      tick.style.left = px(h * 60) + "px";
+      tick.textContent = String(h).padStart(2, "0") + "h";
+      axis.appendChild(tick);
+    }
+    grid.append(corner, axis);
+
+    machines.forEach(machine => {
+      const name = document.createElement("div");
+      name.className = "map-name";
+      name.textContent = machine.name ? mBadge(machine) : machine.id;
+      name.title = mName(machine);
+      const row = document.createElement("div");
+      row.className = "map-row";
+      // acontecimentos desta máquina
+      const changes = [];
+      const marks = [];
+      events.forEach(event => {
+        if (event.type === "registro") {
+          if (event.selections && event.selections[machine.id] !== undefined) changes.push({ at: minutesOf(event.at), ...selectionState(event.selections[machine.id]) });
+        } else if (String(event.machine) === String(machine.id)) {
+          changes.push({ at: minutesOf(event.at), ...occState(event) });
+          marks.push(event);
+        }
+      });
+      changes.forEach((change, index) => {
+        const until = index + 1 < changes.length ? changes[index + 1].at : end;
+        if (until <= change.at) return;
+        const bar = document.createElement("div");
+        bar.className = "map-bar " + change.state;
+        bar.style.left = px(change.at) + "px";
+        bar.style.width = Math.max(2, px(until - change.at)) + "px";
+        bar.title = change.label;
+        bar.textContent = change.label;
+        row.appendChild(bar);
+      });
+      marks.forEach(event => {
+        const mark = document.createElement("button");
+        mark.type = "button";
+        mark.className = "map-mark";
+        mark.style.left = px(minutesOf(event.at)) + "px";
+        mark.setAttribute("aria-label", "Ocorrência " + formatTime(new Date(event.at)) + ": " + (event.problem || occPartText(event)));
+        mark.textContent = "!";
+        mark.addEventListener("click", () => { occView = String(event.id); go("occ-view"); });
+        row.appendChild(mark);
+      });
+      if (occDate === todayKey()) {
+        const now = document.createElement("div");
+        now.className = "map-now";
+        now.style.left = px(end) + "px";
+        row.appendChild(now);
+      }
+      grid.append(name, row);
+    });
+    box.appendChild(grid);
+    // mostra a hora atual (ou o começo do dia)
+    const focus = occDate === todayKey() ? px(end) - box.clientWidth / 2 : 0;
+    box.scrollLeft = Math.max(0, focus);
+  }
+
+  /* Botão "Registrar" no Funcionamento de máquinas: grava a situação de todas as máquinas
+     agora, no mapa do dia (vai para "ocorrencias" como type "registro"; todos veem). */
+  $("machines-register").addEventListener("click", () => {
+    if (!draft) return;
+    if (!draft.turno) { document.querySelector(".turno-pick")?.classList.add("need"); toast("Escolha o turno primeiro"); return; }
+    const now = new Date();
+    const item = { id: newId(), line: lineOf(draft), type: "registro", at: now.toISOString(), date: todayKey(), turno: draft.turno,
+      selections: { ...draft.selections }, by: user ? user.login : "" };
+    const all = load(KEY_OCC, []);
+    all.unshift(item);
+    store(KEY_OCC, all.slice(0, 1500));
+    queuePush("o", item.id);
+    const total = counts(item.selections, item.line);
+    toast("Registrado no mapa às " + formatTime(now) + " · " + total.run + " rodando");
+  });
 
   /* ---------- Detalhe de uma ocorrência ----------
      Mostra a máscara pronta (copiar/enviar), as fotos e as observações.
@@ -3166,7 +3363,7 @@
     delete updated.pending;
     const all = load(KEY_OCC, []).filter(other => String(other.id) !== occView);
     all.unshift(updated);
-    store(KEY_OCC, all.slice(0, 500));
+    store(KEY_OCC, all.slice(0, 1500));
     occRemote = occRemote.map(other => (String(other.id) === occView ? updated : other));
     queuePush("o", updated.id);
     toast("Ocorrência atualizada");
