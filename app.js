@@ -1234,6 +1234,7 @@
     if (name === "shift") renderShift();
     if (name === "block") renderBlock();
     if (name === "stop") renderParada();
+    if (name === "drafts") renderDrafts();
     if (name === "done") renderDone();
     if (name === "reports") renderReports();
     if (name === "admin") renderAdmin();
@@ -1270,7 +1271,7 @@
       $("home-reports-title").textContent = "Nenhum relatório salvo";
       $("home-reports-sub").textContent = "Os relatórios salvos aparecem aqui";
     }
-    renderDrafts();
+    renderDraftHubs();
   }
 
   function draftSummary(item) {
@@ -1290,14 +1291,33 @@
     return whenLabel(new Date(item.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup";
   }
 
+  /* Rascunhos separados por área: na tela inicial, um botão para Injetora e outro para
+     Estamparia (com a quantidade); cada um abre a tela "drafts" com os rascunhos daquela linha. */
+  let draftsLine = "injetora";
+  function renderDraftHubs() {
+    const all = listDrafts();
+    Object.keys(LINES).forEach(line => {
+      const total = all.filter(item => lineOf(item) === line).length;
+      const sub = document.querySelector('[data-drafts-sub="' + line + '"]');
+      const button = document.querySelector('[data-drafts-line="' + line + '"]');
+      if (sub) sub.textContent = total === 0 ? "Nenhum rascunho" : total === 1 ? "1 rascunho" : total + " rascunhos";
+      if (button) button.classList.toggle("has-drafts", total > 0);
+    });
+  }
+  document.querySelectorAll("[data-drafts-line]").forEach(button => button.addEventListener("click", () => {
+    draftsLine = button.dataset.draftsLine;
+    go("drafts");
+  }));
+
   function renderDrafts() {
+    $("drafts-line").textContent = LINES[draftsLine].name;
     const list = $("draft-list");
-    const drafts = listDrafts();
+    const drafts = listDrafts().filter(item => lineOf(item) === draftsLine);
     list.innerHTML = "";
     if (!drafts.length) {
       const empty = document.createElement("p");
       empty.className = "empty";
-      empty.textContent = "Nenhum rascunho. O que você começar e não salvar aparece aqui.";
+      empty.textContent = "Nenhum rascunho da " + LINES[draftsLine].name + ". O que você começar e não salvar aparece aqui.";
       list.appendChild(empty);
       return;
     }
@@ -1311,7 +1331,7 @@
       const text = document.createElement("span");
       text.className = "row-text";
       const title = document.createElement("strong");
-      title.textContent = titleOf(item);
+      title.textContent = TITLES[item.type] || "Relatório";
       const sub = document.createElement("small");
       sub.textContent = draftSummary(item);
       text.append(title, sub);
@@ -1878,7 +1898,7 @@
     [["r", "relatorios"], ["d", "rascunhos"]].forEach(([kind, name]) => {
       unwatch.push(Cloud.watchMine(name, async remote => {
         mergeRemote(kind, remote);
-        if (screenNow === "home") renderHome();
+        if (screenNow === "home") renderHome(); if (screenNow === "drafts") renderDrafts();
         if (screenNow === "reports") renderReports();
         await fetchMissingPhotos();
         if (screenNow === "reports") renderReports();
@@ -1924,7 +1944,7 @@
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible" || !cloudOk()) return;
     flush();
-    pull().then(() => { if (screenNow === "home") renderHome(); if (screenNow === "reports") renderReports(); }).catch(reportSync);
+    pull().then(() => { if (screenNow === "home") renderHome(); if (screenNow === "drafts") renderDrafts(); if (screenNow === "reports") renderReports(); }).catch(reportSync);
   });
   $("sync-dot").addEventListener("click", () => {
     const count = Object.keys(load(KEY_PENDING, {})).length;
@@ -1954,7 +1974,7 @@
       reportSync(error);
       return false;
     }
-    if (screenNow === "home") renderHome();
+    if (screenNow === "home") renderHome(); if (screenNow === "drafts") renderDrafts();
     if (screenNow === "reports") renderReports();
     return true;
   }
@@ -2054,7 +2074,7 @@
   function onCadastro(line, cad) {
     if (cad) store(KEY_CADASTRO[line], cad); else forget(KEY_CADASTRO[line]);
     applyCadastro(cad, line);
-    if (screenNow === "home") renderHome();
+    if (screenNow === "home") renderHome(); if (screenNow === "drafts") renderDrafts();
     if (screenNow === "machines" && draft && lineOf(draft) === line) { sanitizeDraft(draft); renderMachines(); }
     if (screenNow === "admin" && adminLine === line) renderAdmin();
   }

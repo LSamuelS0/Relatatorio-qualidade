@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=5.2">
+  <link rel="stylesheet" href="styles.css?v=5.3">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -107,7 +107,18 @@
 
       <div class="home-reports">
         <h2 class="subtitle">Rascunhos</h2>
-        <div id="draft-list" class="report-list"></div>
+        <div class="report-list">
+          <button class="row-card" type="button" data-drafts-line="injetora">
+            <svg class="row-icon"><use href="#i-inject"/></svg>
+            <span class="row-text"><strong>Injetora</strong><small data-drafts-sub="injetora">Nenhum rascunho</small></span>
+            <svg class="chev"><use href="#i-next"/></svg>
+          </button>
+          <button class="row-card" type="button" data-drafts-line="estamparia">
+            <svg class="row-icon"><use href="#i-press"/></svg>
+            <span class="row-text"><strong>Estamparia</strong><small data-drafts-sub="estamparia">Nenhum rascunho</small></span>
+            <svg class="chev"><use href="#i-next"/></svg>
+          </button>
+        </div>
       </div>
 
       <div class="home-reports" id="home-admin" hidden>
@@ -640,6 +651,14 @@
     </section>
 
     <!-- 5. Meus relatórios -->
+    <!-- Rascunhos de uma área (Injetora ou Estamparia) -->
+    <section class="screen" id="screen-drafts" data-screen="drafts" hidden>
+      <button class="back" type="button" data-go="home"><svg><use href="#i-back"/></svg>Voltar</button>
+      <p class="eyebrow">RASCUNHOS</p>
+      <h1 class="title" id="drafts-line">Injetora</h1>
+      <div id="draft-list" class="report-list"></div>
+    </section>
+
     <section class="screen screen-reports" id="screen-reports" data-screen="reports" hidden>
       <button class="back" type="button" data-go="home"><svg><use href="#i-back"/></svg>Voltar</button>
       <h1 class="title">Meus relatórios</h1>
@@ -771,8 +790,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=5.2"></script>
-  <script src="app.js?v=5.2"></script>
-  <script type="module" src="cloud.js?v=5.2"></script>
+  <script src="data.js?v=5.3"></script>
+  <script src="app.js?v=5.3"></script>
+  <script type="module" src="cloud.js?v=5.3"></script>
 </body>
 </html>

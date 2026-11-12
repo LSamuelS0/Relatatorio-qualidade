@@ -37,7 +37,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=5.2`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.3`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -45,6 +45,7 @@ Versão atual dos arquivos: `?v=5.2`. Ao mudar `styles.css`, `data.js` ou `app.j
 - **Estamparia (metal)** — em uso desde 12/11/2026. Cadastro próprio, independente da Injetora (seção "Estamparia" abaixo).
 
 ### Como o app separa as linhas (12/11/2026)
+- **Rascunhos por área:** na tela inicial, "Rascunhos" tem dois botões, **Injetora** e **Estamparia**, com a quantidade de cada um. Cada botão abre a tela de rascunhos daquela linha (`draftsLine`, tela `drafts`), onde dá para abrir ou descartar.
 - Tela inicial: os dois cartões (Injetora e Estamparia) escolhem a linha (`setLine()` no `app.js`; `LINE` = linha escolhida, `machines` = máquinas dela).
 - Todo relatório, rascunho e ocorrência guarda `line` (`"injetora"` ou `"estamparia"`; sem `line` = injetora). O texto é montado com as máquinas e a máscara **da linha do relatório** (`lineOf`, `machinesOf`, `mk(tipo, linha)`).
 - Máscaras: `inicio`, `troca`, `bloqueio` (Injetora) · `inicio_est`, `troca_est`, `bloqueio_est` (Estamparia) · `parada` (as duas). `MASK_LINE` diz de qual linha é cada uma.
