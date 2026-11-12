@@ -975,13 +975,15 @@
      "MÁQUINA 机器: PRENSA TRANSFER - CHAPA DO GABINETE 580 COM CANALETA".
      Horário começa com a hora atual; help chain vem da última parada salva da mesma linha. */
   const NO_PART = "Nenhuma peça";
+  // Opções do Solicitante (escolha única). Para acrescentar, é só pôr mais um nome aqui.
+  const SOLICITANTES = [{ label: "Departamento de Qualidade", text: "DEPARTAMENTO DE QUALIDADE" }];
   let parada = null;
   const nowTime = () => formatTime(new Date());
 
   function newParada() {
     parada = { id: newId(), line: LINE, type: "parada", startedAt: new Date().toISOString(), date: todayKey(),
       machine: null, part: null,
-      fields: { horario: nowTime(), motivo: "", solicitante: "", helpChain: lastTags("parada", "helpChain", LINE) },
+      fields: { horario: nowTime(), motivo: "", solicitante: SOLICITANTES.length === 1 ? SOLICITANTES[0].text : "", helpChain: lastTags("parada", "helpChain", LINE) },
       horarioManual: false, savedId: null };
   }
 
@@ -1030,6 +1032,25 @@
     const machine = machinesOf(lineOf(parada)).find(other => String(other.id) === String(parada.machine));
     $("stop-part-field").hidden = !machine;
     fillPartChoices($("stop-parts"), machine, parada.part, label => { parada.part = label; keepDraft(parada); renderParada(); }, NO_PART);
+    const solicitante = $("stop-solicitante");
+    solicitante.innerHTML = "";
+    SOLICITANTES.forEach(({ label, text: name }) => {
+      const option = document.createElement("button");
+      option.type = "button";
+      option.className = "choice";
+      option.setAttribute("role", "radio");
+      option.setAttribute("aria-checked", String(parada.fields.solicitante === name));
+      const dot = document.createElement("span");
+      dot.className = "dot";
+      dot.appendChild(icon("i-check"));
+      option.append(dot, document.createTextNode(label));
+      option.addEventListener("click", () => {
+        parada.fields.solicitante = parada.fields.solicitante === name ? "" : name; // tocar de novo desmarca
+        keepDraft(parada);
+        renderParada();
+      });
+      solicitante.appendChild(option);
+    });
     document.querySelectorAll("[data-pfield]").forEach(input => {
       const value = parada.fields[input.dataset.pfield] || "";
       if (input.value !== value) input.value = value;
@@ -2511,7 +2532,7 @@
     if (type === "parada") {
       const machine = machinesOf(line)[0];
       return { type, line, date: todayKey(), machine: machine.id, part: machine.items[0] || NO_PART,
-        fields: { horario: "05:30", motivo: "- EXEMPLO DE TEXTO", solicitante: "EXEMPLO", helpChain: "" } };
+        fields: { horario: "05:30", motivo: "- EXEMPLO DE TEXTO", solicitante: SOLICITANTES[0].text, helpChain: "" } };
     }
     const fields = {};
     BLOCK_FIELDS.forEach(field => { fields[field.key] = field.key === "motivo" ? "- EXEMPLO DE TEXTO" : ""; });
