@@ -41,7 +41,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=5.92`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.94`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -280,6 +280,8 @@ Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais 
   - Sexta: T1 06:00–15:00 · T2 15:00–00:30
   - Terça a sexta: T3 00:00–07:00 · Sábado: T3 00:00–08:00
   - O mapa continua no dia do calendário (00h–24h, porque o T3 começa à meia-noite) com uma faixa de turnos por cima (T1/T2 numa linha, T3 noutra; o fim do T2 do dia anterior aparece de 00:00 até 01:30/00:30). Abre na hora atual (hoje) ou às 06h (outros dias).
+- **Balões no mapa (12/11/2026):** tocar numa barra abre um balão com a máquina, a situação/peça completa e "HH:MM até HH:MM/agora". Tocar numa marca "!" abre um balão com o resumo da ocorrência e os botões **Abrir**, **Editar** (só quem lançou), **Copiar** (texto da máscara) e **Apagar** (quem lançou ou ADM). Fecha no ✕ ou tocando fora. A barra da situação atual (hoje) mostra o nome inteiro, passando da linha do agora, para não ficar cortada.
+- **Mapa congelado (12/11/2026):** o mapa tem altura máxima (65% da tela) e rola dentro dele: a coluna das máquinas fica fixa ao arrastar para o lado e a linha das horas e dos turnos fica fixa ao rolar para baixo (como "congelar painéis" do Excel). Barra de máquina rodando mostra só o nome da peça (também no balão).
 - **Horário de início e de fim (12/11/2026):** no detalhe da ocorrência (parte "Atualizar", só quem lançou), duas caixas lado a lado: **Início** (começa com a hora do lançamento, ajustável) e **Fim** (vazio até preencher; botão "Fim = agora"). Guardados em `startTime` / `endTime` ("HH:MM", no dia da ocorrência). No mapa, a situação da ocorrência vale do início ao fim; no fim a máquina volta à situação de antes (se nada mais novo tiver mudado a máquina). Sem fim = vale até o próximo acontecimento. Fim menor que o início = até o fim do dia. A lista e o detalhe mostram "início–fim". O horário não entra no texto da máscara.
 - **Filtro de turno (12/11/2026):** no topo do "Ocorrências do dia", os quadrinhos **Todos · T1 · T2 · T3** (com a quantidade de cada) são o filtro. Com um turno escolhido: o mapa mostra só o horário daquele turno no dia (a parte que começa no dia: T1 06–16/15, T2 16/15–24, T3 00–07/08), só as marcas de ocorrência dele, e a lista e os gráficos só as ocorrências dele. As barras de situação continuam vindo de todos os acontecimentos (a situação passa de um turno para o outro).
 - **Pendente com o dono:** confirmar as opções de quem faz a manutenção.

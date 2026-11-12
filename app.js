@@ -3135,6 +3135,17 @@
     });
   }
 
+  const canEditOcc = item => Boolean(user && (item.owner === user.uid || item.pending || item.by === user.login));
+  function deleteOcc(item) {
+    if (!confirm("Apagar esta ocorrência?")) return;
+    store(KEY_OCC, load(KEY_OCC, []).filter(other => String(other.id) !== String(item.id)));
+    occRemote = occRemote.filter(other => String(other.id) !== String(item.id));
+    queueDelete("o", item.id);
+    if (cloudOk()) idsOf(item, "fotos").forEach(id => Cloud.removePhoto(id, "fotosOcorrencias").catch(() => {}));
+    paintOccList();
+    toast("Ocorrência apagada");
+  }
+
   function paintOccList() {
     if (screenNow !== "occ-list") return;
     const everything = occOfDay();
@@ -3193,13 +3204,7 @@
         remove.setAttribute("aria-label", "Apagar ocorrência");
         remove.appendChild(icon("i-trash"));
         remove.addEventListener("click", () => {
-          if (!confirm("Apagar esta ocorrência?")) return;
-          store(KEY_OCC, load(KEY_OCC, []).filter(other => String(other.id) !== String(item.id)));
-          occRemote = occRemote.filter(other => String(other.id) !== String(item.id));
-          queueDelete("o", item.id);
-          if (cloudOk()) idsOf(item, "fotos").forEach(id => Cloud.removePhoto(id, "fotosOcorrencias").catch(() => {}));
-          paintOccList();
-          toast("Ocorrência apagada");
+          deleteOcc(item);
         });
         top.appendChild(remove);
       }
@@ -3301,14 +3306,19 @@
       tick.textContent = String(Math.floor(m / 60) % 24).padStart(2, "0") + "h";
       axis.appendChild(tick);
     }
+    corner.style.top = axis.style.top = "0px";
     grid.append(corner, axis);
+    let headerTop = 22; // linhas fixas no topo (horas e turnos), como "congelar painéis" do Excel
     // faixa dos turnos: T1/T2 numa linha, T3 noutra (porque se sobrepõem)
     [["T1", "T2"], ["T3"]].filter(group => occShift === "all" || group.includes(occShift)).forEach(group => {
       const label = document.createElement("div");
       label.className = "map-name map-shift-name";
+      label.style.top = headerTop + "px";
       label.textContent = group.join("/");
       const band = document.createElement("div");
       band.className = "map-shifts";
+      band.style.top = headerTop + "px";
+      headerTop += 22;
       bandsOfDay.filter(shift => group.includes(shift.t) && (occShift === "all" || shift.t === occShift)).forEach(shift => {
         const from = Math.max(shift.from, winFrom), to = Math.min(shift.to, winTo);
         if (to <= from) return;
@@ -3360,14 +3370,30 @@
       });
       changes.forEach((change, index) => {
         const start = Math.max(change.at, winFrom);
-        const until = Math.min(index + 1 < changes.length ? changes[index + 1].at : end, winTo);
+        const last = index + 1 >= changes.length;
+        const realEnd = last ? end : changes[index + 1].at;
+        const until = Math.min(realEnd, winTo);
         if (until <= start || change.state === "none") return;
-        const bar = document.createElement("div");
+        const bar = document.createElement("button");
+        bar.type = "button";
         bar.className = "map-bar " + change.state;
         bar.style.left = px(start) + "px";
-        bar.style.width = Math.max(2, ((until - start) / 60) * MAP_HOUR) + "px";
+        bar.style.width = Math.max(4, ((until - start) / 60) * MAP_HOUR) + "px";
         bar.title = change.label;
-        bar.textContent = change.label;
+        const text = document.createElement("span");
+        text.textContent = change.label;
+        bar.appendChild(text);
+        // A situação de agora: o nome continua depois da barra (fica inteiro, não corta)
+        if (last && occDate === todayKey()) bar.classList.add("open");
+        const STATE_NAMES = { setup: "Setup", stop: "Parada", maint: "Manutenção", change: "Troca de molde" };
+        bar.addEventListener("click", event => {
+          event.stopPropagation();
+          const pop = [];
+          pop.push(["strong", mName(machine)]);
+          pop.push(["p", change.label || STATE_NAMES[change.state] || ""]);
+          pop.push(["small", formatHM(change.at) + " até " + (last ? (occDate === todayKey() ? "agora" : "o fim do dia") : formatHM(realEnd % 1440 || 0))]);
+          showMapPop(grid, bar, pop, []);
+        });
         row.appendChild(bar);
       });
       marks.filter(event => (occShift === "all" || event.turno === occShift) && occStart(event) >= winFrom && occStart(event) <= winTo).forEach(event => {
@@ -3377,7 +3403,21 @@
         mark.style.left = px(occStart(event)) + "px";
         mark.setAttribute("aria-label", "Ocorrência " + occRange(event) + ": " + (event.problem || occPartText(event)));
         mark.textContent = "!";
-        mark.addEventListener("click", () => { occView = String(event.id); go("occ-view"); });
+        mark.addEventListener("click", clickEvent => {
+          clickEvent.stopPropagation();
+          const pop = [
+            ["strong", "Ocorrência · " + mName(machine)],
+            ["p", event.problem || occPartText(event)],
+            ["small", occRange(event) + " · " + event.turno + " · " + occPartText(event) + (event.by ? " · " + event.by : "")],
+            ["small", event.solution ? "Solução: " + event.solution.replace(/^-\s*/, "") : "Em análise"]
+          ];
+          const open = () => { occView = String(event.id); go("occ-view"); };
+          const actions = [["Abrir", open]];
+          if (canEditOcc(event)) actions.push(["Editar", () => { open(); setTimeout(() => $("ov-edit").scrollIntoView({ behavior: "smooth" }), 300); }]);
+          actions.push(["Copiar", async () => toast((await copyText(buildOccText(event))) ? "Ocorrência copiada" : "Não deu para copiar")]);
+          if (canEditOcc(event) || (user && user.admin)) actions.push(["Apagar", () => deleteOcc(event), "danger"]);
+          showMapPop(grid, mark, pop, actions);
+        });
         row.appendChild(mark);
       });
       if (occDate === todayKey() && end >= winFrom && end <= winTo) {
@@ -3394,6 +3434,54 @@
       : occDate === todayKey() ? px(end) - box.clientWidth / 2 : px(6 * 60) - 8; // outro dia: começa no T1 (06h)
     box.scrollLeft = Math.max(0, focus);
   }
+
+  /* Balão do mapa: aparece perto do que foi tocado (barra ou marca), dentro do mapa.
+     Fecha no ✕ ou tocando fora. */
+  function showMapPop(grid, anchor, lines, actions) {
+    grid.querySelectorAll(".map-pop").forEach(old => old.remove());
+    const pop = document.createElement("div");
+    pop.className = "map-pop";
+    pop.addEventListener("click", event => event.stopPropagation());
+    const close = document.createElement("button");
+    close.type = "button";
+    close.className = "map-pop-close";
+    close.setAttribute("aria-label", "Fechar");
+    close.textContent = "✕";
+    close.addEventListener("click", () => pop.remove());
+    pop.appendChild(close);
+    lines.forEach(([tag, text]) => {
+      if (!text) return;
+      const line = document.createElement(tag);
+      line.textContent = text;
+      pop.appendChild(line);
+    });
+    if (actions.length) {
+      const row = document.createElement("div");
+      row.className = "map-pop-actions";
+      actions.forEach(([label, run, kind]) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn-outline btn-small" + (kind === "danger" ? " danger" : "");
+        button.textContent = label;
+        button.addEventListener("click", () => { pop.remove(); run(); });
+        row.appendChild(button);
+      });
+      pop.appendChild(row);
+    }
+    grid.appendChild(pop);
+    const box = grid.parentElement;
+    const g = grid.getBoundingClientRect();
+    const a = anchor.getBoundingClientRect();
+    const width = Math.min(260, box.clientWidth - 16);
+    pop.style.width = width + "px";
+    let left = a.left - g.left + a.width / 2 - width / 2;
+    left = Math.max(box.scrollLeft + 8, Math.min(left, box.scrollLeft + box.clientWidth - width - 8));
+    pop.style.left = left + "px";
+    const below = a.top - g.top + a.height + 6;
+    const above = a.top - g.top - pop.offsetHeight - 6;
+    pop.style.top = (below + pop.offsetHeight > grid.offsetHeight && above > 0 ? above : below) + "px";
+  }
+  document.addEventListener("click", () => document.querySelectorAll(".map-pop").forEach(pop => pop.remove()));
 
   /* Botão "Registrar" no Funcionamento de máquinas: grava a situação de todas as máquinas
      agora, no mapa do dia (vai para "ocorrencias" como type "registro"; todos veem). */

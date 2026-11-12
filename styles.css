@@ -377,3 +377,27 @@ h1,h2,p{margin:0}
 .time-box{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:800;color:var(--muted)}
 .time-box input{font-weight:800}
 .ov-times{margin:0;font-size:15px;font-weight:800}
+/* Mapa: barras tocáveis, nome da situação atual sempre inteiro e balões */
+.map-grid{position:relative}
+.map-bar{border:0;font-family:inherit;text-align:left;cursor:pointer}
+.map-bar.open{overflow:visible;z-index:1}
+.map-bar.open span{display:inline-block;padding-right:6px;background:inherit;border-radius:6px}
+.map-pop{position:absolute;z-index:5;background:var(--card);border:2px solid var(--green);border-radius:14px;padding:10px 12px;box-shadow:0 6px 18px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:4px;box-sizing:border-box}
+.map-pop strong{font-size:14px;font-weight:800;padding-right:24px}
+.map-pop p{margin:0;font-size:14px;font-weight:700}
+.map-pop small{font-size:12px;color:var(--muted);font-weight:600}
+.map-pop-close{position:absolute;top:4px;right:6px;width:28px;height:28px;border:0;background:none;font-size:16px;color:var(--muted);cursor:pointer}
+.map-pop-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.map-pop-actions .btn{flex:1 1 auto;min-width:0}
+.map-pop-actions .btn.danger{color:var(--danger);border-color:#F1C9C4}
+/* Mapa como "congelar painéis": rola dentro dele; máquinas fixas à esquerda, horas/turnos fixos no topo */
+.map-scroll{max-height:65vh;overflow:auto;overscroll-behavior:contain}
+.map-grid{padding-top:0}
+.map-axis,.map-shifts{position:sticky;z-index:3;background:var(--card);box-shadow:0 1px 0 var(--line)}
+.map-corner,.map-shift-name{position:sticky;z-index:4;background:var(--card)}
+.map-name{z-index:2}
+.map-shifts{height:22px}
+.map-shift-name{height:22px}
+.map-grid .map-corner,.map-grid .map-shift-name{z-index:5}
+.map-pop-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.map-pop-actions .btn{width:100%;min-height:36px;padding:6px 8px;font-size:14px}
