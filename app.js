@@ -1030,9 +1030,6 @@
     const machine = machinesOf(lineOf(parada)).find(other => String(other.id) === String(parada.machine));
     $("stop-part-field").hidden = !machine;
     fillPartChoices($("stop-parts"), machine, parada.part, label => { parada.part = label; keepDraft(parada); renderParada(); }, NO_PART);
-    document.querySelectorAll("[data-pchoice]").forEach(button => {
-      button.setAttribute("aria-checked", String(parada.fields[button.dataset.pchoice] === button.dataset.value));
-    });
     document.querySelectorAll("[data-pfield]").forEach(input => {
       const value = parada.fields[input.dataset.pfield] || "";
       if (input.value !== value) input.value = value;
@@ -1049,13 +1046,6 @@
     parada.fields[input.dataset.pfield] = input.value;
     if (input.dataset.pfield === "horario") parada.horarioManual = true;
     keepDraft(parada);
-  }));
-  /* Solicitante: Injetora ou Estamparia (tocar de novo desmarca) */
-  document.querySelectorAll("[data-pchoice]").forEach(button => button.addEventListener("click", () => {
-    const key = button.dataset.pchoice;
-    parada.fields[key] = parada.fields[key] === button.dataset.value ? "" : button.dataset.value;
-    keepDraft(parada);
-    renderParada();
   }));
   $("stop-now").addEventListener("click", () => {
     parada.fields.horario = nowTime();
@@ -2521,7 +2511,7 @@
     if (type === "parada") {
       const machine = machinesOf(line)[0];
       return { type, line, date: todayKey(), machine: machine.id, part: machine.items[0] || NO_PART,
-        fields: { horario: "05:30", motivo: "- EXEMPLO DE TEXTO", solicitante: "ESTAMPARIA", helpChain: "" } };
+        fields: { horario: "05:30", motivo: "- EXEMPLO DE TEXTO", solicitante: "EXEMPLO", helpChain: "" } };
     }
     const fields = {};
     BLOCK_FIELDS.forEach(field => { fields[field.key] = field.key === "motivo" ? "- EXEMPLO DE TEXTO" : ""; });
