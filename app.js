@@ -30,6 +30,66 @@
     if (typeof refreshProducts === "function") refreshProducts();
   }
 
+  /* ---------- Máscaras (textos fixos dos relatórios) ----------
+     Padrão abaixo; o ADM pode publicar outra versão (cadastro/mascaras). Só os
+     textos mudam: a ordem, os campos e as regras de formatação continuam no código.
+     Cópia no aparelho: rq.mascaras.v1. */
+  const KEY_MASKS = "rq.mascaras.v1";
+  const MASK_DEFAULTS = {
+    inicio: {
+      titulo: "RELATÓRIO DE FUNCIONAMENTO DE MÁQUINAS DA INJETORA",
+      subtitulo: "(FABRICAÇÃO DE PLÁSTICO)",
+      data: "Data:",
+      turno: "Turno:",
+      rodando: "Máquinas rodando:",
+      setup: "Máquinas em setup:",
+      paradas: "Máquinas paradas:",
+      lista: "MÁQUINAS QUE ESTÃO RODANDO NESTE MOMENTO:",
+      maquina: "Máquina"
+    },
+    troca: {
+      cabecalho: "Ⓜ️ALINHAMENTO PQC INJETORA | PQC 冲压校准",
+      data: "DATA 日期:",
+      turno: "TURNO 日期:",
+      relatorio: "📌RELATÓRIO 报告:",
+      atencao: "⚠️PONTOS DE ATENÇÃO 注意事项:",
+      pendencias: "🚨PENDÊNCIAS 待处理问题:",
+      bloqueio: "🛑STATUS DE BLOQUEIO 封锁状态:",
+      vazio: "- N/A"
+    },
+    bloqueio: {
+      cabecalho: "🔒BLOQUEIO INJETORA | 封锁警报 🔒",
+      dataProducao: "DATA DA PRODUÇÃO 生产日期:",
+      codigo: "CÓDIGO DO MATERIAL 物料编码:",
+      motivo: "MOTIVO 问题描述:",
+      quantidade: "QUANTIDADE 数量:",
+      responsavel: "RESPONSÁVEL 责任部门:",
+      criticidade: "CRITICIDADE 关键性:",
+      scrap: "SCRAP 废料:",
+      posicao: "POSIÇÃO 物料所在位置:",
+      helpChain: "HELP CHAIN帮助链:",
+      conforme: "CONFORME: ✅",
+      naoConforme: "NÃO CONFORME: ❌",
+      localizacao: "LOCALIZAÇÃO: 📍"
+    }
+  };
+  // Nome de cada texto no editor do administrador
+  const MASK_LABELS = {
+    inicio: { name: "Funcionamento de máquinas", titulo: "Título", subtitulo: "Linha abaixo do título", data: "Data", turno: "Turno",
+      rodando: "Quantidade rodando", setup: "Quantidade em setup", paradas: "Quantidade paradas", lista: "Título da lista de máquinas", maquina: "Palavra antes do número da máquina" },
+    troca: { name: "Troca de turno", cabecalho: "Cabeçalho", data: "Data", turno: "Turno", relatorio: "Título: Relatório", atencao: "Título: Pontos de atenção",
+      pendencias: "Título: Pendências", bloqueio: "Título: Status de bloqueio", vazio: "Texto quando Pontos de atenção/Pendências ficam vazios" },
+    bloqueio: { name: "Bloqueio", cabecalho: "Cabeçalho", dataProducao: "Data da produção", codigo: "Código do material", motivo: "Motivo", quantidade: "Quantidade",
+      responsavel: "Responsável", criticidade: "Criticidade", scrap: "Scrap", posicao: "Posição", helpChain: "Help chain",
+      conforme: "Título da foto: Conforme", naoConforme: "Título da foto: Não conforme", localizacao: "Título das fotos: Localização" }
+  };
+  const MASK = clone(MASK_DEFAULTS);
+  function applyMasks(published) {
+    Object.keys(MASK_DEFAULTS).forEach(type => {
+      MASK[type] = { ...MASK_DEFAULTS[type], ...((published && published[type]) || {}) };
+    });
+  }
+
   /* Confere um cadastro antes de publicar (mesmas regras do validateData). */
   function validateCadastro(cad) {
     const problems = [];
@@ -154,21 +214,21 @@
     const started = new Date(report.startedAt);
     const total = counts(report.selections);
     const lines = [
-      "RELATÓRIO DE FUNCIONAMENTO DE MÁQUINAS DA INJETORA",
-      "(FABRICAÇÃO DE PLÁSTICO)",
+      MASK.inicio.titulo,
+      MASK.inicio.subtitulo,
       "",
-      "Data: " + formatDate(started),
-      "Turno: " + (report.turno || ""),
+      MASK.inicio.data + " " + formatDate(started),
+      MASK.inicio.turno + " " + (report.turno || ""),
       "",
-      "Máquinas rodando: " + total.run,
-      "Máquinas em setup: " + total.setup,
-      "Máquinas paradas: " + total.stop,
+      MASK.inicio.rodando + " " + total.run,
+      MASK.inicio.setup + " " + total.setup,
+      MASK.inicio.paradas + " " + total.stop,
       "",
-      "MÁQUINAS QUE ESTÃO RODANDO NESTE MOMENTO:",
+      MASK.inicio.lista,
       ""
-    ];
+    ].filter((line, index) => !(index === 1 && !line.trim()));
     machines.forEach(machine => {
-      lines.push("Máquina " + machine.id + ": " + (report.selections[machine.id] || STOPPED));
+      lines.push(MASK.inicio.maquina + " " + machine.id + ": " + (report.selections[machine.id] || STOPPED));
     });
     return lines.join("\n");
   }
@@ -183,10 +243,10 @@
      A parte fixa da máscara (títulos em português e chinês) nunca muda.
      Só os campos abaixo são preenchidos. */
   const SHIFT_FIELDS = [
-    { key: "relatorio", title: "📌RELATÓRIO 报告:" },
-    { key: "atencao", title: "⚠️PONTOS DE ATENÇÃO 注意事项:" },
-    { key: "pendencias", title: "🚨PENDÊNCIAS 待处理问题:" },
-    { key: "bloqueio", title: "🛑STATUS DE BLOQUEIO 封锁状态:" }
+    { key: "relatorio" },
+    { key: "atencao" },
+    { key: "pendencias" },
+    { key: "bloqueio" }
   ];
   let shift = null; // rascunho da troca de turno
 
@@ -214,19 +274,19 @@
 
   function buildShiftText(report) {
     const lines = [
-      "Ⓜ️ALINHAMENTO PQC INJETORA | PQC 冲压校准",
+      MASK.troca.cabecalho,
       "",
-      "DATA 日期: " + formatDate(dateFromKey(report.date)),
+      MASK.troca.data + " " + formatDate(dateFromKey(report.date)),
       "",
-      "TURNO 日期: " + (report.turno || ""),
+      MASK.troca.turno + " " + (report.turno || ""),
       ""
     ];
     SHIFT_FIELDS.forEach((field, index) => {
-      lines.push(field.title);
+      lines.push(MASK.troca[field.key]);
       let value = standardize(report.fields[field.key] || "").split("\n")
         .filter(line => line.trim() !== "-").join("\n").replace(/\s+$/, "").replace(/^\s*\n/, "");
       // Pontos de atenção e Pendências vazios saem como "- N/A"
-      if (!value && (field.key === "atencao" || field.key === "pendencias")) value = "- N/A";
+      if (!value && (field.key === "atencao" || field.key === "pendencias")) value = MASK.troca.vazio;
       // linha em branco entre o título e o texto (o texto não fica grudado no título)
       if (value) lines.push("", value);
       if (index < SHIFT_FIELDS.length - 1) lines.push("");
@@ -485,22 +545,21 @@
 
   /* ---------- Bloqueio (máscara: Bloqueio Injetora) ----------
      A parte fixa (títulos em português e chinês) nunca muda; só os campos são preenchidos. */
-  const BLOCK_HEADER = "🔒BLOQUEIO INJETORA | 封锁警报 🔒";
   const BLOCK_FIELDS = [
-    { key: "dataProducao", title: "DATA DA PRODUÇÃO 生产日期:" },
-    { key: "codigo", title: "CÓDIGO DO MATERIAL 物料编码:" },
-    { key: "motivo", title: "MOTIVO 问题描述:", multi: true },
-    { key: "quantidade", title: "QUANTIDADE 数量:" },
-    { key: "responsavel", title: "RESPONSÁVEL 责任部门:" },
-    { key: "criticidade", title: "CRITICIDADE 关键性:" },
-    { key: "scrap", title: "SCRAP 废料:" },
-    { key: "posicao", title: "POSIÇÃO 物料所在位置:" },
-    { key: "helpChain", title: "HELP CHAIN帮助链:" }
+    { key: "dataProducao" },
+    { key: "codigo" },
+    { key: "motivo", multi: true },
+    { key: "quantidade" },
+    { key: "responsavel" },
+    { key: "criticidade" },
+    { key: "scrap" },
+    { key: "posicao" },
+    { key: "helpChain" }
   ];
   const PHOTO_BLOCKS = [
-    { key: "conforme", title: "CONFORME: ✅" },
-    { key: "naoConforme", title: "NÃO CONFORME: ❌" },
-    { key: "localizacao", title: "LOCALIZAÇÃO: 📍" }
+    { key: "conforme" },
+    { key: "naoConforme" },
+    { key: "localizacao" }
   ];
   let block = null; // bloqueio em edição
 
@@ -518,17 +577,17 @@
   }
 
   function buildBlockText(report) {
-    const lines = [BLOCK_HEADER, ""];
+    const lines = [MASK.bloqueio.cabecalho, ""];
     BLOCK_FIELDS.forEach((field, index) => {
       let value = report.fields[field.key] || "";
       if (field.key === "dataProducao") value = value ? formatDate(dateFromKey(value)) : "";
       if (field.multi) {
         const multi = cleanMulti(value);
-        lines.push(field.title);
+        lines.push(MASK.bloqueio[field.key]);
         if (multi) lines.push(multi);
       } else {
         value = value.toLocaleUpperCase("pt-BR").trim();
-        lines.push(field.title + (value ? " " + value : " "));
+        lines.push(MASK.bloqueio[field.key] + (value ? " " + value : " "));
       }
       if (index < BLOCK_FIELDS.length - 1) lines.push("");
     });
@@ -763,12 +822,13 @@
       const head = document.createElement("div");
       head.className = "photo-block-head";
       const title = document.createElement("strong");
-      title.textContent = item.title;
+      const titleText = MASK.bloqueio[item.key];
+      title.textContent = titleText;
       const copyTitle = document.createElement("button");
       copyTitle.type = "button";
       copyTitle.className = "btn btn-outline btn-small";
       copyTitle.append(icon("i-copy"), document.createTextNode("Copiar título"));
-      copyTitle.addEventListener("click", async () => toast((await copyText(item.title)) ? "Título copiado" : "Não deu para copiar"));
+      copyTitle.addEventListener("click", async () => toast((await copyText(titleText)) ? "Título copiado" : "Não deu para copiar"));
       head.append(title, copyTitle);
       card.appendChild(head);
 
@@ -786,7 +846,7 @@
         }
         const img = document.createElement("img");
         img.src = url;
-        img.alt = item.title + " " + (index + 1);
+        img.alt = titleText + " " + (index + 1);
         const row = document.createElement("div");
         row.className = "actions-row";
         const copyPhoto = document.createElement("button");
@@ -904,6 +964,10 @@
     if (name === "done") renderDone();
     if (name === "reports") renderReports();
     if (name === "admin") renderAdmin();
+    if (name === "admin-home") renderPending();
+    if (name === "admin-parts") { $("ap-search").value = ""; renderAdminParts(); }
+    if (name === "admin-masks") renderMasksList();
+    if (name === "admin-mask") { if (!maskType) { go("admin-masks"); return; } renderMaskEditor(); }
     if (name === "admin-machine") renderAdminMachine();
     window.scrollTo(0, 0);
   }
@@ -915,7 +979,7 @@
   /* ---------- Início ---------- */
   function renderHome() {
     $("home-admin").hidden = !(user && user.admin);
-    if (user && user.admin) $("home-admin-sub").textContent = adminDirty() ? "Há mudanças ainda não publicadas" : "Ajustar o que roda em cada máquina da Injetora";
+    if (user && user.admin) $("home-admin-sub").textContent = adminDirty() ? "Há mudanças ainda não publicadas" : "Máquinas, peças e máscaras";
     const reports = load(KEY_REPORTS, []);
     if (reports.length) {
       const last = reports[0];
@@ -1340,7 +1404,7 @@
         return;
       }
       if (navigator.share) {
-        try { await navigator.share({ title: "Relatório de Início de Turno da Injetora", text }); }
+        try { await navigator.share({ title: "Relatório da Qualidade", text }); }
         catch (error) { if (error && error.name !== "AbortError") toast("Não deu para abrir o envio"); }
       } else {
         const ok = await copyText(text);
@@ -1556,6 +1620,7 @@
       await pull();
       startWatching();
       watchCadastro();
+      watchMasks();
     } catch (error) {
       reportSync(error);
       return false;
@@ -1594,6 +1659,7 @@
   function onLogout() {
     stopWatching();
     if (unwatchCadastro) { try { unwatchCadastro(); } catch (error) { /* já parado */ } unwatchCadastro = null; }
+    if (unwatchMasks) { try { unwatchMasks(); } catch (error) { /* já parado */ } unwatchMasks = null; }
     syncError = null;
     user = null;
     draft = null; shift = null; block = null;
@@ -1684,14 +1750,22 @@
     return new Set(adminDraft.machines.filter(machine => now.get(machine.id) !== JSON.stringify(machine.items)).map(machine => machine.id));
   }
 
+  function renderPending() {
+    const changed = changedMachines();
+    const dirty = adminDirty();
+    const text = changed.size
+      ? (changed.size === 1 ? "1 máquina alterada" : changed.size + " máquinas alteradas") + " · ainda não publicado"
+      : "Peças alteradas · ainda não publicado";
+    document.querySelectorAll("[data-pending]").forEach(box => {
+      box.hidden = !dirty;
+      box.querySelector("[data-pending-text]").textContent = text;
+    });
+  }
+
   function renderAdmin() {
     const work = adminWork();
     const changed = changedMachines();
-    const dirty = adminDirty();
-    $("admin-pending").hidden = !dirty;
-    $("admin-pending-text").textContent = changed.size
-      ? (changed.size === 1 ? "1 máquina alterada" : changed.size + " máquinas alteradas") + " · ainda não publicado"
-      : "Mudanças ainda não publicadas";
+    renderPending();
     const grid = $("admin-machines");
     grid.innerHTML = "";
     work.machines.forEach(machine => {
@@ -1845,14 +1919,18 @@
     });
     $("np-error").hidden = true;
   }
-  $("am-new").addEventListener("click", () => {
+  let npTarget = "machine";
+  function openNewPart(target) {
+    npTarget = target;
+    $("np-save").textContent = target === "machine" ? "Adicionar à máquina" : "Cadastrar";
     $("np-name").value = "";
     npModels = [];
     npKind = "split";
     renderNewPart();
     if (typeof newSheet.showModal === "function") newSheet.showModal(); else newSheet.setAttribute("open", "");
     $("np-name").focus();
-  });
+  }
+  $("am-new").addEventListener("click", () => openNewPart("machine"));
   $("np-name").addEventListener("input", () => {
     const input = $("np-name");
     const caret = input.selectionStart;
@@ -1886,8 +1964,9 @@
       if (code && !BASE.parts.some(part => part.code === code) && !work.extraParts.some(part => part.code === code)) {
         work.extraParts.push({ code, name: label, it: null });
       }
-      addToMachine(label);
+      if (npTarget === "machine") addToMachine(label);
     });
+    if (npTarget === "catalog") renderAdminParts();
     saveAdminDraft();
     newSheet.close();
     toast(labels.length > 1 ? labels.length + " peças cadastradas" : "Peça cadastrada");
@@ -1895,13 +1974,12 @@
   newSheet.addEventListener("click", event => { if (event.target === newSheet) newSheet.close(); });
 
   /* Publicar / descartar */
-  $("admin-publish").addEventListener("click", async () => {
+  async function publishCadastro(button) {
     const work = adminWork();
     const problems = validateCadastro(work);
     if (problems.length) { alert("Corrija antes de publicar:\n\n- " + problems.join("\n- ")); return; }
     const changed = changedMachines();
     if (!confirm("Publicar para todos? " + (changed.size ? changed.size + " máquina(s) alterada(s)." : "") + "\nQuem estiver usando o app recebe a mudança na hora.")) return;
-    const button = $("admin-publish");
     button.disabled = true;
     try {
       await withTimeout(Cloud.saveCadastro(work));
@@ -1909,7 +1987,7 @@
       applyCadastro(work);
       adminDraft = null;
       try { localStorage.removeItem(KEY_ADMIN_DRAFT); } catch (error) { /* ok */ }
-      renderAdmin();
+      refreshAdminScreen();
       toast("Publicado! Já vale para todos.");
     } catch (error) {
       reportSync(error);
@@ -1919,17 +1997,248 @@
     } finally {
       button.disabled = false;
     }
-  });
-  $("admin-discard").addEventListener("click", () => {
+  }
+  function refreshAdminScreen() {
+    renderPending();
+    if (screenNow === "admin") renderAdmin();
+    if (screenNow === "admin-parts") renderAdminParts();
+  }
+  document.querySelectorAll("[data-publish]").forEach(button => button.addEventListener("click", () => publishCadastro(button)));
+  document.querySelectorAll("[data-discard]").forEach(button => button.addEventListener("click", () => {
     if (!confirm("Descartar todas as mudanças não publicadas?")) return;
     adminDraft = null;
     try { localStorage.removeItem(KEY_ADMIN_DRAFT); } catch (error) { /* ok */ }
-    renderAdmin();
+    refreshAdminScreen();
     toast("Mudanças descartadas");
+  }));
+
+  /* ---------- ADM: peças cadastradas (editar nome/código, apagar, cadastrar) ---------- */
+  function machinesWith(label) {
+    return adminWork().machines.filter(machine => machine.items.includes(label)).map(machine => machine.id);
+  }
+  function renderAdminParts() {
+    renderPending();
+    const work = adminWork();
+    const words = plain($("ap-search").value.trim()).split(/\s+/).filter(Boolean);
+    const labels = Object.keys(work.items).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true }));
+    $("ap-count").textContent = labels.length + " peças";
+    const list = $("ap-list");
+    list.innerHTML = "";
+    labels.filter(label => words.every(word => plain(label + " " + work.items[label].join(" ")).includes(word))).forEach(label => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "admin-item clickable";
+      const text = document.createElement("span");
+      const name = document.createElement("strong");
+      name.textContent = label;
+      const info = document.createElement("small");
+      const inMachines = machinesWith(label);
+      info.textContent = (work.items[label].filter(Boolean).join(" · ") || "sem código") + " · " +
+        (inMachines.length ? "máq. " + inMachines.join(", ") : "em nenhuma máquina");
+      text.append(name, info);
+      row.append(text, icon("i-edit"));
+      row.addEventListener("click", () => openPartEditor(label));
+      list.appendChild(row);
+    });
+  }
+  $("ap-search").addEventListener("input", renderAdminParts);
+
+  const partSheet = $("part-sheet");
+  let editingLabel = null;
+  function openPartEditor(label) {
+    editingLabel = label;
+    $("pe-name").value = label;
+    $("pe-codes").value = adminWork().items[label].filter(Boolean).join(", ");
+    const inMachines = machinesWith(label);
+    $("pe-machines").textContent = inMachines.length ? "Roda nas máquinas: " + inMachines.join(", ") + ". O nome muda nelas também." : "Não está em nenhuma máquina.";
+    $("pe-error").hidden = true;
+    if (typeof partSheet.showModal === "function") partSheet.showModal(); else partSheet.setAttribute("open", "");
+  }
+  $("pe-cancel").addEventListener("click", () => partSheet.close());
+  partSheet.addEventListener("click", event => { if (event.target === partSheet) partSheet.close(); });
+  $("pe-codes").addEventListener("input", event => {
+    const input = event.target;
+    const caret = input.selectionStart;
+    const upper = input.value.toUpperCase();
+    if (upper !== input.value) { input.value = upper; input.setSelectionRange(caret, caret); }
+  });
+  $("pe-save").addEventListener("click", () => {
+    const work = adminWork();
+    const error = message => { $("pe-error").textContent = message; $("pe-error").hidden = false; };
+    const name = $("pe-name").value.trim().replace(/\s+/g, " ");
+    if (!name) return error("Escreva o nome da peça.");
+    if (name !== editingLabel && work.items[name]) return error("Já existe uma peça com esse nome.");
+    const codes = $("pe-codes").value.split(/[,;\s]+/).map(code => code.trim().toUpperCase()).filter(Boolean);
+    const list = codes.length ? codes : [null];
+    if (/\d\/\d/.test(name) && new Set(list).size !== 1) return error("Nome com barra (ex.: 580/601) é UMA peça só: use um código. Se são peças diferentes, cadastre uma por modelo.");
+    // renomeia em todas as máquinas, mantendo a posição na lista
+    if (name !== editingLabel) {
+      work.machines.forEach(machine => { machine.items = machine.items.map(item => (item === editingLabel ? name : item)); });
+      delete work.items[editingLabel];
+    }
+    work.items[name] = list;
+    codes.forEach(code => {
+      if (!BASE.parts.some(part => part.code === code) && !work.extraParts.some(part => part.code === code)) {
+        work.extraParts.push({ code, name, it: null });
+      }
+    });
+    saveAdminDraft();
+    partSheet.close();
+    renderAdminParts();
+    toast("Peça atualizada · falta publicar");
+  });
+  $("pe-delete").addEventListener("click", () => {
+    const inMachines = machinesWith(editingLabel);
+    if (!confirm("Apagar \"" + editingLabel + "\"?" + (inMachines.length ? "\nEla sai das máquinas " + inMachines.join(", ") + "." : ""))) return;
+    const work = adminWork();
+    work.machines.forEach(machine => { machine.items = machine.items.filter(item => item !== editingLabel); });
+    delete work.items[editingLabel];
+    saveAdminDraft();
+    partSheet.close();
+    renderAdminParts();
+    toast("Peça apagada · falta publicar");
+  });
+  $("ap-new").addEventListener("click", () => openNewPart("catalog"));
+
+  /* ---------- ADM: máscaras ---------- */
+  let unwatchMasks = null;
+  function watchMasks() {
+    if (unwatchMasks || !window.Cloud.watchConfig) return;
+    unwatchMasks = Cloud.watchConfig("mascaras", published => {
+      if (published) store(KEY_MASKS, published); else { try { localStorage.removeItem(KEY_MASKS); } catch (error) { /* ok */ } }
+      applyMasks(published);
+      if (screenNow === "admin-masks") renderMasksList();
+    }, reportSync);
+  }
+
+  let maskType = null;
+  let maskDraft = null;
+  function renderMasksList() {
+    const list = $("masks-list");
+    list.innerHTML = "";
+    Object.keys(MASK_DEFAULTS).forEach(type => {
+      const row = document.createElement("button");
+      row.type = "button";
+      row.className = "admin-item clickable";
+      const text = document.createElement("span");
+      const name = document.createElement("strong");
+      name.textContent = MASK_LABELS[type].name;
+      const info = document.createElement("small");
+      const changed = Object.keys(MASK_DEFAULTS[type]).filter(key => MASK[type][key] !== MASK_DEFAULTS[type][key]).length;
+      info.textContent = changed ? changed + " texto(s) diferente(s) do padrão" : "Igual ao padrão";
+      text.append(name, info);
+      row.append(text, icon("i-edit"));
+      row.addEventListener("click", () => { maskType = type; maskDraft = clone(MASK[type]); go("admin-mask"); });
+      list.appendChild(row);
+    });
+  }
+
+  function maskSample(type) {
+    if (type === "inicio") {
+      const selections = {};
+      machines.forEach((machine, index) => { selections[machine.id] = index === 0 && machine.items[0] ? machine.items[0] : index === 1 ? SETUP : STOPPED; });
+      return { type, startedAt: new Date().toISOString(), turno: "T1", selections };
+    }
+    if (type === "troca") {
+      return { type, date: todayKey(), turno: "T1", fields: { relatorio: "- EXEMPLO DE TEXTO", atencao: "", pendencias: "", bloqueio: "- EXEMPLO DE TEXTO", marcacoes: "" } };
+    }
+    const fields = {};
+    BLOCK_FIELDS.forEach(field => { fields[field.key] = field.key === "motivo" ? "- EXEMPLO DE TEXTO" : ""; });
+    fields.dataProducao = todayKey();
+    fields.criticidade = "ALTA";
+    fields.scrap = "NÃO";
+    return { type, fields, photos: {} };
+  }
+  function maskPreview() {
+    const saved = MASK[maskType];
+    MASK[maskType] = { ...MASK_DEFAULTS[maskType], ...maskDraft };
+    let text;
+    try {
+      text = textOf(maskSample(maskType));
+      if (maskType === "bloqueio") {
+        text += "\n\n" + PHOTO_BLOCKS.map(item => MASK.bloqueio[item.key] + "\n[foto]").join("\n\n");
+      }
+    } finally {
+      MASK[maskType] = saved;
+    }
+    return text;
+  }
+
+  function renderMaskEditor() {
+    $("mk-title").textContent = MASK_LABELS[maskType].name;
+    const box = $("mk-fields");
+    box.innerHTML = "";
+    Object.keys(MASK_DEFAULTS[maskType]).forEach(key => {
+      const wrap = document.createElement("label");
+      wrap.className = "mask-field" + (maskDraft[key] !== MASK_DEFAULTS[maskType][key] ? " changed" : "");
+      const head = document.createElement("div");
+      head.className = "mask-field-head";
+      const name = document.createElement("span");
+      name.textContent = MASK_LABELS[maskType][key] || key;
+      head.appendChild(name);
+      if (maskDraft[key] !== MASK_DEFAULTS[maskType][key]) {
+        const reset = document.createElement("button");
+        reset.type = "button";
+        reset.className = "text-btn";
+        reset.textContent = "Padrão";
+        reset.addEventListener("click", event => { event.preventDefault(); maskDraft[key] = MASK_DEFAULTS[maskType][key]; renderMaskEditor(); });
+        head.appendChild(reset);
+      }
+      const input = document.createElement("input");
+      input.className = "text-input mask-input";
+      input.value = maskDraft[key];
+      input.autocomplete = "off";
+      input.spellcheck = false;
+      input.addEventListener("input", () => {
+        maskDraft[key] = input.value;
+        wrap.classList.toggle("changed", input.value !== MASK_DEFAULTS[maskType][key]);
+        $("mk-preview").textContent = maskPreview();
+      });
+      const hint = document.createElement("span");
+      hint.className = "mask-default";
+      hint.textContent = "Padrão: " + MASK_DEFAULTS[maskType][key];
+      wrap.append(head, input, hint);
+      box.appendChild(wrap);
+    });
+    $("mk-preview").textContent = maskPreview();
+  }
+
+  $("mk-reset").addEventListener("click", () => {
+    if (!confirm("Voltar todos os textos desta máscara ao padrão? (Ainda precisa publicar.)")) return;
+    maskDraft = clone(MASK_DEFAULTS[maskType]);
+    renderMaskEditor();
+  });
+  $("mk-publish").addEventListener("click", async () => {
+    if (Object.values(maskDraft).some(value => !String(value).trim()) && !confirm("Algum texto está vazio. Publicar mesmo assim?")) return;
+    if (!confirm("Publicar a máscara \"" + MASK_LABELS[maskType].name + "\" para todos?\nOs relatórios novos já saem com os textos novos.")) return;
+    const published = {};
+    Object.keys(MASK_DEFAULTS).forEach(type => {
+      const source = type === maskType ? maskDraft : MASK[type];
+      const diff = {};
+      Object.keys(MASK_DEFAULTS[type]).forEach(key => { if (source[key] !== MASK_DEFAULTS[type][key]) diff[key] = source[key]; });
+      published[type] = diff;
+    });
+    const button = $("mk-publish");
+    button.disabled = true;
+    try {
+      await withTimeout(Cloud.saveConfig("mascaras", published));
+      store(KEY_MASKS, published);
+      applyMasks(published);
+      toast("Máscara publicada! Já vale para todos.");
+      go("admin-masks");
+    } catch (error) {
+      reportSync(error);
+      alert(error && error.code === "permission-denied"
+        ? "O Firebase não deixou publicar. Confira se as regras (firestore.rules, com a parte \"cadastro\") foram publicadas."
+        : "Não deu para publicar agora. Verifique a internet e tente de novo.");
+    } finally {
+      button.disabled = false;
+    }
   });
 
   /* ---------- Começo ---------- */
   applyCadastro(load(KEY_CADASTRO, null));
+  applyMasks(load(KEY_MASKS, null));
   migrateOldDrafts();
   go("login");
   loginState("Conectando…", true);

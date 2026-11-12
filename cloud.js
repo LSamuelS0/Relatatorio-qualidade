@@ -10,6 +10,7 @@
      compartilhado/ultimoBloqueio   último Status de bloqueio da troca de turno
                                     (qualquer pessoa logada lê e grava)
      cadastro/injetora   máquinas e peças da Injetora (todos leem; só o ADM grava)
+     cadastro/mascaras   textos fixos dos relatórios publicados pelo ADM
 
    O firebaseConfig NÃO é segredo: quem protege os dados são as regras de
    acesso (firestore.rules). A senha do ADM nunca fica no código.
@@ -161,6 +162,18 @@ const Cloud = {
   async saveCadastro(value) {
     needUser();
     await setDoc(doc(db, "cadastro", "injetora"), clean({ ...value, updatedAt: new Date().toISOString(), by: uid() }));
+  },
+
+  /* Outras configurações do ADM em cadastro/{nome} (ex.: "mascaras"). */
+  watchConfig(name, onData, onError) {
+    needUser();
+    return onSnapshot(doc(db, "cadastro", name),
+      snapshot => onData(snapshot.exists() ? snapshot.data() : null),
+      error => onError && onError(error));
+  },
+  async saveConfig(name, value) {
+    needUser();
+    await setDoc(doc(db, "cadastro", name), clean({ ...value, updatedAt: new Date().toISOString(), by: uid() }));
   },
 
   /* Último Status de bloqueio da troca de turno (de qualquer pessoa). */

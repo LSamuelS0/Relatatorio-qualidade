@@ -207,6 +207,17 @@ h1,h2,p{margin:0}
 .turno-pick-machines .turno{min-height:44px;font-size:18px}
 .turno-pick-machines.need .turno{border-color:var(--orange);background:var(--orange-soft)}
 
+.mask-input{text-transform:none}
+.admin-hub{border-color:var(--line)}
+.mask-fields{display:flex;flex-direction:column;gap:12px}
+.mask-field{display:flex;flex-direction:column;gap:6px}
+.mask-field-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.mask-field-head span{font-size:15px;font-weight:800}
+.mask-field.changed .text-input{border-color:var(--orange)}
+.mask-default{font-size:13px;color:var(--muted)}
+.admin-item.clickable{cursor:pointer;text-align:left;width:100%}
+.admin-item small{display:block;font-size:13px;font-weight:600;color:var(--muted)}
+
 /* Botões */
 .btn{width:100%;min-height:49.6px;border-radius:var(--radius);border:2px solid transparent;font-size:15.2px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:8px;padding:0 12.8px}
 .btn-primary{background:var(--green);color:#fff}

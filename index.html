@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=3.9">
+  <link rel="stylesheet" href="styles.css?v=4.0">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -109,29 +109,118 @@
 
       <div class="home-reports" id="home-admin" hidden>
         <h2 class="subtitle">Administrador</h2>
-        <button class="row-card admin-card" type="button" data-go="admin">
+        <button class="row-card admin-card" type="button" data-go="admin-home">
           <svg class="row-icon"><use href="#i-shield"/></svg>
-          <span class="row-text"><strong>Peças das máquinas</strong><small id="home-admin-sub">Ajustar o que roda em cada máquina da Injetora</small></span>
+          <span class="row-text"><strong>Painel do administrador</strong><small id="home-admin-sub">Máquinas, peças e máscaras</small></span>
           <svg class="chev"><use href="#i-next"/></svg>
         </button>
+      </div>
+    </section>
+
+    <!-- A0. Painel do administrador -->
+    <section class="screen screen-admin" id="screen-admin-home" data-screen="admin-home" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Administrador</h1>
+          <span>Injetora</span>
+        </div>
+      </div>
+      <div class="admin-pending" data-pending hidden>
+        <strong data-pending-text>Mudanças ainda não publicadas</strong>
+        <span>Só valem para todos depois de publicar.</span>
+        <div class="actions-row">
+          <button class="btn btn-primary btn-small-tall" type="button" data-publish><svg><use href="#i-check"/></svg>Publicar</button>
+          <button class="btn btn-quiet danger btn-small-tall" type="button" data-discard>Descartar</button>
+        </div>
+      </div>
+      <button class="big-card admin-hub" type="button" data-go="admin">
+        <span class="big-icon"><svg><use href="#i-inject"/></svg></span>
+        <span class="big-text"><strong>Peças das máquinas</strong><small>O que roda em cada máquina</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
+      <button class="big-card admin-hub" type="button" data-go="admin-parts">
+        <span class="big-icon"><svg><use href="#i-search"/></svg></span>
+        <span class="big-text"><strong>Peças cadastradas</strong><small>Editar nome e código, cadastrar e apagar</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
+      <button class="big-card admin-hub" type="button" data-go="admin-masks">
+        <span class="big-icon"><svg><use href="#i-file"/></svg></span>
+        <span class="big-text"><strong>Máscaras</strong><small>Textos fixos de cada relatório</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
+    </section>
+
+    <!-- A3. Administrador: peças cadastradas -->
+    <section class="screen screen-admin" id="screen-admin-parts" data-screen="admin-parts" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="admin-home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Peças cadastradas</h1>
+          <span id="ap-count">—</span>
+        </div>
+      </div>
+      <div class="admin-pending" data-pending hidden>
+        <strong data-pending-text>Mudanças ainda não publicadas</strong>
+        <span>Só valem para todos depois de publicar.</span>
+        <div class="actions-row">
+          <button class="btn btn-primary btn-small-tall" type="button" data-publish><svg><use href="#i-check"/></svg>Publicar</button>
+          <button class="btn btn-quiet danger btn-small-tall" type="button" data-discard>Descartar</button>
+        </div>
+      </div>
+      <label class="search-box" for="ap-search">
+        <svg><use href="#i-search"/></svg>
+        <input id="ap-search" type="search" autocomplete="off" spellcheck="false" placeholder="NOME OU CÓDIGO">
+      </label>
+      <button class="btn btn-outline" type="button" id="ap-new"><svg><use href="#i-plus"/></svg>Cadastrar peça nova</button>
+      <div class="admin-list" id="ap-list"></div>
+    </section>
+
+    <!-- A4. Administrador: máscaras -->
+    <section class="screen screen-admin" id="screen-admin-masks" data-screen="admin-masks" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="admin-home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Máscaras</h1>
+          <span>Textos fixos dos relatórios</span>
+        </div>
+      </div>
+      <div class="admin-list" id="masks-list"></div>
+    </section>
+
+    <!-- A5. Administrador: editar uma máscara -->
+    <section class="screen screen-admin" id="screen-admin-mask" data-screen="admin-mask" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="admin-masks" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1 id="mk-title">Máscara</h1>
+          <span>Mude só o texto; a ordem dos campos continua igual</span>
+        </div>
+      </div>
+      <div class="mask-fields" id="mk-fields"></div>
+      <h2 class="subtitle">Prévia</h2>
+      <pre class="report-text" id="mk-preview"></pre>
+      <div class="actions">
+        <button class="btn btn-primary" type="button" id="mk-publish"><svg><use href="#i-check"/></svg>Publicar máscara</button>
+        <button class="btn btn-quiet" type="button" id="mk-reset">Voltar tudo ao padrão</button>
       </div>
     </section>
 
     <!-- A1. Administrador: máquinas da Injetora -->
     <section class="screen screen-admin" id="screen-admin" data-screen="admin" hidden>
       <div class="head-row">
-        <button class="icon-btn" type="button" data-go="home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <button class="icon-btn" type="button" data-go="admin-home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
         <div class="head-text">
           <h1>Peças das máquinas</h1>
           <span>Injetora · administrador</span>
         </div>
       </div>
-      <div class="admin-pending" id="admin-pending" hidden>
-        <strong id="admin-pending-text">Mudanças ainda não publicadas</strong>
+      <div class="admin-pending" data-pending hidden>
+        <strong data-pending-text>Mudanças ainda não publicadas</strong>
         <span>Só valem para todos depois de publicar.</span>
         <div class="actions-row">
-          <button class="btn btn-primary btn-small-tall" type="button" id="admin-publish"><svg><use href="#i-check"/></svg>Publicar</button>
-          <button class="btn btn-quiet danger btn-small-tall" type="button" id="admin-discard">Descartar</button>
+          <button class="btn btn-primary btn-small-tall" type="button" data-publish><svg><use href="#i-check"/></svg>Publicar</button>
+          <button class="btn btn-quiet danger btn-small-tall" type="button" data-discard>Descartar</button>
         </div>
       </div>
       <p class="hint">Toque na máquina para tirar ou colocar peças.</p>
@@ -422,6 +511,29 @@
     </div>
   </dialog>
 
+  <!-- Janela (ADM): editar peça cadastrada -->
+  <dialog id="part-sheet" class="sheet" aria-labelledby="part-title">
+    <div class="sheet-body">
+      <span class="grip" aria-hidden="true"></span>
+      <h2 id="part-title" class="sheet-title">Editar peça</h2>
+      <label class="field" for="pe-name">
+        <span class="field-label">Nome (como aparece no relatório)</span>
+        <input class="text-input mask-input" id="pe-name" autocomplete="off" spellcheck="false">
+      </label>
+      <label class="field" for="pe-codes">
+        <span class="field-label">Código(s) da CTQ <small>separe por vírgula</small></span>
+        <input class="text-input" id="pe-codes" autocomplete="off" spellcheck="false" placeholder="EX.: L2138000A00032">
+      </label>
+      <p class="muted small" id="pe-machines"></p>
+      <p class="login-error" id="pe-error" hidden></p>
+      <div class="actions-row">
+        <button class="btn btn-quiet" type="button" id="pe-cancel">Cancelar</button>
+        <button class="btn btn-primary" type="button" id="pe-save">Salvar</button>
+      </div>
+      <button class="btn btn-quiet danger" type="button" id="pe-delete"><svg><use href="#i-trash"/></svg>Apagar esta peça</button>
+    </div>
+  </dialog>
+
   <!-- Janela (ADM): cadastrar peça nova -->
   <dialog id="newpart-sheet" class="sheet" aria-labelledby="newpart-title">
     <div class="sheet-body">
@@ -492,8 +604,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=3.9"></script>
-  <script src="app.js?v=3.9"></script>
-  <script type="module" src="cloud.js?v=3.9"></script>
+  <script src="data.js?v=4.0"></script>
+  <script src="app.js?v=4.0"></script>
+  <script type="module" src="cloud.js?v=4.0"></script>
 </body>
 </html>

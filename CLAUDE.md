@@ -94,7 +94,7 @@ Máquina 19: <peça ou situação>
 
 ## Máscara: Troca de turno (Alinhamento PQC Injetora)
 
-Parte **fixa** (não alterar, nem corrigir o chinês sem o dono pedir):
+Parte **fixa** (texto padrão abaixo; só o ADM muda, pelo editor de Máscaras — não alterar no código sem o dono pedir):
 
 ```
 Ⓜ️ALINHAMENTO PQC INJETORA | PQC 冲压校准
@@ -133,7 +133,7 @@ TURNO 日期: <turno escolhido>
 
 ## Máscara: Bloqueio (Bloqueio Injetora)
 
-Parte **fixa** (não alterar):
+Parte **fixa** (texto padrão abaixo; só o ADM muda, pelo editor de Máscaras):
 
 ```
 🔒BLOQUEIO INJETORA | 封锁警报 🔒
@@ -271,7 +271,11 @@ principal por tela, status nunca só por cor, sem informação solta.
    - Cada máscara tem uma parte **fixa** (texto em português e chinês) que nunca muda, e campos que a pessoa preenche.
    - Algumas exigem **imagens**. Ex.: na de **Bloqueio**, primeiro o produto **conforme** com a imagem logo abaixo, depois o produto **não conforme** com a sua imagem.
    - Aguardando o dono enviar os modelos das máscaras.
-3. **Menu de administrador** — **Peças das máquinas FEITO** (11/11/2026): na tela inicial, só para o ADM, o bloco "Administrador → Peças das máquinas" lista as 19 máquinas; em cada uma dá para tirar peças, adicionar peças já cadastradas (lista com filtro) e cadastrar peça nova (nome + modelos + barra/vírgula + código da CTQ opcional). As mudanças ficam numa cópia (`rq.adminDraft.v1`, máquinas alteradas em laranja) até tocar em **Publicar**, que confere as regras (`validateCadastro`) e grava `cadastro/injetora`; **Descartar** volta ao publicado. Ainda falta: contas e usuários, e "ajustar as máscaras" (dono vai explicar o que quer ajustar). Esboço original:
+3. **Menu de administrador** — **Peças das máquinas FEITO** (11/11/2026): na tela inicial, só para o ADM, o bloco "Administrador → Peças das máquinas" lista as 19 máquinas; em cada uma dá para tirar peças, adicionar peças já cadastradas (lista com filtro) e cadastrar peça nova (nome + modelos + barra/vírgula + código da CTQ opcional). As mudanças ficam numa cópia (`rq.adminDraft.v1`, máquinas alteradas em laranja) até tocar em **Publicar**, que confere as regras (`validateCadastro`) e grava `cadastro/injetora`; **Descartar** volta ao publicado. Também feito (11/11/2026):
+   - **Painel do administrador** (tela inicial → "Painel do administrador"): atalhos para Peças das máquinas, Peças cadastradas e Máscaras. O aviso laranja "não publicado" aparece em todas as telas do ADM.
+   - **Peças cadastradas:** lista com busca (nome ou código) mostrando códigos e em quais máquinas cada peça roda. Tocar abre o editor: mudar o nome (muda em todas as máquinas), os códigos da CTQ (separados por vírgula; nome com barra só aceita 1 código) e **Apagar** (sai de todas as máquinas). "Cadastrar peça nova" daqui só cadastra (não põe em máquina). Tudo entra no mesmo rascunho do ADM e só vale depois de **Publicar**.
+   - **Máscaras:** os textos fixos dos 3 relatórios ficam em `MASK_DEFAULTS` (padrão, no `app.js`) e o ADM pode publicar outros em `cadastro/mascaras` (só as diferenças). Editor com cada texto, "Padrão" para voltar um texto, prévia ao vivo e **Publicar máscara** (vale na hora para todos; cópia no aparelho `rq.mascaras.v1`). Só os textos mudam; a ordem dos campos, o padrão de escrita e as regras continuam no código. Relatórios já salvos guardam o texto da época.
+   - Ainda falta: contas e usuários. Esboço original:
    - Só a conta de administrador (usuário `ADM`) acessa. **A senha nunca vai para o código nem para este arquivo**: o repositório é público e qualquer pessoa leria. Ela fica só no serviço de login (Firebase).
    - Telas: Painel (atalhos + aviso de mudanças não publicadas) → Peças das máquinas (escolher máquina, remover e adicionar itens do catálogo) → Catálogo (cadastrar peça nova, perguntando se é uma peça só para os modelos — barra — ou uma por modelo — vírgula — e o código da CTQ de cada uma) → Contas e usuários (criar com matrícula, nome, senha inicial e tipo Operador/Administrador; redefinir senha; desativar) → Revisar e publicar (lista do que entra e sai, valida a regra da barra, publica).
    - Publicar = gravar o cadastro e o app atualizar para todos. Opção prevista: guardar máquinas/peças no Firestore (o app lê de lá), em vez de editar `data.js` pelo navegador — publicar direto na `main` exigiria um token do GitHub dentro do app, o que não é seguro num site público.
@@ -285,6 +289,6 @@ principal por tela, status nunca só por cor, sem informação solta.
 ## Ao trabalhar neste projeto
 
 - Escrever em português do Brasil. Ao usar chinês, colocar o pinyin entre parênteses.
-- Não mexer na parte fixa das máscaras; só nos campos de preenchimento.
+- Não mexer na parte fixa das máscaras no código; o dono ajusta os textos pelo editor de Máscaras do ADM. Ao criar máscara nova, colocar os textos fixos em `MASK_DEFAULTS` e `MASK_LABELS`.
 - Seguir a regra da vírgula e da barra em qualquer peça nova.
 - Atualizar este arquivo e o `README.md` quando algo mudar.
