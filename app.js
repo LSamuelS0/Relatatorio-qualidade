@@ -3068,6 +3068,7 @@
 
   /* Ocorrências do dia: todas as pessoas (nuvem) + as deste aparelho ainda não enviadas */
   let occDate = null;
+  let occShift = "all"; // filtro do "Ocorrências do dia": all, T1, T2 ou T3
   let occRemote = [];
   let occUnwatch = null;
   function stopOccWatch() {
@@ -3137,7 +3138,8 @@
   function paintOccList() {
     if (screenNow !== "occ-list") return;
     const everything = occOfDay();
-    const items = everything.filter(item => item.type !== "registro");
+    const dayItems = everything.filter(item => item.type !== "registro");
+    const items = occShift === "all" ? dayItems : dayItems.filter(item => item.turno === occShift);
     renderDayMap(everything);
     const count = key => {
       const map = new Map();
@@ -3146,17 +3148,23 @@
     };
     const turnos = $("occ-turnos");
     turnos.innerHTML = "";
-    [["Total", items.length, " total"], ["T1", items.filter(i => i.turno === "T1").length, ""], ["T2", items.filter(i => i.turno === "T2").length, ""], ["T3", items.filter(i => i.turno === "T3").length, ""]]
-      .forEach(([label, value, extra]) => {
-        const box = document.createElement("div");
-        box.className = "counter" + extra;
+    // Os quadrinhos são o filtro: Todos os turnos, T1, T2 ou T3 (com a quantidade de cada um)
+    [["all", "Todos", dayItems.length], ["T1", "T1", dayItems.filter(i => i.turno === "T1").length],
+      ["T2", "T2", dayItems.filter(i => i.turno === "T2").length], ["T3", "T3", dayItems.filter(i => i.turno === "T3").length]]
+      .forEach(([key, label, value]) => {
+        const box = document.createElement("button");
+        box.type = "button";
+        box.className = "counter shift-filter" + (occShift === key ? " total" : "");
+        box.setAttribute("aria-pressed", String(occShift === key));
         const num = document.createElement("strong");
         num.textContent = value;
         const name = document.createElement("span");
         name.textContent = label;
         box.append(num, name);
+        box.addEventListener("click", () => { occShift = key; paintOccList(); });
         turnos.appendChild(box);
       });
+    $("occ-shift-note").textContent = occShift === "all" ? "Mostrando todos os turnos" : "Mostrando só o " + occShift + " · toque em Todos para ver o dia inteiro";
     turnos.style.gridTemplateColumns = "repeat(4, minmax(0, 1fr))";
     bars($("occ-by-problem"), count(item => item.problem || occPartText(item)), items.length);
     bars($("occ-by-machine"), count(item => item.machineName || machineLabel(lineOf(item), item.machine)), items.length);
@@ -3254,37 +3262,49 @@
     const events = everything.slice().sort((a, b) => String(a.at).localeCompare(String(b.at)));
     $("occ-map-empty").hidden = events.length > 0;
     const end = occDate === todayKey() ? minutesOf(new Date().toISOString()) : 24 * 60;
-    const width = 24 * MAP_HOUR;
-    const px = minutes => (minutes / 60) * MAP_HOUR;
+    // Janela de horas: o dia inteiro ou só o horário do turno filtrado (a parte que começa neste dia)
+    const bandsOfDay = shiftBands(occDate);
+    let winFrom = 0, winTo = 1440;
+    if (occShift !== "all") {
+      const own = bandsOfDay.filter(band => band.t === occShift);
+      const main = own.find(band => band.realFrom === band.from) || own[0];
+      if (main) { winFrom = main.from; winTo = main.to; }
+    }
+    const width = ((winTo - winFrom) / 60) * MAP_HOUR;
+    const px = minutes => ((minutes - winFrom) / 60) * MAP_HOUR;
+    const step = winTo - winFrom <= 12 * 60 ? 60 : 120;
 
     const grid = document.createElement("div");
     grid.className = "map-grid";
     grid.style.setProperty("--map-w", width + "px");
+    grid.style.setProperty("--map-off", (-((winFrom % 60) / 60) * MAP_HOUR) + "px");
     // eixo das horas
     const corner = document.createElement("div");
     corner.className = "map-name map-corner";
     corner.textContent = "Máquina";
     const axis = document.createElement("div");
     axis.className = "map-axis";
-    for (let h = 0; h <= 24; h += 2) {
+    for (let m = Math.ceil(winFrom / step) * step; m <= winTo; m += step) {
       const tick = document.createElement("span");
-      tick.style.left = px(h * 60) + "px";
-      tick.textContent = String(h).padStart(2, "0") + "h";
+      tick.style.left = px(m) + "px";
+      tick.textContent = String(Math.floor(m / 60) % 24).padStart(2, "0") + "h";
       axis.appendChild(tick);
     }
     grid.append(corner, axis);
     // faixa dos turnos: T1/T2 numa linha, T3 noutra (porque se sobrepõem)
-    [["T1", "T2"], ["T3"]].forEach(group => {
+    [["T1", "T2"], ["T3"]].filter(group => occShift === "all" || group.includes(occShift)).forEach(group => {
       const label = document.createElement("div");
       label.className = "map-name map-shift-name";
       label.textContent = group.join("/");
       const band = document.createElement("div");
       band.className = "map-shifts";
-      shiftBands(occDate).filter(shift => group.includes(shift.t)).forEach(shift => {
+      bandsOfDay.filter(shift => group.includes(shift.t) && (occShift === "all" || shift.t === occShift)).forEach(shift => {
+        const from = Math.max(shift.from, winFrom), to = Math.min(shift.to, winTo);
+        if (to <= from) return;
         const piece = document.createElement("span");
         piece.className = "shift " + shift.t.toLowerCase();
-        piece.style.left = px(shift.from) + "px";
-        piece.style.width = px(shift.to - shift.from) + "px";
+        piece.style.left = px(from) + "px";
+        piece.style.width = ((to - from) / 60) * MAP_HOUR + "px";
         const fmt = minutes => String(Math.floor(minutes / 60) % 24).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
         piece.textContent = shift.t + " " + fmt(shift.realFrom) + "–" + fmt(shift.realTo);
         band.appendChild(piece);
@@ -3311,17 +3331,18 @@
         }
       });
       changes.forEach((change, index) => {
-        const until = index + 1 < changes.length ? changes[index + 1].at : end;
-        if (until <= change.at) return;
+        const start = Math.max(change.at, winFrom);
+        const until = Math.min(index + 1 < changes.length ? changes[index + 1].at : end, winTo);
+        if (until <= start) return;
         const bar = document.createElement("div");
         bar.className = "map-bar " + change.state;
-        bar.style.left = px(change.at) + "px";
-        bar.style.width = Math.max(2, px(until - change.at)) + "px";
+        bar.style.left = px(start) + "px";
+        bar.style.width = Math.max(2, ((until - start) / 60) * MAP_HOUR) + "px";
         bar.title = change.label;
         bar.textContent = change.label;
         row.appendChild(bar);
       });
-      marks.forEach(event => {
+      marks.filter(event => (occShift === "all" || event.turno === occShift) && minutesOf(event.at) >= winFrom && minutesOf(event.at) <= winTo).forEach(event => {
         const mark = document.createElement("button");
         mark.type = "button";
         mark.className = "map-mark";
@@ -3331,7 +3352,7 @@
         mark.addEventListener("click", () => { occView = String(event.id); go("occ-view"); });
         row.appendChild(mark);
       });
-      if (occDate === todayKey()) {
+      if (occDate === todayKey() && end >= winFrom && end <= winTo) {
         const now = document.createElement("div");
         now.className = "map-now";
         now.style.left = px(end) + "px";
@@ -3341,7 +3362,8 @@
     });
     box.appendChild(grid);
     // mostra a hora atual (ou o começo do dia)
-    const focus = occDate === todayKey() ? px(end) - box.clientWidth / 2 : px(6 * 60) - 8; // outro dia: começa no T1 (06h)
+    const focus = occShift !== "all" ? 0 // turno filtrado: começa no início do turno
+      : occDate === todayKey() ? px(end) - box.clientWidth / 2 : px(6 * 60) - 8; // outro dia: começa no T1 (06h)
     box.scrollLeft = Math.max(0, focus);
   }
 

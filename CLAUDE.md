@@ -41,7 +41,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=5.9`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.91`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -280,6 +280,7 @@ Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais 
   - Sexta: T1 06:00–15:00 · T2 15:00–00:30
   - Terça a sexta: T3 00:00–07:00 · Sábado: T3 00:00–08:00
   - O mapa continua no dia do calendário (00h–24h, porque o T3 começa à meia-noite) com uma faixa de turnos por cima (T1/T2 numa linha, T3 noutra; o fim do T2 do dia anterior aparece de 00:00 até 01:30/00:30). Abre na hora atual (hoje) ou às 06h (outros dias).
+- **Filtro de turno (12/11/2026):** no topo do "Ocorrências do dia", os quadrinhos **Todos · T1 · T2 · T3** (com a quantidade de cada) são o filtro. Com um turno escolhido: o mapa mostra só o horário daquele turno no dia (a parte que começa no dia: T1 06–16/15, T2 16/15–24, T3 00–07/08), só as marcas de ocorrência dele, e a lista e os gráficos só as ocorrências dele. As barras de situação continuam vindo de todos os acontecimentos (a situação passa de um turno para o outro).
 - **Pendente com o dono:** confirmar as opções de quem faz a manutenção.
 - **Dados:** `ocorrencias/{id}` no Firestore = `{ id, date (aaaa-mm-dd), at, turno, machine, machineName, part, problem, solution, obs, photos: { fotos: [ids] }, by (matrícula/ADM), owner, updatedAt? }`. Cópia no aparelho `rq.occ.v1`; envio pela fila de pendências (`o:id`). Regras: todos logados leem; cada um cria as suas; dono ou ADM apaga.
 - **Próximos passos:** lista de problemas do dono; depois, relatório/painel por período (semana, mês), por tipo de problema e por máquina.
