@@ -3275,7 +3275,7 @@
      último acontecimento até o próximo: "Registrar" do Funcionamento de máquinas (foto de
      todas as máquinas, type "registro") e cada ocorrência lançada (situação da ocorrência).
      Ocorrências aparecem como uma marca; tocar na marca abre a ocorrência. */
-  const MAP_HOUR = 44; // largura de 1 hora em px
+  const MAP_HOUR = 90; // largura de 1 hora em px (era 44; o dono pediu mais espaço entre as horas)
   function selectionState(value) {
     const kind = kindOf(value || STOPPED);
     return kind === "run" ? { state: "run", label: value } : kind === "setup" ? { state: "setup", label: "Setup" } : { state: "stop", label: "Parada" };
@@ -3330,11 +3330,12 @@
     }
     const width = ((winTo - winFrom) / 60) * MAP_HOUR;
     const px = minutes => ((minutes - winFrom) / 60) * MAP_HOUR;
-    const step = winTo - winFrom <= 12 * 60 ? 60 : 120;
+    const step = 60; // com 90 px por hora cabe a marca de toda hora
 
     const grid = document.createElement("div");
     grid.className = "map-grid";
     grid.style.setProperty("--map-w", width + "px");
+    grid.style.setProperty("--map-hour", MAP_HOUR + "px");
     grid.style.setProperty("--map-off", (-((winFrom % 60) / 60) * MAP_HOUR) + "px");
     // eixo das horas
     const corner = document.createElement("div");
