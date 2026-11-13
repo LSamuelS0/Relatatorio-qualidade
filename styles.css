@@ -404,3 +404,4 @@ h1,h2,p{margin:0}
 #occ-map-add{margin-top:10px;width:100%}
 #occ-date{margin-bottom:8px}
 .map-bar.garra,.lg.garra{background:#D7F0F2;color:#0E5560;border:1px solid #9ED6DC}
+.occ-item .occ-obs{display:block;margin-top:4px;font-weight:700;color:var(--ink,#1d2b26)}

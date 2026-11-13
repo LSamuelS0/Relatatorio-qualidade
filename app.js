@@ -2785,7 +2785,8 @@
     problem: "", solution: "", obs: "", photos: { fotos: [] },
     date: todayKey(), startTime: formatTime(new Date()), endTime: "", mapOnly: false });
   // Sem problema e sem solução: troca de molde e lançamento só no mapa
-  const occNoProblem = item => item.kind === "troca" || Boolean(item.mapOnly);
+  const occNoProblem = item => ["troca", "garra"].includes(item.kind) || Boolean(item.mapOnly);
+  const occNoSolution = item => ["troca", "garra"].includes(item.kind); // sem problema nem solução: só observações
 
   /* Situação da máquina na ocorrência (12/11/2026):
      peca (uma das peças da máquina, rodando) · parada · setup · manutencao (com quem faz) · troca (troca de molde, com a peça que entra). */
@@ -2808,7 +2809,7 @@
   // Situação no mapa: run (rodando), setup, stop (parada), maint (manutenção), change (troca de molde)
   function occState(item) {
     if (item.kind === "setup") return { state: "setup", label: "Setup" };
-    if (item.kind === "garra") return { state: "garra", label: "Troca de garra" };
+    if (item.kind === "garra") return { state: "setup", label: "Troca de garra" }; // entra no mapa como setup
     if (item.kind === "manutencao") return { state: "maint", label: "Manutenção" + (item.who ? " · " + item.who : "") };
     if (item.kind === "troca") return { state: "change", label: "Troca de molde → " + (item.newPart || "") };
     if (item.kind === "parada" || item.part === OCC_STOP) return { state: "stop", label: "Parada" };
@@ -2840,7 +2841,7 @@
     if ($("occ-date").value !== occ.date) $("occ-date").value = occ.date;
     if ($("occ-start").value !== occ.startTime) $("occ-start").value = occ.startTime;
     if ($("occ-end").value !== (occ.endTime || "")) $("occ-end").value = occ.endTime || "";
-    ["occ-solution-field", "occ-obs-field", "occ-photos-field"].forEach(id => { $(id).hidden = Boolean(occ.mapOnly) || (id === "occ-solution-field" && occ.kind === "troca"); });
+    ["occ-solution-field", "occ-obs-field", "occ-photos-field"].forEach(id => { $(id).hidden = Boolean(occ.mapOnly) || (id === "occ-solution-field" && occNoSolution(occ)); });
     $("occ-problem-field").hidden = !occ.kind || occNoProblem(occ);
     $("occ-problem-label").textContent = ["peca", "parada"].includes(occ.kind) ? "Qual é o problema?" : "Qual é o problema? (opcional)";
     const problems = $("occ-problems");
@@ -3032,7 +3033,7 @@
       single(O.turno, up(item.turno)), "",
       single(O.maquina, up(item.machineName || machineLabel(lineOf(item), item.machine))), "",
       single(O.peca, up(occPartText(item))), "",
-      ...(item.kind === "troca" ? [] : [O.motivo, cleanMulti(item.problem) || O.vazio, "", O.solucao, cleanMulti(item.solution) || O.emAnalise, ""]),
+      ...(occNoSolution(item) ? [] : [O.motivo, cleanMulti(item.problem) || O.vazio, "", O.solucao, cleanMulti(item.solution) || O.emAnalise, ""]),
       O.observacoes, cleanMulti(item.obs) || O.vazio
     ];
     return lines.join("\n");
@@ -3243,7 +3244,14 @@
       const info = document.createElement("small");
       const photos = idsOf(item, "fotos").length;
       info.textContent = occRange(item) + " · " + item.turno + " · " + occPartText(item) + (item.by ? " · " + item.by : "")
-        + (item.kind === "troca" ? "" : " · " + (item.solution ? "com solução" : "em análise")) + (photos ? " · 📷 " + photos : "") + (item.pending ? " · enviando…" : "");
+        + (occNoSolution(item) ? "" : " · " + (item.solution ? "com solução" : "em análise")) + (photos ? " · 📷 " + photos : "") + (item.pending ? " · enviando…" : "");
+      // Observações aparecem na própria lista (quando tiver)
+      let obsLine = null;
+      if (item.obs) {
+        obsLine = document.createElement("small");
+        obsLine.className = "occ-obs";
+        obsLine.textContent = "Obs.: " + item.obs.replace(/^-\s*/, "").replace(/\n-\s*/g, " · ");
+      }
       const open = document.createElement("button");
       open.type = "button";
       open.className = "occ-open";
@@ -3255,7 +3263,9 @@
         occView = String(item.id);
         go("occ-view");
       });
-      card.append(top, info, open);
+      card.append(top, info);
+      if (obsLine) card.appendChild(obsLine);
+      card.appendChild(open);
       list.appendChild(card);
     });
   }
@@ -3447,7 +3457,8 @@
             ["strong", "Ocorrência · " + mName(machine)],
             ["p", event.problem || occPartText(event)],
             ["small", occRange(event) + " · " + event.turno + " · " + occPartText(event) + (event.by ? " · " + event.by : "")],
-            ["small", event.kind === "troca" ? "" : event.solution ? "Solução: " + event.solution.replace(/^-\s*/, "") : "Em análise"]
+            ["small", event.obs ? "Obs.: " + event.obs.replace(/^-\s*/, "").replace(/\n-\s*/g, " · ") : ""],
+            ["small", occNoSolution(event) ? "" : event.solution ? "Solução: " + event.solution.replace(/^-\s*/, "") : "Em análise"]
           ];
           const open = () => { occView = String(event.id); go("occ-view"); };
           const actions = [["Abrir", open]];
@@ -3566,7 +3577,7 @@
     if (mine) {
       occEdit = { solution: item.solution || "", obs: item.obs || "", photos: { fotos: idsOf(item, "fotos") },
         startTime: item.startTime || formatHM(occStart(item)), endTime: item.endTime || "" };
-      $("ov-solution-field").hidden = item.kind === "troca";
+      $("ov-solution-field").hidden = occNoSolution(item);
       $("ov-start").value = occEdit.startTime;
       $("ov-end").value = occEdit.endTime;
       ["solution", "obs"].forEach(key => { const area = $("ov-" + key); area.value = occEdit[key]; fit(area); });
