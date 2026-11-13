@@ -677,13 +677,17 @@
     { key: "localizacao" }
   ];
   let block = null; // bloqueio em edição
+  /* Tipo do bloqueio (13/11/2026): "pecas" (padrão, com fotos Conforme, Não conforme e Localização)
+     ou "pallet" (só a foto de Localização, que já é a não conformidade). */
+  const blockKind = item => (item && item.kind === "pallet" ? "pallet" : "pecas");
+  const photoBlocksOf = item => (blockKind(item) === "pallet" ? PHOTO_BLOCKS.filter(slot => slot.key === "localizacao") : PHOTO_BLOCKS);
 
-  function newBlock() {
+  function newBlock(kind) {
     const fields = {};
     BLOCK_FIELDS.forEach(field => { fields[field.key] = ""; });
     fields.dataProducao = todayKey();
     fields.helpChain = lastTags("bloqueio", "helpChain", LINE) || (DATA.helpChainDefault || []).join(" ").toLocaleUpperCase("pt-BR");
-    block = { id: newId(), line: LINE, type: "bloqueio", startedAt: new Date().toISOString(), fields,
+    block = { id: newId(), line: LINE, type: "bloqueio", kind: kind === "pallet" ? "pallet" : "pecas", startedAt: new Date().toISOString(), fields,
       photos: { conforme: null, naoConforme: null, localizacao: [] }, savedId: null };
   }
 
@@ -806,7 +810,9 @@
     });
     paintChoices();
     renderProductPick();
-    for (const slot of PHOTO_BLOCKS) await renderPhotoSlot(slot.key);
+    $("block-kind-label").textContent = (blockKind(block) === "pallet" ? "Pallet" : "Peças") + " · " + LINES[LINE].name;
+    ["conforme", "naoConforme"].forEach(key => { document.querySelector('[data-photo="' + key + '"]').hidden = blockKind(block) === "pallet"; });
+    for (const slot of photoBlocksOf(block)) await renderPhotoSlot(slot.key);
   }
 
   async function renderPhotoSlot(key) {
@@ -851,10 +857,12 @@
     $("location-add-label").textContent = ids.length ? "Adicionar mais fotos" : "Adicionar foto";
   }
 
-  $("start-bloqueio").addEventListener("click", () => {
-    newBlock();
+  // Bloqueio: primeiro escolhe Pallet ou Peças
+  $("start-bloqueio").addEventListener("click", () => go("block-kind"));
+  document.querySelectorAll("[data-block-kind]").forEach(button => button.addEventListener("click", () => {
+    newBlock(button.dataset.blockKind);
     go("block");
-  });
+  }));
 
   document.querySelectorAll("[data-bfield]").forEach(input => {
     input.addEventListener("input", () => {
@@ -927,7 +935,7 @@
   $("block-restart").addEventListener("click", () => {
     if (!confirm("Limpar todos os campos e fotos do bloqueio?")) return;
     dropDraft(block.id);
-    newBlock();
+    newBlock(blockKind(block));
     renderBlock();
     cleanPhotos();
     toast("Campos limpos");
@@ -1176,7 +1184,7 @@
     if (report.type === "parada") return renderEvidenceBlock(container, report);
     container.hidden = report.type !== "bloqueio";
     if (report.type !== "bloqueio") return;
-    for (const item of PHOTO_BLOCKS) {
+    for (const item of photoBlocksOf(report)) {
       const card = document.createElement("div");
       card.className = "photo-block";
       const head = document.createElement("div");
@@ -1368,7 +1376,7 @@
     if (["admin-home", "admin", "admin-parts", "admin-masks", "admin-mask", "admin-machine"].includes(name) && !adminLine) { go("admin-line"); return; }
     screens.forEach(screen => { screen.hidden = screen.dataset.screen !== name; });
     if (name === "home") renderHome();
-    if (name === "type" || name === "audit") setLine(LINE);
+    if (name === "type" || name === "audit" || name === "block-kind") setLine(LINE);
     if (name === "admin-line") adminLine = null;
     if (name === "machines") renderMachines();
     if (name === "shift") renderShift();
@@ -1425,7 +1433,7 @@
     if (item.type === "bloqueio") {
       const code = (item.fields.codigo || "").split(" - ")[0] || "sem código";
       const photos = allIdsOf(item).length;
-      return whenLabel(new Date(item.startedAt)) + " · " + code + " · " + photos + (photos === 1 ? " foto" : " fotos");
+      return whenLabel(new Date(item.startedAt)) + " · " + (blockKind(item) === "pallet" ? "Pallet" : "Peças") + " · " + code + " · " + photos + (photos === 1 ? " foto" : " fotos");
     }
     if (item.type === "troca") {
       return formatDate(dateFromKey(item.date)) + " · " + (item.turno || "turno não escolhido");
@@ -1717,8 +1725,11 @@
       text: textOf(source)
     };
     if (source.type === "bloqueio") {
+      report.kind = blockKind(source);
       report.fields = { ...source.fields };
-      report.photos = { ...source.photos, localizacao: idsOf(source, "localizacao") };
+      report.photos = blockKind(source) === "pallet"
+        ? { conforme: null, naoConforme: null, localizacao: idsOf(source, "localizacao") }
+        : { ...source.photos, localizacao: idsOf(source, "localizacao") };
     } else if (source.type === "troca") {
       report.date = source.date;
       report.turno = source.turno;
@@ -1748,7 +1759,7 @@
     // Depois de salvar, o formulário fica limpo para o próximo relatório.
     justSaved = report;
     if (source.type === "troca") { newShift(); shift.pristine = true; }
-    else if (source.type === "bloqueio") { newBlock(); block.pristine = true; }
+    else if (source.type === "bloqueio") { newBlock(blockKind(source)); block.pristine = true; }
     else if (source.type === "parada") { newParada(); parada.pristine = true; }
     else { newDraft(); draft.pristine = true; }
     renderDone();
@@ -1763,6 +1774,7 @@
   function editSaved(report) {
     const copy = { id: newId(), line: report.line, type: report.type, startedAt: report.startedAt, savedId: null, fromReport: report.id };
     if (report.type === "bloqueio") {
+      copy.kind = blockKind(report);
       copy.fields = { ...(report.fields || {}) };
       copy.photos = { conforme: null, naoConforme: null, ...(report.photos || {}), localizacao: idsOf(report, "localizacao") };
     } else if (report.type === "troca") {
@@ -1811,7 +1823,7 @@
       title.textContent = titleOf(report);
       const sub = document.createElement("small");
       sub.textContent = report.type === "bloqueio"
-        ? whenLabel(new Date(report.savedAt)) + " · " + ((report.fields.codigo || "").split(" - ")[0] || "sem código")
+        ? whenLabel(new Date(report.savedAt)) + " · " + (blockKind(report) === "pallet" ? "Pallet" : "Peças") + " · " + ((report.fields.codigo || "").split(" - ")[0] || "sem código")
         : report.type === "troca"
         ? formatDate(dateFromKey(report.date)) + (report.turno ? " · " + report.turno : "")
         : report.type === "parada"
@@ -1893,7 +1905,7 @@
         : justSaved || current();
       if (report && report.type === "bloqueio" && allIdsOf(report).length) {
         const ids = [], names = [];
-        PHOTO_BLOCKS.forEach(item => idsOf(report, item.key).forEach((id, i) => { ids.push(id); names.push(item.key + "-" + (i + 1)); }));
+        photoBlocksOf(report).forEach(item => idsOf(report, item.key).forEach((id, i) => { ids.push(id); names.push(item.key + "-" + (i + 1)); }));
         await sharePhotos(ids, text, names);
         return;
       }

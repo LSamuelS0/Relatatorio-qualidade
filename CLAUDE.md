@@ -41,7 +41,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=5.98`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=5.99`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -223,6 +223,13 @@ CRITICIDADE 关键性: / SCRAP 废料: / POSIÇÃO 物料所在位置: / HELP CH
 ```
 
 Mesmos campos, regras e fotos da Injetora (N/A, linha em branco após título, marcações, help chain etc.).
+
+## Bloqueio: Pallet ou Peças e scrap "Inspeção" (13/11/2026)
+
+- Ao tocar em "Bloqueio", o app pergunta **"O que vai bloquear?"**: **Pallet** ou **Peças** (tela `block-kind`). Fica em `kind` do relatório (`"pallet"` / `"pecas"`; sem `kind` = peças, os antigos).
+- **Peças:** como antes — fotos Conforme, Não conforme e Localização.
+- **Pallet:** sem as fotos Conforme e Não conforme; **só a Localização**, que já é a não conformidade. O texto da máscara é o mesmo. O título da tela mostra "Pallet · Injetora" / "Peças · Estamparia"; listas e rascunhos mostram o tipo.
+- **Scrap** ganhou a opção **Inspeção** (`INSPEÇÃO`): Sim · Não · Em análise · Inspeção (botões 2×2).
 
 ## Parada de máquina (as duas linhas, 12/11/2026)
 
