@@ -2792,6 +2792,7 @@
   const OCC_STOP = "Nenhuma peça (máquina parada)";
   const OCC_EXTRA = [
     { kind: "setup", label: "Setup" },
+    { kind: "garra", label: "Troca de garra" },
     { kind: "manutencao", label: "Manutenção" },
     { kind: "troca", label: "Troca de molde" }
   ];
@@ -2799,6 +2800,7 @@
   // Texto da "peça" no relatório e na lista: a peça, ou a situação
   function occPartText(item) {
     if (item.kind === "setup") return "SETUP";
+    if (item.kind === "garra") return "TROCA DE GARRA";
     if (item.kind === "manutencao") return "MANUTENÇÃO" + (item.who ? " (" + item.who + ")" : "");
     if (item.kind === "troca") return "TROCA DE MOLDE → " + (item.newPart || "");
     return item.part || "";
@@ -2806,6 +2808,7 @@
   // Situação no mapa: run (rodando), setup, stop (parada), maint (manutenção), change (troca de molde)
   function occState(item) {
     if (item.kind === "setup") return { state: "setup", label: "Setup" };
+    if (item.kind === "garra") return { state: "garra", label: "Troca de garra" };
     if (item.kind === "manutencao") return { state: "maint", label: "Manutenção" + (item.who ? " · " + item.who : "") };
     if (item.kind === "troca") return { state: "change", label: "Troca de molde → " + (item.newPart || "") };
     if (item.kind === "parada" || item.part === OCC_STOP) return { state: "stop", label: "Parada" };
@@ -3414,7 +3417,7 @@
         bar.appendChild(text);
         // A situação de agora: o nome continua depois da barra (fica inteiro, não corta)
         if (last && occDate === todayKey()) bar.classList.add("open");
-        const STATE_NAMES = { setup: "Setup", stop: "Parada", maint: "Manutenção", change: "Troca de molde" };
+        const STATE_NAMES = { setup: "Setup", stop: "Parada", maint: "Manutenção", change: "Troca de molde", garra: "Troca de garra" };
         bar.addEventListener("click", event => {
           event.stopPropagation();
           const pop = [];
