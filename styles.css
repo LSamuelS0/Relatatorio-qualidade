@@ -401,3 +401,5 @@ h1,h2,p{margin:0}
 .map-grid .map-corner,.map-grid .map-shift-name{z-index:5}
 .map-pop-actions{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .map-pop-actions .btn{width:100%;min-height:36px;padding:6px 8px;font-size:14px}
+#occ-map-add{margin-top:10px;width:100%}
+#occ-date{margin-bottom:8px}

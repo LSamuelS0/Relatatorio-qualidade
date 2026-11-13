@@ -2779,8 +2779,13 @@
      ocorrencias/{id} (todos leem) com cópia no aparelho (rq.occ.v1) até ser enviada.
      Problemas: DATA.problemas (botões) ou texto livre enquanto a lista estiver vazia. */
   const KEY_OCC = "rq.occ.v1";
+  /* date/startTime/endTime: quando aconteceu (ajustável, para quem esqueceu de lançar na hora).
+     mapOnly: "Lançar no mapa" — só muda a situação da máquina no mapa, sem virar ocorrência. */
   const occBlank = turno => ({ turno: turno || null, machine: null, kind: null, part: null, who: null, newPart: null, showAll: false,
-    problem: "", solution: "", obs: "", photos: { fotos: [] } });
+    problem: "", solution: "", obs: "", photos: { fotos: [] },
+    date: todayKey(), startTime: formatTime(new Date()), endTime: "", mapOnly: false });
+  // Sem problema e sem solução: troca de molde e lançamento só no mapa
+  const occNoProblem = item => item.kind === "troca" || Boolean(item.mapOnly);
 
   /* Situação da máquina na ocorrência (12/11/2026):
      peca (uma das peças da máquina, rodando) · parada · setup · manutencao (com quem faz) · troca (troca de molde, com a peça que entra). */
@@ -2825,7 +2830,15 @@
     const machine = machines.find(item => item.id === occ.machine);
     $("occ-part-field").hidden = !machine;
     renderOccSituation(machine);
-    $("occ-problem-field").hidden = !occ.kind;
+    // Lançar no mapa x Lançar ocorrência
+    $("occ-new-title").textContent = occ.mapOnly ? "Lançar no mapa" : "Lançar ocorrência";
+    $("occ-save-label").textContent = occ.mapOnly ? "Lançar no mapa" : "Lançar ocorrência";
+    $("occ-map-note").hidden = !occ.mapOnly;
+    if ($("occ-date").value !== occ.date) $("occ-date").value = occ.date;
+    if ($("occ-start").value !== occ.startTime) $("occ-start").value = occ.startTime;
+    if ($("occ-end").value !== (occ.endTime || "")) $("occ-end").value = occ.endTime || "";
+    ["occ-solution-field", "occ-obs-field", "occ-photos-field"].forEach(id => { $(id).hidden = Boolean(occ.mapOnly) || (id === "occ-solution-field" && occ.kind === "troca"); });
+    $("occ-problem-field").hidden = !occ.kind || occNoProblem(occ);
     $("occ-problem-label").textContent = ["peca", "parada"].includes(occ.kind) ? "Qual é o problema?" : "Qual é o problema? (opcional)";
     const problems = $("occ-problems");
     problems.innerHTML = "";
@@ -3000,6 +3013,10 @@
   }
   $("occ-photo-input").addEventListener("change", () => addOccPhotos($("occ-photo-input"), occ, () => renderOccNew()));
   $("occ-solution").addEventListener("input", event => { occ.solution = event.target.value; });
+  $("occ-date").addEventListener("input", event => { occ.date = event.target.value || todayKey(); });
+  $("occ-start").addEventListener("input", event => { occ.startTime = event.target.value; });
+  $("occ-end").addEventListener("input", event => { occ.endTime = event.target.value; });
+  $("occ-start-now").addEventListener("click", () => { occ.date = todayKey(); occ.startTime = formatTime(new Date()); renderOccNew(); });
   $("occ-obs").addEventListener("input", event => { occ.obs = event.target.value; });
 
   /* Máscara da ocorrência (a mesma nas duas linhas). Sem solução → "- EM ANÁLISE". */
@@ -3012,8 +3029,7 @@
       single(O.turno, up(item.turno)), "",
       single(O.maquina, up(item.machineName || machineLabel(lineOf(item), item.machine))), "",
       single(O.peca, up(occPartText(item))), "",
-      O.motivo, cleanMulti(item.problem) || O.vazio, "",
-      O.solucao, cleanMulti(item.solution) || O.emAnalise, "",
+      ...(item.kind === "troca" ? [] : [O.motivo, cleanMulti(item.problem) || O.vazio, "", O.solucao, cleanMulti(item.solution) || O.emAnalise, ""]),
       O.observacoes, cleanMulti(item.obs) || O.vazio
     ];
     return lines.join("\n");
@@ -3044,13 +3060,17 @@
     if (!occ.kind) { toast("Escolha a peça ou a situação"); return; }
     if (occ.kind === "manutencao" && !occ.who) { toast("Escolha quem está fazendo a manutenção"); return; }
     if (occ.kind === "troca" && !occ.newPart) { toast("Escolha a peça que vai entrar"); return; }
-    if (["peca", "parada"].includes(occ.kind) && !occ.problem) { $("occ-problem-text").focus(); toast("Diga qual é o problema"); return; }
+    if (["peca", "parada"].includes(occ.kind) && !occNoProblem(occ) && !occ.problem) { $("occ-problem-text").focus(); toast("Diga qual é o problema"); return; }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(occ.date || "") || hhmm(occ.startTime) === null) { $("occ-start").focus(); toast("Confira a data e o horário de início"); return; }
     const now = new Date();
+    const noProblem = occNoProblem(occ);
     const item = {
-      id: newId(), line: LINE, type: "ocorrencia", at: now.toISOString(), date: todayKey(),
+      id: newId(), line: LINE, type: "ocorrencia", at: now.toISOString(), date: occ.date,
+      startTime: occ.startTime, endTime: hhmm(occ.endTime) === null ? null : occ.endTime, mapOnly: Boolean(occ.mapOnly) || undefined,
       turno: occ.turno, machine: occ.machine, machineName: machineLabel(LINE, occ.machine),
-      kind: occ.kind, who: occ.who || null, newPart: occ.newPart || null, part: null, problem: occ.problem,
-      solution: standardize(occ.solution || "").trim(), obs: standardize(occ.obs || "").trim(), photos: { fotos: idsOf(occ, "fotos") },
+      kind: occ.kind, who: occ.who || null, newPart: occ.newPart || null, part: null, problem: noProblem ? "" : occ.problem,
+      solution: noProblem ? "" : standardize(occ.solution || "").trim(), obs: occ.mapOnly ? "" : standardize(occ.obs || "").trim(),
+      photos: { fotos: occ.mapOnly ? [] : idsOf(occ, "fotos") },
       by: user ? user.login : ""
     };
     item.part = occ.kind === "peca" || occ.kind === "parada" ? occ.part : occPartText(item);
@@ -3058,7 +3078,16 @@
     all.unshift(item);
     store(KEY_OCC, all.slice(0, 1500));
     queuePush("o", item.id);
-    toast("Ocorrência lançada: " + item.machineName);
+    if (!item.mapOnly) delete item.mapOnly;
+    store(KEY_OCC, load(KEY_OCC, []).map(other => (other.id === item.id ? item : other)));
+    if (occ.mapOnly) {
+      toast("Lançado no mapa: " + item.machineName + " às " + item.startTime);
+      occDate = item.date;
+      occ = occBlank(occ.turno);
+      go("occ-list");
+      return;
+    }
+    toast("Ocorrência lançada: " + item.machineName + (item.date !== todayKey() ? " (" + formatDate(dateFromKey(item.date)) + ")" : ""));
     // pronto para a próxima: mantém o turno
     occ = occBlank(occ.turno);
     $("occ-problem-text").value = "";
@@ -3149,7 +3178,7 @@
   function paintOccList() {
     if (screenNow !== "occ-list") return;
     const everything = occOfDay();
-    const dayItems = everything.filter(item => item.type !== "registro");
+    const dayItems = everything.filter(item => item.type !== "registro" && !item.mapOnly);
     const items = occShift === "all" ? dayItems : dayItems.filter(item => item.turno === occShift);
     renderDayMap(everything);
     const count = key => {
@@ -3211,7 +3240,7 @@
       const info = document.createElement("small");
       const photos = idsOf(item, "fotos").length;
       info.textContent = occRange(item) + " · " + item.turno + " · " + occPartText(item) + (item.by ? " · " + item.by : "")
-        + " · " + (item.solution ? "com solução" : "em análise") + (photos ? " · 📷 " + photos : "") + (item.pending ? " · enviando…" : "");
+        + (item.kind === "troca" ? "" : " · " + (item.solution ? "com solução" : "em análise")) + (photos ? " · 📷 " + photos : "") + (item.pending ? " · enviando…" : "");
       const open = document.createElement("button");
       open.type = "button";
       open.className = "occ-open";
@@ -3347,10 +3376,10 @@
         if (event.type === "registro") {
           if (event.selections && event.selections[machine.id] !== undefined) raw.push({ at: minutesOf(event.at), ...selectionState(event.selections[machine.id]) });
         } else if (String(event.machine) === String(machine.id)) {
-          raw.push({ at: occStart(event), src: event.id, ...occState(event) });
+          raw.push({ at: occStart(event), src: event.id, item: event, ...occState(event) });
           // com horário de fim, a máquina volta à situação de antes da ocorrência
           if (occEnd(event) !== null) raw.push({ at: occEnd(event), restore: event.id });
-          marks.push(event);
+          if (!event.mapOnly) marks.push(event);
         }
       });
       raw.sort((a, b) => a.at - b.at || (a.restore ? -1 : 0) - (b.restore ? -1 : 0));
@@ -3392,7 +3421,13 @@
           pop.push(["strong", mName(machine)]);
           pop.push(["p", change.label || STATE_NAMES[change.state] || ""]);
           pop.push(["small", formatHM(change.at) + " até " + (last ? (occDate === todayKey() ? "agora" : "o fim do dia") : formatHM(realEnd % 1440 || 0))]);
-          showMapPop(grid, bar, pop, []);
+          const actions = [];
+          const src = change.item;
+          if (src && src.mapOnly && (canEditOcc(src) || (user && user.admin))) {
+            pop.push(["small", "Lançado no mapa" + (src.by ? " por " + src.by : "")]);
+            actions.push(["Apagar", () => deleteOcc(src), "danger"]);
+          }
+          showMapPop(grid, bar, pop, actions);
         });
         row.appendChild(bar);
       });
@@ -3409,7 +3444,7 @@
             ["strong", "Ocorrência · " + mName(machine)],
             ["p", event.problem || occPartText(event)],
             ["small", occRange(event) + " · " + event.turno + " · " + occPartText(event) + (event.by ? " · " + event.by : "")],
-            ["small", event.solution ? "Solução: " + event.solution.replace(/^-\s*/, "") : "Em análise"]
+            ["small", event.kind === "troca" ? "" : event.solution ? "Solução: " + event.solution.replace(/^-\s*/, "") : "Em análise"]
           ];
           const open = () => { occView = String(event.id); go("occ-view"); };
           const actions = [["Abrir", open]];
@@ -3483,6 +3518,15 @@
   }
   document.addEventListener("click", () => document.querySelectorAll(".map-pop").forEach(pop => pop.remove()));
 
+  /* "Lançar no mapa": para quem esqueceu de lançar na hora — escolhe máquina, situação e horário. */
+  $("occ-map-add").addEventListener("click", () => {
+    occ = occBlank(occ.turno);
+    occ.mapOnly = true;
+    occ.date = occDate || todayKey();
+    occ.startTime = occ.date === todayKey() ? formatTime(new Date()) : "06:00";
+    go("occ-new");
+  });
+
   /* Botão "Registrar" no Funcionamento de máquinas: grava a situação de todas as máquinas
      agora, no mapa do dia (vai para "ocorrencias" como type "registro"; todos veem). */
   $("machines-register").addEventListener("click", () => {
@@ -3519,6 +3563,7 @@
     if (mine) {
       occEdit = { solution: item.solution || "", obs: item.obs || "", photos: { fotos: idsOf(item, "fotos") },
         startTime: item.startTime || formatHM(occStart(item)), endTime: item.endTime || "" };
+      $("ov-solution-field").hidden = item.kind === "troca";
       $("ov-start").value = occEdit.startTime;
       $("ov-end").value = occEdit.endTime;
       ["solution", "obs"].forEach(key => { const area = $("ov-" + key); area.value = occEdit[key]; fit(area); });
