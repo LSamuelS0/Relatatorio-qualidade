@@ -41,7 +41,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=6.0`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=6.01`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -293,7 +293,7 @@ Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais 
 - **Observações na lista (13/11/2026):** quando a ocorrência tem observações, elas aparecem no cartão da lista ("Obs.: …") e no balão do mapa.
 - **Troca de molde sem problema e sem solução (13/11/2026):** ao escolher Troca de molde, somem "Qual é o problema?" e "Solução" (no lançamento e no detalhe); o texto da máscara sai sem as linhas MOTIVO DO PROBLEMA e SOLUÇÃO, e a lista não mostra "em análise".
 - **Configuração "Máquinas começam no início do turno" (14/11/2026):** ADM → (área) → **Configurações** (tela `admin-config`; vale para Injetora e Estamparia e para todos). Ligada (padrão): no mapa, o **primeiro "Registrar" de cada turno no dia** começa no horário de início do turno (`shiftStart`: o da escala do dia; turno fora da escala usa o normal — T1 06:00, T2 16:00 / 15:00 na sexta, T3 00:00), mesmo lançado mais tarde. Calculado na hora de desenhar (ligar/desligar muda o mapa na hora; nada é regravado). Nuvem: `cadastro/configuracoes` (`{ inicioTurno }`), coberto pela regra `cadastro/{doc}` (sem regra nova); cópia no aparelho `rq.config.v1`.
-- **Turno extra:** se houver lançamento de um turno que não está na escala do dia (ex.: T1 no sábado), o mapa mostra a faixa "T1 extra 06:00" com o horário normal.
+- **Turno extra:** se houver lançamento de um turno que não está na escala do dia (ex.: T1 no sábado), o mapa mostra a faixa "T1 extra" com o horário normal. **T1 extra no sábado: 06:00–15:00** (passado pelo dono em 14/11/2026); nos outros dias o T1 extra vai até 16:00.
 - **Espaço entre as horas (13/11/2026):** 1 hora = 90 px (`MAP_HOUR`; era 44). O eixo marca toda hora (também no dia inteiro).
 - **Mapa congelado (12/11/2026):** o mapa tem altura máxima (65% da tela) e rola dentro dele: a coluna das máquinas fica fixa ao arrastar para o lado e a linha das horas e dos turnos fica fixa ao rolar para baixo (como "congelar painéis" do Excel). Barra de máquina rodando mostra só o nome da peça (também no balão).
 - **Horário de início e de fim (12/11/2026):** no detalhe da ocorrência (parte "Atualizar", só quem lançou), duas caixas lado a lado: **Início** (começa com a hora do lançamento, ajustável) e **Fim** (vazio até preencher; botão "Fim = agora"). Guardados em `startTime` / `endTime` ("HH:MM", no dia da ocorrência). No mapa, a situação da ocorrência vale do início ao fim; no fim a máquina volta à situação de antes (se nada mais novo tiver mudado a máquina). Sem fim = vale até o próximo acontecimento. Fim menor que o início = até o fim do dia. A lista e o detalhe mostram "início–fim". O horário não entra no texto da máscara.

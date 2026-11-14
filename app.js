@@ -3398,7 +3398,8 @@
     // Janela de horas: o dia inteiro ou só o horário do turno filtrado (a parte que começa neste dia)
     const bandsOfDay = shiftBands(occDate);
     // Turno extra (fora da escala, ex.: T1 no sábado): aparece com o horário normal quando tem lançamento
-    const EXTRA_LEN = { T1: 600, T2: 480, T3: 420 };
+    // T1 extra no sábado: 06:00–15:00 (passado pelo dono em 14/11/2026)
+    const EXTRA_LEN = { T1: dateFromKey(occDate).getDay() === 6 ? 540 : 600, T2: 480, T3: 420 };
     ["T1", "T2", "T3"].forEach(turno => {
       if (bandsOfDay.some(band => band.t === turno && band.realFrom === band.from)) return;
       if (!everything.some(event => event.turno === turno)) return;
@@ -3453,7 +3454,7 @@
         piece.style.left = px(from) + "px";
         piece.style.width = ((to - from) / 60) * MAP_HOUR + "px";
         const fmt = minutes => String(Math.floor(minutes / 60) % 24).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
-        piece.textContent = shift.t + (shift.extra ? " extra " + fmt(shift.realFrom) : " " + fmt(shift.realFrom) + "–" + fmt(shift.realTo));
+        piece.textContent = shift.t + (shift.extra ? " extra " : " ") + fmt(shift.realFrom) + "–" + fmt(shift.realTo);
         band.appendChild(piece);
       });
       grid.append(label, band);
