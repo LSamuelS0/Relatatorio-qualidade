@@ -417,3 +417,12 @@ h1,h2,p{margin:0}
 .setting-row[aria-checked="true"] .switch span{left:25px}
 .setting-state{grid-area:state;font-size:12px;font-weight:800;color:var(--muted);text-align:center}
 .setting-row[aria-checked="true"]{border-color:var(--green)}
+/* Ver alterações (ADM) */
+.admin-pending .see-changes{width:100%;margin-top:8px;background:#fff}
+.changes-list{display:flex;flex-direction:column;gap:6px;max-height:60vh;overflow:auto}
+.changes-group{margin:10px 0 2px;font-size:14px;font-weight:800;color:var(--muted);text-transform:uppercase;letter-spacing:.3px}
+.change-row{display:flex;gap:8px;align-items:flex-start;padding:10px 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:15px;font-weight:700;line-height:1.35}
+.change-tag{flex:none;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.change-row.add .change-tag{background:#DCEFE4;color:#14513B}
+.change-row.remove .change-tag{background:#FBE2DE;color:#9B2A1E}
+.change-row.edit .change-tag{background:#FFF0DD;color:#8A4200}

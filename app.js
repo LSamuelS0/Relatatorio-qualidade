@@ -2307,6 +2307,85 @@
     });
   }
 
+  /* "Ver alterações": compara o rascunho do ADM com o que está publicado na área escolhida. */
+  function adminChanges() {
+    const before = currentCadastro(adminLine);
+    const after = adminWork();
+    const groups = [];
+    const codesText = codes => (codes || []).filter(Boolean).join(" / ") || "sem código";
+    const same = (a, b) => JSON.stringify(a || []) === JSON.stringify(b || []);
+    // Peças cadastradas (itens da linha)
+    const added = Object.keys(after.items).filter(label => !(label in before.items));
+    const removed = Object.keys(before.items).filter(label => !(label in after.items));
+    const renamed = [];
+    removed.slice().forEach(old => {
+      const match = added.find(label => (before.items[old] || []).some(Boolean) && same(before.items[old], after.items[label]));
+      if (!match) return;
+      renamed.push({ type: "edit", text: "Nome: " + old + " → " + match });
+      removed.splice(removed.indexOf(old), 1);
+      added.splice(added.indexOf(match), 1);
+    });
+    const parts = [];
+    added.forEach(label => parts.push({ type: "add", text: label + " · " + codesText(after.items[label]) }));
+    renamed.forEach(item => parts.push(item));
+    Object.keys(after.items).filter(label => label in before.items && !same(before.items[label], after.items[label]))
+      .forEach(label => parts.push({ type: "edit", text: label + " · código: " + codesText(before.items[label]) + " → " + codesText(after.items[label]) }));
+    removed.forEach(label => parts.push({ type: "remove", text: label + " · " + codesText(before.items[label]) }));
+    // Nomes do catálogo (peças novas com código)
+    const oldParts = new Map((before.extraParts || []).map(part => [part.code, part]));
+    (after.extraParts || []).forEach(part => {
+      const old = oldParts.get(part.code);
+      if (old && old.name !== part.name) parts.push({ type: "edit", text: "Catálogo " + part.code + ": " + old.name + " → " + part.name });
+    });
+    if (parts.length) groups.push({ title: "Peças cadastradas", items: parts });
+    // Peças em cada máquina
+    const machinesBefore = new Map(before.machines.map(machine => [String(machine.id), machine]));
+    const machineItems = [];
+    after.machines.forEach(machine => {
+      const old = machinesBefore.get(String(machine.id));
+      const oldItems = old ? old.items : [];
+      machine.items.filter(label => !oldItems.includes(label)).forEach(label => machineItems.push({ type: "add", text: mName(machine) + ": entrou " + label }));
+      oldItems.filter(label => !machine.items.includes(label)).forEach(label => machineItems.push({ type: "remove", text: mName(machine) + ": saiu " + label }));
+    });
+    if (machineItems.length) groups.push({ title: "Peças das máquinas", items: machineItems });
+    return groups;
+  }
+  const changesSheet = $("changes-sheet");
+  function openChanges() {
+    const groups = adminChanges();
+    const total = groups.reduce((sum, group) => sum + group.items.length, 0);
+    $("changes-sub").textContent = LINES[adminLine].name + " · " + (total === 1 ? "1 alteração" : total + " alterações");
+    const list = $("changes-list");
+    list.innerHTML = "";
+    if (!total) {
+      const empty = document.createElement("p");
+      empty.className = "muted";
+      empty.textContent = "Nada diferente do que já está publicado.";
+      list.appendChild(empty);
+    }
+    const MARK = { add: "+ Novo", remove: "− Removido", edit: "✎ Alterado" };
+    groups.forEach(group => {
+      const head = document.createElement("h3");
+      head.className = "changes-group";
+      head.textContent = group.title;
+      list.appendChild(head);
+      group.items.forEach(item => {
+        const row = document.createElement("div");
+        row.className = "change-row " + item.type;
+        const tag = document.createElement("span");
+        tag.className = "change-tag";
+        tag.textContent = MARK[item.type];
+        const text = document.createElement("span");
+        text.textContent = item.text;
+        row.append(tag, text);
+        list.appendChild(row);
+      });
+    });
+    if (typeof changesSheet.showModal === "function") changesSheet.showModal(); else changesSheet.setAttribute("open", "");
+  }
+  document.querySelectorAll("[data-see-changes]").forEach(button => button.addEventListener("click", openChanges));
+  $("changes-close").addEventListener("click", () => changesSheet.close());
+
   function renderAdmin() {
     const work = adminWork();
     const changed = changedMachines();

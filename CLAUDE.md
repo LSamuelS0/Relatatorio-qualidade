@@ -41,7 +41,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=6.01`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=6.02`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -396,6 +396,7 @@ principal por tela, status nunca só por cor, sem informação solta.
    - Algumas exigem **imagens**. Ex.: na de **Bloqueio**, primeiro o produto **conforme** com a imagem logo abaixo, depois o produto **não conforme** com a sua imagem.
    - Aguardando o dono enviar os modelos das máscaras.
 3. **Menu de administrador** — **Peças das máquinas FEITO** (11/11/2026): na tela inicial, só para o ADM, o bloco "Administrador → Peças das máquinas" lista as 19 máquinas; em cada uma dá para tirar peças, adicionar peças já cadastradas (lista com filtro) e cadastrar peça nova (nome + modelos + barra/vírgula + código da CTQ opcional). As mudanças ficam numa cópia (`rq.adminDraft.v1`, máquinas alteradas em laranja) até tocar em **Publicar**, que confere as regras (`validateCadastro`) e grava `cadastro/injetora`; **Descartar** volta ao publicado. Também feito (11/11/2026):
+   - **Ver alterações (14/11/2026):** o aviso "ainda não publicado" (Publicar / Descartar) tem o botão **Ver alterações**, que abre uma janela com o que muda em relação ao publicado na área: peças cadastradas (+ novas, ✎ nome/código alterado, − removidas) e peças das máquinas ("Máquina 4: entrou X", "saiu Y"). Função `adminChanges()`.
    - **Escolha da área (12/11/2026):** ao tocar em "Painel do administrador", o app pergunta "Em qual área você quer fazer alterações?" — **Injetora** ou **Estamparia**. Tudo depois disso (peças das máquinas, peças cadastradas, máscaras, publicar/descartar) vale só para a área escolhida; "Trocar área" volta à pergunta. Rascunho do ADM por área: `rq.adminDraft.v1` (Injetora) e `rq.adminDraft.est.v1` (Estamparia). Máscaras: cada área mostra as suas + "Parada de máquina (Injetora e Estamparia)".
    - **Painel do administrador** (tela inicial → "Painel do administrador" → área): atalhos para Peças das máquinas, Peças cadastradas e Máscaras. O aviso laranja "não publicado" aparece em todas as telas do ADM.
    - **Peças cadastradas:** lista com busca (nome ou código) mostrando códigos e em quais máquinas cada peça roda. Tocar abre o editor: mudar o nome (muda em todas as máquinas), os códigos da CTQ (separados por vírgula; nome com barra só aceita 1 código) e **Apagar** (sai de todas as máquinas). "Cadastrar peça nova" daqui só cadastra (não põe em máquina). Tudo entra no mesmo rascunho do ADM e só vale depois de **Publicar**.

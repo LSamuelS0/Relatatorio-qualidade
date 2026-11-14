@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=6.01">
+  <link rel="stylesheet" href="styles.css?v=6.02">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -171,6 +171,7 @@
           <button class="btn btn-primary btn-small-tall" type="button" data-publish><svg><use href="#i-check"/></svg>Publicar</button>
           <button class="btn btn-quiet danger btn-small-tall" type="button" data-discard>Descartar</button>
         </div>
+        <button class="btn btn-outline btn-small-tall see-changes" type="button" data-see-changes><svg><use href="#i-search"/></svg>Ver alterações</button>
       </div>
       <button class="big-card admin-hub" type="button" data-go="admin">
         <span class="big-icon"><svg><use href="#i-inject"/></svg></span>
@@ -229,6 +230,7 @@
           <button class="btn btn-primary btn-small-tall" type="button" data-publish><svg><use href="#i-check"/></svg>Publicar</button>
           <button class="btn btn-quiet danger btn-small-tall" type="button" data-discard>Descartar</button>
         </div>
+        <button class="btn btn-outline btn-small-tall see-changes" type="button" data-see-changes><svg><use href="#i-search"/></svg>Ver alterações</button>
       </div>
       <label class="search-box" for="ap-search">
         <svg><use href="#i-search"/></svg>
@@ -284,6 +286,7 @@
           <button class="btn btn-primary btn-small-tall" type="button" data-publish><svg><use href="#i-check"/></svg>Publicar</button>
           <button class="btn btn-quiet danger btn-small-tall" type="button" data-discard>Descartar</button>
         </div>
+        <button class="btn btn-outline btn-small-tall see-changes" type="button" data-see-changes><svg><use href="#i-search"/></svg>Ver alterações</button>
       </div>
       <p class="hint">Toque na máquina para tirar ou colocar peças.</p>
       <div class="admin-grid" id="admin-machines"></div>
@@ -852,6 +855,18 @@
     </div>
   </dialog>
 
+  <!-- Janela (ADM): ver o que mudou e ainda não foi publicado -->
+  <dialog id="changes-sheet" class="sheet" aria-labelledby="changes-title">
+    <div class="sheet-body">
+      <span class="grip" aria-hidden="true"></span>
+      <div class="sheet-head">
+        <div><h2 id="changes-title">Alterações não publicadas</h2><p class="muted" id="changes-sub">—</p></div>
+      </div>
+      <div class="changes-list" id="changes-list"></div>
+      <button class="btn btn-quiet" type="button" id="changes-close">Fechar</button>
+    </div>
+  </dialog>
+
   <!-- Janela (ADM): editar peça cadastrada -->
   <dialog id="part-sheet" class="sheet" aria-labelledby="part-title">
     <div class="sheet-body">
@@ -945,8 +960,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=6.01"></script>
-  <script src="app.js?v=6.01"></script>
-  <script type="module" src="cloud.js?v=6.01"></script>
+  <script src="data.js?v=6.02"></script>
+  <script src="app.js?v=6.02"></script>
+  <script type="module" src="cloud.js?v=6.02"></script>
 </body>
 </html>
