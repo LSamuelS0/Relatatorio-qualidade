@@ -66,6 +66,11 @@
      textos mudam: a ordem, os campos e as regras de formatação continuam no código.
      Cópia no aparelho: rq.mascaras.v1. */
   const KEY_MASKS = "rq.mascaras.v1";
+  /* Configurações gerais (ADM → Configurações), na nuvem em cadastro/configuracoes; valem para todos.
+     inicioTurno: o primeiro "Registrar" de cada turno começa no mapa no início do turno (ex.: 06:00). */
+  const KEY_SETTINGS = "rq.config.v1";
+  const SETTINGS_DEFAULT = { inicioTurno: true };
+  let SETTINGS = { ...SETTINGS_DEFAULT, ...(load(KEY_SETTINGS, {}) || {}) };
   const MASK_DEFAULTS = {
     inicio: {
       titulo: "RELATÓRIO DE FUNCIONAMENTO DE MÁQUINAS DA INJETORA",
@@ -1373,7 +1378,7 @@
     if (name === "done" && !current()) { go("type"); return; }
     if (name.startsWith("admin") && !(user && user.admin)) { go("home"); return; }
     if (name === "admin-machine" && !adminMachineId) { go("admin"); return; }
-    if (["admin-home", "admin", "admin-parts", "admin-masks", "admin-mask", "admin-machine"].includes(name) && !adminLine) { go("admin-line"); return; }
+    if (["admin-home", "admin", "admin-parts", "admin-masks", "admin-mask", "admin-machine", "admin-config"].includes(name) && !adminLine) { go("admin-line"); return; }
     screens.forEach(screen => { screen.hidden = screen.dataset.screen !== name; });
     if (name === "home") renderHome();
     if (name === "type" || name === "audit" || name === "block-kind") setLine(LINE);
@@ -1391,6 +1396,7 @@
     if (name === "admin-line") renderAdminLine();
     if (name === "admin-parts") { $("ap-search").value = ""; renderAdminParts(); }
     if (name === "admin-masks") renderMasksList();
+    if (name === "admin-config") renderSettings();
     if (name === "occ-new") renderOccNew();
     if (name === "occ-list") renderOccList();
     if (name !== "occ-list") stopOccWatch();
@@ -2134,6 +2140,7 @@
       startWatching();
       watchCadastro();
       watchMasks();
+      watchSettings();
     } catch (error) {
       reportSync(error);
       return false;
@@ -2175,6 +2182,7 @@
     if (unwatchCadastro) { try { unwatchCadastro(); } catch (error) { /* já parado */ } unwatchCadastro = null; }
     if (unwatchCadastroEst) { try { unwatchCadastroEst(); } catch (error) { /* já parado */ } unwatchCadastroEst = null; }
     if (unwatchMasks) { try { unwatchMasks(); } catch (error) { /* já parado */ } unwatchMasks = null; }
+    if (unwatchSettings) { try { unwatchSettings(); } catch (error) { /* já parado */ } unwatchSettings = null; }
     syncError = null;
     user = null;
     draft = null; shift = null; block = null; parada = null; adminLine = null;
@@ -2637,6 +2645,40 @@
     toast("Peça apagada · falta publicar");
   });
   $("ap-new").addEventListener("click", () => openNewPart("catalog"));
+
+  /* ---------- ADM: configurações ---------- */
+  let unwatchSettings = null;
+  function watchSettings() {
+    if (unwatchSettings || !window.Cloud.watchConfig) return;
+    unwatchSettings = Cloud.watchConfig("configuracoes", published => {
+      SETTINGS = { ...SETTINGS_DEFAULT, ...(published || {}) };
+      store(KEY_SETTINGS, SETTINGS);
+      if (screenNow === "admin-config") renderSettings();
+      if (screenNow === "occ-list") paintOccList();
+    }, reportSync);
+  }
+  function renderSettings() {
+    const toggle = $("cfg-inicio-turno");
+    toggle.setAttribute("aria-checked", String(Boolean(SETTINGS.inicioTurno)));
+    $("cfg-inicio-turno-state").textContent = SETTINGS.inicioTurno ? "Ligado" : "Desligado";
+  }
+  $("cfg-inicio-turno").addEventListener("click", async () => {
+    const before = SETTINGS;
+    SETTINGS = { ...SETTINGS, inicioTurno: !SETTINGS.inicioTurno };
+    store(KEY_SETTINGS, SETTINGS);
+    renderSettings();
+    if (!cloudOk()) { toast("Salvo neste aparelho. Entre com internet para valer para todos."); return; }
+    try {
+      const { updatedAt, by, ...value } = SETTINGS;
+      await withTimeout(Cloud.saveConfig("configuracoes", value));
+      toast(SETTINGS.inicioTurno ? "Ligado para todos" : "Desligado para todos");
+    } catch (error) {
+      SETTINGS = before;
+      store(KEY_SETTINGS, SETTINGS);
+      renderSettings();
+      toast("Não deu para salvar. Tente de novo.");
+    }
+  });
 
   /* ---------- ADM: máscaras ---------- */
   let unwatchMasks = null;
@@ -3317,6 +3359,14 @@
     5: [{ t: "T3", from: 0, to: 420 }, { t: "T1", from: 360, to: 900 }, { t: "T2", from: 900, to: 1470 }],     // sexta
     6: [{ t: "T3", from: 0, to: 480 }]                                                                         // sábado
   };
+  /* Início do turno num dia. Turno fora da escala (ex.: T1 extra no sábado) usa o horário
+     normal: T1 06:00, T2 16:00 (15:00 na sexta), T3 00:00. */
+  function shiftStart(dateKey, turno) {
+    const day = dateFromKey(dateKey).getDay();
+    const own = (SHIFTS[day] || []).find(shift => shift.t === turno);
+    if (own) return own.from;
+    return { T1: 360, T2: day === 5 ? 900 : 960, T3: 0 }[turno];
+  }
   // Faixas de turno de um dia: os do próprio dia + o fim do T2 do dia anterior (depois da meia-noite)
   function shiftBands(dateKey) {
     const day = dateFromKey(dateKey).getDay();
@@ -3330,10 +3380,31 @@
     const box = $("occ-map");
     box.innerHTML = "";
     const events = everything.slice().sort((a, b) => String(a.at).localeCompare(String(b.at)));
+    /* Configuração "início do turno": o primeiro Registrar de cada turno no dia começa no
+       início do turno (ex.: registrou às 06:37 no T1 → a barra começa às 06:00). */
+    const regStart = new Map();
+    if (SETTINGS.inicioTurno) {
+      const seen = new Set();
+      events.forEach(event => {
+        if (event.type !== "registro" || !event.turno || seen.has(event.turno)) return;
+        seen.add(event.turno);
+        const start = shiftStart(occDate, event.turno);
+        if (start !== undefined && start <= minutesOf(event.at)) regStart.set(event.id, start);
+      });
+    }
+    const regAt = event => (regStart.has(event.id) ? regStart.get(event.id) : minutesOf(event.at));
     $("occ-map-empty").hidden = events.length > 0;
     const end = occDate === todayKey() ? minutesOf(new Date().toISOString()) : 24 * 60;
     // Janela de horas: o dia inteiro ou só o horário do turno filtrado (a parte que começa neste dia)
     const bandsOfDay = shiftBands(occDate);
+    // Turno extra (fora da escala, ex.: T1 no sábado): aparece com o horário normal quando tem lançamento
+    const EXTRA_LEN = { T1: 600, T2: 480, T3: 420 };
+    ["T1", "T2", "T3"].forEach(turno => {
+      if (bandsOfDay.some(band => band.t === turno && band.realFrom === band.from)) return;
+      if (!everything.some(event => event.turno === turno)) return;
+      const from = shiftStart(occDate, turno);
+      bandsOfDay.push({ t: turno, from, to: Math.min(1440, from + EXTRA_LEN[turno]), realFrom: from, realTo: from + EXTRA_LEN[turno], extra: true });
+    });
     let winFrom = 0, winTo = 1440;
     if (occShift !== "all") {
       const own = bandsOfDay.filter(band => band.t === occShift);
@@ -3382,7 +3453,7 @@
         piece.style.left = px(from) + "px";
         piece.style.width = ((to - from) / 60) * MAP_HOUR + "px";
         const fmt = minutes => String(Math.floor(minutes / 60) % 24).padStart(2, "0") + ":" + String(minutes % 60).padStart(2, "0");
-        piece.textContent = shift.t + " " + fmt(shift.realFrom) + "–" + fmt(shift.realTo);
+        piece.textContent = shift.t + (shift.extra ? " extra " + fmt(shift.realFrom) : " " + fmt(shift.realFrom) + "–" + fmt(shift.realTo));
         band.appendChild(piece);
       });
       grid.append(label, band);
@@ -3400,7 +3471,7 @@
       const marks = [];
       events.forEach(event => {
         if (event.type === "registro") {
-          if (event.selections && event.selections[machine.id] !== undefined) raw.push({ at: minutesOf(event.at), ...selectionState(event.selections[machine.id]) });
+          if (event.selections && event.selections[machine.id] !== undefined) raw.push({ at: regAt(event), ...selectionState(event.selections[machine.id]) });
         } else if (String(event.machine) === String(machine.id)) {
           raw.push({ at: occStart(event), src: event.id, item: event, ...occState(event) });
           // com horário de fim, a máquina volta à situação de antes da ocorrência

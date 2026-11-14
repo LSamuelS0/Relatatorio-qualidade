@@ -406,3 +406,14 @@ h1,h2,p{margin:0}
 .map-bar.garra,.lg.garra{background:#D7F0F2;color:#0E5560;border:1px solid #9ED6DC}
 .occ-item .occ-obs{display:block;margin-top:4px;font-weight:700;color:var(--ink,#1d2b26)}
 .turno-pick.four{grid-template-columns:repeat(2,minmax(0,1fr))}
+/* Configurações */
+.setting-row{display:grid;grid-template-columns:1fr auto;grid-template-areas:"text switch" "text state";gap:4px 14px;align-items:center;width:100%;text-align:left;padding:16px;border:2px solid var(--line);border-radius:16px;background:var(--card);font:inherit;cursor:pointer}
+.setting-text{grid-area:text;display:flex;flex-direction:column;gap:4px}
+.setting-text strong{font-size:16px;font-weight:800}
+.setting-text small{font-size:13px;color:var(--muted);line-height:1.4}
+.setting-row .switch{grid-area:switch;width:52px;height:30px;border-radius:15px;background:#CFD5D2;position:relative;transition:background .15s}
+.setting-row .switch span{position:absolute;top:3px;left:3px;width:24px;height:24px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .15s}
+.setting-row[aria-checked="true"] .switch{background:var(--green)}
+.setting-row[aria-checked="true"] .switch span{left:25px}
+.setting-state{grid-area:state;font-size:12px;font-weight:800;color:var(--muted);text-align:center}
+.setting-row[aria-checked="true"]{border-color:var(--green)}

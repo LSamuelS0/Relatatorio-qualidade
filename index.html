@@ -8,7 +8,7 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=5.99">
+  <link rel="stylesheet" href="styles.css?v=6.0">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -21,6 +21,7 @@
       <symbol id="i-inject" viewBox="0 0 24 24"><path d="M3 8h10v8H3z"/><path d="M13 10h4l3 2-3 2h-4"/><path d="M6 8V5h4v3"/><path d="M5 16v3"/><path d="M11 16v3"/></symbol>
       <symbol id="i-press" viewBox="0 0 24 24"><rect x="4" y="3" width="16" height="6" rx="1"/><path d="M12 9v6"/><path d="M5 21h14"/><path d="M8 15h8v6H8z"/></symbol>
       <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M2 12h3M19 12h3"/></symbol>
+      <symbol id="i-settings" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></symbol>
       <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
       <symbol id="i-trash" viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></symbol>
       <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7z"/><path d="M8.5 12l2.5 2.5 4.5-4.5"/></symbol>
@@ -185,6 +186,30 @@
         <span class="big-icon"><svg><use href="#i-file"/></svg></span>
         <span class="big-text"><strong>Máscaras</strong><small>Textos fixos de cada relatório</small></span>
         <svg class="chev"><use href="#i-next"/></svg>
+      </button>
+      <button class="big-card admin-hub" type="button" data-go="admin-config">
+        <span class="big-icon"><svg><use href="#i-settings"/></svg></span>
+        <span class="big-text"><strong>Configurações</strong><small>Valem para Injetora e Estamparia</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
+    </section>
+
+    <!-- A5. Administrador: configurações (valem para as duas linhas) -->
+    <section class="screen screen-admin" id="screen-admin-config" data-screen="admin-config" hidden>
+      <div class="head-row">
+        <button class="icon-btn" type="button" data-go="admin-home" aria-label="Voltar"><svg><use href="#i-back"/></svg></button>
+        <div class="head-text">
+          <h1>Configurações</h1>
+          <span>Injetora e Estamparia · para todos</span>
+        </div>
+      </div>
+      <button class="setting-row" type="button" id="cfg-inicio-turno" role="switch" aria-checked="true">
+        <span class="setting-text">
+          <strong>Máquinas começam no início do turno</strong>
+          <small>No mapa do dia, o primeiro "Registrar" de cada turno começa no horário de início do turno (T1 06:00, T2 16:00 ou 15:00 na sexta, T3 00:00), mesmo que tenha sido lançado mais tarde.</small>
+        </span>
+        <span class="switch" aria-hidden="true"><span></span></span>
+        <span class="setting-state" id="cfg-inicio-turno-state">Ligado</span>
       </button>
     </section>
 
@@ -920,8 +945,8 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=5.99"></script>
-  <script src="app.js?v=5.99"></script>
-  <script type="module" src="cloud.js?v=5.99"></script>
+  <script src="data.js?v=6.0"></script>
+  <script src="app.js?v=6.0"></script>
+  <script type="module" src="cloud.js?v=6.0"></script>
 </body>
 </html>
