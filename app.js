@@ -729,19 +729,38 @@
 
   /* Escolher produto: lista do catálogo da CTQ que filtra enquanto a pessoa escreve.
      Valor gravado: "CÓDIGO - NOME" (ou o texto que a pessoa escreveu). */
-  /* Injetora: catálogo da CTQ. Estamparia: as peças cadastradas na Estamparia
-     (com o código, quando houver). */
+  /* Peças do bloqueio — COMPARTILHADAS entre Injetora e Estamparia (pedido do dono, 16/11/2026),
+     porque um bloqueio numa linha pode ser de peça que vem da outra.
+     Injetora: catálogo da CTQ + peças da Injetora sem código. Estamparia: as peças cadastradas
+     na Estamparia (com o código, quando houver). A lista mostra primeiro as da linha do bloqueio. */
   const PRODUCTS = [];
   function refreshProducts() {
     PRODUCTS.splice(0, PRODUCTS.length, ...DATA.parts.map(part => ({ code: part.code, name: part.name.toLocaleUpperCase("pt-BR"),
       label: part.code + " - " + part.name.toLocaleUpperCase("pt-BR") })));
   }
-  function productsFor(line) {
-    if (line !== "estamparia") return PRODUCTS;
-    return Object.keys(itemsOf("estamparia")).sort((a, b) => a.localeCompare(b, "pt-BR", { numeric: true })).map(label => {
-      const codes = itemsOf("estamparia")[label].filter(Boolean);
+  const byLabel = (a, b) => a.localeCompare(b, "pt-BR", { numeric: true });
+  function itemProducts(line, onlyWithoutCode) {
+    const items = itemsOf(line);
+    return Object.keys(items).sort(byLabel).map(label => {
+      const codes = items[label].filter(Boolean);
+      if (onlyWithoutCode && codes.length) return null;
       const name = label.toLocaleUpperCase("pt-BR");
-      return { code: codes.join(" / ") || "sem código", name, label: codes.length ? codes.join(" / ") + " - " + name : name };
+      return { code: codes.join(" / ") || "sem código", name, label: codes.length ? codes.join(" / ") + " - " + name : name, line };
+    }).filter(Boolean);
+  }
+  function lineProducts(line) {
+    if (line === "estamparia") return itemProducts("estamparia", false);
+    return PRODUCTS.map(item => ({ ...item, line: "injetora" })).concat(itemProducts("injetora", true));
+  }
+  function productsFor(line) {
+    const own = line === "estamparia" ? "estamparia" : "injetora";
+    const other = own === "estamparia" ? "injetora" : "estamparia";
+    const seen = new Set();
+    return lineProducts(own).concat(lineProducts(other)).filter(item => {
+      const key = plain(item.label);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
   }
   refreshProducts();
@@ -776,7 +795,7 @@
       const name = document.createElement("strong");
       name.textContent = item.name;
       const code = document.createElement("small");
-      code.textContent = item.code;
+      code.textContent = item.code + (item.line && item.line !== lineOf(block) ? " · " + LINES[item.line].name : "");
       option.append(name, code);
       option.addEventListener("click", () => setProduct(item.label));
       list.appendChild(option);

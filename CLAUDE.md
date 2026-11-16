@@ -41,7 +41,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=6.02`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=6.03`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
 
 ## Linhas de produção
 
@@ -208,7 +208,7 @@ Máquinas com nome (não número). Cada uma tem `id` fixo (não mudar: os relat�
 
 - Regra da vírgula vale aqui também: cada modelo/variante é um item separado.
 - Balancer: mesmos códigos da Injetora (Ring Up + Ring Down); Balancer 640 sem código. As outras peças da Estamparia ainda não têm código (`null`).
-- No Bloqueio da Estamparia, "Escolher produto" lista as peças da Estamparia (com código quando houver).
+- **Peças do Bloqueio compartilhadas (16/11/2026):** "Escolher produto" lista as peças **das duas linhas** (Injetora: catálogo da CTQ + peças sem código; Estamparia: peças cadastradas, com código quando houver), primeiro as da linha do bloqueio; as da outra linha mostram o nome dela ao lado do código (ex.: "… · Estamparia"). Motivo: bloqueio numa linha pode ser de peça que vem da outra.
 - Relatório de funcionamento da Estamparia: igual ao da Injetora, mas cada linha começa com o nome da máquina (`Balancer 01: ...`, `Prensa Transfer: ...`).
 
 Máscaras da Estamparia (texto padrão; o ADM muda pelo editor):
