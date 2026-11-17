@@ -267,6 +267,10 @@
     return load(KEY_DRAFTS, []).filter(item => item && item.id && ["inicio", "troca", "bloqueio", "parada"].includes(item.type));
   }
   function keepDraft(item) {
+    // mantém o prazo na nuvem e a marca "só neste aparelho" da cópia guardada
+    const old = listDrafts().find(other => other.id === item.id);
+    if (old && old.cloudUntil && !item.cloudUntil) item.cloudUntil = old.cloudUntil;
+    if (old && old.localOnly) item.localOnly = true;
     item.savedId = null;
     delete item.pristine;
     item.updatedAt = new Date().toISOString();
@@ -276,8 +280,10 @@
     queuePush("d", item.id);
   }
   function dropDraft(id) {
+    const old = listDrafts().find(item => item.id === id);
     store(KEY_DRAFTS, listDrafts().filter(item => item.id !== id));
-    queueDelete("d", id);
+    if (old && old.localOnly) setPending("d:" + id, false); // já não está na nuvem
+    else queueDelete("d", id);
   }
 
   function newDraft() {
@@ -522,6 +528,92 @@
     if (event.target.value !== old) event.target.dispatchEvent(new Event("input", { bubbles: true }));
   }, true);
   window.addEventListener("resize", () => document.querySelectorAll("textarea").forEach(fit));
+
+  /* ---------- Corretor de texto (corretor.js) ----------
+     Caixas marcadas com data-spell mostram, embaixo, as palavras sem acento ou
+     escritas errado. Tocar corrige; "Corrigir tudo" corrige todas. Nada muda sozinho.
+     A palavra que ainda está sendo digitada fica de fora até a pessoa terminar. */
+  const spellBars = new WeakMap();
+  const spellTimers = new WeakMap();
+  function spellFix(field, list) {
+    const before = field.value;
+    const caret = field.selectionStart;
+    field.value = Corretor.apply(before, list);
+    const shift = list.filter(item => item.index < caret).reduce((sum, item) => sum + item.to.length - item.from.length, 0);
+    if (document.activeElement === field) field.setSelectionRange(caret + shift, caret + shift);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+    spellCheck(field, true);
+  }
+  function spellCheck(field, ignoreCaret) {
+    if (!window.Corretor || !field) return;
+    const typing = !ignoreCaret && document.activeElement === field ? field.selectionStart : undefined;
+    const list = Corretor.suggest(field.value, typing);
+    let bar = spellBars.get(field);
+    if (!list.length) { if (bar) bar.hidden = true; return; }
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.className = "spell-bar";
+      bar.setAttribute("role", "group");
+      bar.setAttribute("aria-label", "Correções sugeridas");
+      bar.addEventListener("mousedown", event => event.preventDefault()); // não fecha o teclado
+      field.insertAdjacentElement("afterend", bar);
+      spellBars.set(field, bar);
+    }
+    bar.hidden = false;
+    bar.dataset.value = field.value;
+    bar.innerHTML = "";
+    const head = document.createElement("span");
+    head.className = "spell-head";
+    head.append(icon("i-spell"), document.createTextNode(list.length === 1 ? "Corrigir?" : "Corrigir " + list.length + " palavras?"));
+    bar.appendChild(head);
+    const seen = new Set();
+    list.forEach(item => {
+      if (seen.has(item.from + item.to)) return; // mesma palavra repetida: um botão só
+      seen.add(item.from + item.to);
+      const chip = document.createElement("button");
+      chip.type = "button";
+      chip.className = "spell-chip";
+      const from = document.createElement("s");
+      from.textContent = item.from;
+      const to = document.createElement("strong");
+      to.textContent = item.to;
+      chip.append(from, document.createTextNode(" → "), to);
+      chip.setAttribute("aria-label", "Trocar " + item.from + " por " + item.to);
+      chip.addEventListener("click", () => spellFix(field, Corretor.suggest(field.value).filter(other => other.from === item.from && other.to === item.to)));
+      bar.appendChild(chip);
+    });
+    if (list.length > 1) {
+      const all = document.createElement("button");
+      all.type = "button";
+      all.className = "spell-all";
+      all.append(icon("i-check"), document.createTextNode("Corrigir tudo"));
+      all.addEventListener("click", () => spellFix(field, Corretor.suggest(field.value)));
+      bar.appendChild(all);
+    }
+  }
+  document.addEventListener("input", event => {
+    const field = event.target;
+    if (!field.matches || !field.matches("[data-spell]")) return;
+    clearTimeout(spellTimers.get(field));
+    spellTimers.set(field, setTimeout(() => spellCheck(field), 350));
+  });
+  document.addEventListener("focusout", event => {
+    if (event.target.matches && event.target.matches("[data-spell]")) setTimeout(() => spellCheck(event.target, true), 50);
+  });
+  function spellScreen(name) {
+    // depois de a tela preencher os campos (algumas preenchem com atraso)
+    setTimeout(() => {
+      const screen = document.querySelector('[data-screen="' + name + '"]');
+      if (screen) screen.querySelectorAll("[data-spell]").forEach(field => spellCheck(field, true));
+    }, 250);
+  }
+  // campo limpo ou preenchido pelo app (sem digitar): atualiza as sugestões
+  setInterval(() => {
+    document.querySelectorAll("[data-spell]").forEach(field => {
+      const bar = spellBars.get(field);
+      if (bar && !bar.hidden && bar.dataset.value !== field.value && document.activeElement !== field) spellCheck(field, true);
+    });
+  }, 1000);
 
   /* Último status de bloqueio salvo numa troca de turno da Injetora.
      Hoje: relatórios deste aparelho. Com o Firebase: o último salvo por qualquer pessoa. */
@@ -1421,6 +1513,7 @@
     if (name !== "occ-list") stopOccWatch();
     if (name === "admin-mask") { if (!maskType) { go("admin-masks"); return; } renderMaskEditor(); }
     if (name === "admin-machine") renderAdminMachine();
+    spellScreen(name);
     window.scrollTo(0, 0);
   }
   document.addEventListener("click", event => {
@@ -1440,7 +1533,9 @@
     if (reports.length) {
       const last = reports[0];
       $("home-reports-title").textContent = reports.length === 1 ? "1 relatório salvo" : reports.length + " relatórios salvos";
-      $("home-reports-sub").textContent = "Último: " + whenLabel(new Date(last.startedAt));
+      const local = reports.filter(report => report.localOnly).length;
+      $("home-reports-sub").textContent = "Último: " + whenLabel(new Date(last.startedAt))
+        + (local ? " · " + local + " só neste aparelho" : "");
     } else {
       $("home-reports-title").textContent = "Nenhum relatório salvo";
       $("home-reports-sub").textContent = "Os relatórios salvos aparecem aqui";
@@ -1511,7 +1606,8 @@
       const sub = document.createElement("small");
       sub.textContent = draftSummary(item);
       text.append(title, sub);
-      open.append(icon("i-edit", "row-icon draft-icon"), text, icon("i-next", "chev"));
+      if (item.localOnly) text.appendChild(localTag());
+      open.append(icon(item.localOnly ? "i-phone" : "i-edit", "row-icon draft-icon"), text, icon("i-next", "chev"));
       open.addEventListener("click", () => openDraft(item));
 
       const discard = document.createElement("button");
@@ -1529,6 +1625,14 @@
 
       row.append(open, discard);
       list.appendChild(row);
+      if (item.localOnly) {
+        const up = document.createElement("button");
+        up.type = "button";
+        up.className = "btn btn-outline btn-small draft-cloud";
+        up.append(icon("i-cloud"), document.createTextNode("Salvar na Nuvem"));
+        up.addEventListener("click", () => { saveToCloud("d", item.id); renderDrafts(); });
+        list.appendChild(up);
+      }
     });
   }
 
@@ -1855,7 +1959,8 @@
         ? whenLabel(new Date(report.savedAt)) + " · " + machineLabel(lineOf(report), report.machine)
         : whenLabel(new Date(report.startedAt));
       text.append(title, sub);
-      item.append(icon("i-file", "row-icon"), text);
+      if (report.localOnly) text.appendChild(localTag());
+      item.append(icon(report.localOnly ? "i-phone" : "i-file", "row-icon"), text);
       item.addEventListener("click", () => {
         viewing = report.id;
         renderReports();
@@ -1871,6 +1976,9 @@
       const total = counts(shown.selections, lineOf(shown));
       $("view-sub").textContent = whenLabel(new Date(shown.startedAt)) + " · " + total.run + " rodando · " + total.setup + " setup · " + total.stop + " paradas";
     }
+    $("view-cloud").hidden = !shown.localOnly;
+    $("view-cloud-until").hidden = Boolean(shown.localOnly);
+    $("view-cloud-until").textContent = cloudLabel(shown);
     $("view-text").textContent = shown.text;
     renderPhotoBlocks($("view-photos"), shown);
     const editable = shown.type === "inicio" ? Boolean(shown.selections) : Boolean(shown.fields);
@@ -1883,10 +1991,34 @@
     if (shown) editSaved(shown);
   });
 
+  $("view-cloud-save").addEventListener("click", () => {
+    if (!viewing) return;
+    saveToCloud("r", viewing);
+    renderReports();
+  });
+
+  /* Marca "Salvo somente neste dispositivo" nas listas. */
+  function localTag() {
+    const tag = document.createElement("span");
+    tag.className = "tag-local";
+    tag.append(icon("i-phone"), document.createTextNode("Salvo somente neste dispositivo"));
+    return tag;
+  }
+  function cloudLabel(item) {
+    const until = new Date(cloudUntilOf(item));
+    const pending = load(KEY_PENDING, {});
+    const kind = item.savedAt && item.text ? "r" : "d";
+    if (pending[kind + ":" + item.id] && !item.cloudUntil) return "☁️ Vai para a nuvem quando houver internet (fica lá por 7 dias).";
+    return "☁️ Na nuvem até " + formatDate(until) + ". Depois fica só neste aparelho.";
+  }
+
   $("delete-report").addEventListener("click", () => {
-    if (!viewing || !confirm("Apagar este relatório? Ele some de todos os aparelhos.")) return;
+    const shown = load(KEY_REPORTS, []).find(report => report.id === viewing);
+    if (!shown) return;
+    if (!confirm(shown.localOnly ? "Apagar este relatório? Ele só está neste aparelho e não poderá ser recuperado."
+      : "Apagar este relatório? Ele some de todos os aparelhos.")) return;
     store(KEY_REPORTS, load(KEY_REPORTS, []).filter(report => report.id !== viewing));
-    queueDelete("r", viewing);
+    if (shown.localOnly) setPending("r:" + viewing, false); else queueDelete("r", viewing);
     viewing = null;
     renderReports();
     cleanPhotos();
@@ -1966,8 +2098,103 @@
   const KEY_PENDING = "rq.pending.v1";
   const KEY_OWNER = "rq.owner.v1";
   const KEY_UPLOADED = "rq.photosUp.v1";
+  const KEY_ACCOUNT = "rq.account.v1"; // conta que entrou neste aparelho (entra sozinho, mesmo sem internet)
   let user = null;
-  const cloudOk = () => Boolean(window.Cloud && user);
+  let cloudAuthed = false; // o Firebase confirmou o login (sem isso, só o aparelho)
+  const cloudOk = () => Boolean(window.Cloud && user && cloudAuthed);
+
+  /* ---------- Nuvem por 7 dias ----------
+     Relatórios e rascunhos ficam no Firebase por 7 dias a partir do primeiro envio
+     (cloudUntil). Depois disso o app apaga da nuvem, mas a cópia do aparelho continua,
+     marcada "Salvo somente neste dispositivo" (localOnly). "Salvar na Nuvem" envia de
+     novo por mais 7 dias. Os salvos antes desta regra contam a partir de 17/11/2026. */
+  const CLOUD_DAYS = 7;
+  const DAY_MS = 24 * 60 * 60 * 1000;
+  const CLOUD_START = Date.parse("2026-11-17T00:00:00-03:00");
+  function cloudUntilOf(item) {
+    if (item.cloudUntil) return Date.parse(item.cloudUntil);
+    const made = Date.parse(item.savedAt || item.updatedAt || item.startedAt || "") || 0;
+    return Math.max(made, CLOUD_START) + CLOUD_DAYS * DAY_MS;
+  }
+  const cloudExpired = item => cloudUntilOf(item) <= Date.now();
+  const newCloudUntil = () => new Date(Date.now() + CLOUD_DAYS * DAY_MS).toISOString();
+
+  /* Muda um relatório (r) ou rascunho (d) guardado no aparelho. */
+  function patchLocal(kind, id, change) {
+    const key = kind === "r" ? KEY_REPORTS : KEY_DRAFTS;
+    const list = kind === "r" ? load(KEY_REPORTS, []) : listDrafts();
+    const item = list.find(other => String(other.id) === String(id));
+    if (!item) return null;
+    change(item);
+    store(key, list);
+    return item;
+  }
+
+  /* "Salvar na Nuvem": volta para o Firebase por mais 7 dias (fotos junto). */
+  function saveToCloud(kind, id) {
+    const uploaded = load(KEY_UPLOADED, {});
+    const item = patchLocal(kind, id, other => { delete other.localOnly; other.cloudUntil = newCloudUntil(); });
+    if (!item) return;
+    allIdsOf(item).forEach(photo => delete uploaded[photo]); // as fotos saíram da nuvem: enviar de novo
+    store(KEY_UPLOADED, uploaded);
+    queuePush(kind, id);
+    toast(navigator.onLine && cloudOk() ? "Salvo na nuvem por 7 dias" : "Sem internet: vai para a nuvem quando a conexão voltar");
+  }
+
+  /* Apaga da nuvem o que passou de 7 dias. A cópia do aparelho fica, marcada "só neste aparelho".
+     O ADM também limpa o que passou do prazo nas contas das outras pessoas. */
+  let expiring = false;
+  async function removeCloudPhotos(ids, stillUsed) {
+    const uploaded = load(KEY_UPLOADED, {});
+    for (const id of ids) {
+      if (stillUsed.has(id)) continue;
+      try { await withTimeout(Cloud.removePhoto(id)); } catch (error) { /* já não estava na nuvem */ }
+      delete uploaded[id];
+    }
+    store(KEY_UPLOADED, uploaded);
+  }
+  async function expireCloud() {
+    if (!cloudOk() || !navigator.onLine || expiring) return;
+    expiring = true;
+    let changed = false;
+    try {
+      const pending = load(KEY_PENDING, {});
+      const live = () => load(KEY_REPORTS, []).concat(listDrafts()).filter(item => !item.localOnly && !cloudExpired(item));
+      for (const kind of ["r", "d"]) {
+        const list = kind === "r" ? load(KEY_REPORTS, []) : listDrafts();
+        for (const item of list) {
+          if (item.localOnly || pending[kind + ":" + item.id] || !cloudExpired(item)) continue;
+          await withTimeout(Cloud.remove(KIND[kind], item.id));
+          const used = new Set(live().flatMap(allIdsOf));
+          await removeCloudPhotos(allIdsOf(item), used);
+          patchLocal(kind, item.id, other => { other.localOnly = true; });
+          changed = true;
+        }
+      }
+      if (user && user.admin && Cloud.listAll) {
+        for (const kind of ["r", "d"]) {
+          const all = await withTimeout(Cloud.listAll(KIND[kind]));
+          for (const item of all) {
+            if (item.owner === user.uid || !cloudExpired(item)) continue;
+            await withTimeout(Cloud.remove(KIND[kind], item.id));
+            const ids = allIdsOf(item);
+            for (const id of ids) { try { await withTimeout(Cloud.removePhoto(id)); } catch (error) { /* já apagada */ } }
+          }
+        }
+      }
+    } catch (error) {
+      console.warn("[Nuvem] limpeza de 7 dias", error);
+    } finally {
+      expiring = false;
+      if (changed) refreshLists();
+    }
+  }
+  function refreshLists() {
+    if (screenNow === "home") renderHome();
+    if (screenNow === "drafts") renderDrafts();
+    if (screenNow === "reports") renderReports();
+  }
+  setInterval(expireCloud, 30 * 60 * 1000);
   const KIND = { d: "rascunhos", r: "relatorios", o: "ocorrencias" };
 
   function setPending(key, on) {
@@ -2037,7 +2264,11 @@
             await withTimeout(Cloud.remove(KIND[parts[1]], parts[2]));
           } else {
             const list = parts[0] === "d" ? listDrafts() : parts[0] === "o" ? load(KEY_OCC, []) : load(KEY_REPORTS, []);
-            const item = list.find(other => String(other.id) === parts[1]);
+            let item = list.find(other => String(other.id) === parts[1]);
+            if (item && item.localOnly) item = null; // fica só no aparelho até "Salvar na Nuvem"
+            if (item && parts[0] !== "o" && !item.cloudUntil) {
+              item = patchLocal(parts[0], item.id, other => { other.cloudUntil = newCloudUntil(); }) || item;
+            }
             if (item) {
               await withTimeout(uploadPhotosOf(item), 60000);
               await withTimeout(Cloud.put(KIND[parts[0]], item));
@@ -2062,10 +2293,21 @@
   function mergeRemote(kind, remote) {
     const pending = load(KEY_PENDING, {});
     const local = kind === "r" ? load(KEY_REPORTS, []) : listDrafts();
-    const keep = local.filter(item => pending[kind + ":" + item.id]);
+    const remoteIds = new Set(remote.map(item => String(item.id)));
+    const keep = local.filter(item => {
+      if (pending[kind + ":" + item.id]) return true;
+      if (remoteIds.has(String(item.id))) return false; // vale a versão da nuvem
+      if (item.localOnly) return true;
+      // sumiu da nuvem porque passou de 7 dias (apagado por outro aparelho): fica só aqui
+      if (cloudExpired(item)) { item.localOnly = true; return true; }
+      return false; // apagado em outro aparelho
+    });
     const ids = new Set(keep.map(item => String(item.id)));
     remote.forEach(item => {
-      if (!ids.has(String(item.id)) && !pending["x:" + kind + ":" + item.id]) { delete item.owner; keep.push(item); }
+      if (!ids.has(String(item.id)) && !pending["x:" + kind + ":" + item.id]) {
+        delete item.owner; delete item.expireAt; delete item.localOnly;
+        keep.push(item);
+      }
     });
     const dateKey = kind === "r" ? "savedAt" : "updatedAt";
     keep.sort((a, b) => String(b[dateKey] || "").localeCompare(String(a[dateKey] || "")));
@@ -2127,13 +2369,30 @@
     const failed = syncError && navigator.onLine;
     dot.className = "sync-dot" + (!navigator.onLine ? " offline" : failed ? " error" : count ? " pending" : "");
     dot.title = !navigator.onLine ? "Sem internet: salvo no aparelho" : failed ? syncError : count ? "Enviando " + count + "…" : "Tudo salvo na nuvem";
+    const banner = $("net-banner");
+    if (banner) {
+      banner.hidden = !user || (navigator.onLine && cloudAuthed) || (navigator.onLine && !window.Cloud);
+      $("net-banner-text").textContent = !navigator.onLine
+        ? "Sem internet. Tudo fica salvo no celular" + (count ? " (" + count + " para enviar)" : "") + " e vai para a nuvem quando a conexão voltar."
+        : "Conectando à nuvem…";
+    }
   }
-  window.addEventListener("online", () => { paintSync(); flush(); });
+  window.addEventListener("online", () => {
+    paintSync();
+    if (user && window.Cloud && !cloudAuthed && !Cloud.user) {
+      // a sessão do Firebase se perdeu enquanto estava sem internet: pedir a senha de novo
+      toast("Internet de volta. Entre de novo para enviar seus relatórios.");
+      onLogout(false);
+      return;
+    }
+    flush();
+    if (cloudOk()) reconnect();
+  });
   window.addEventListener("offline", paintSync);
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState !== "visible" || !cloudOk()) return;
     flush();
-    pull().then(() => { if (screenNow === "home") renderHome(); if (screenNow === "drafts") renderDrafts(); if (screenNow === "reports") renderReports(); }).catch(reportSync);
+    pull().then(() => { refreshLists(); expireCloud(); }).catch(reportSync);
   });
   $("sync-dot").addEventListener("click", () => {
     const count = Object.keys(load(KEY_PENDING, {})).length;
@@ -2164,12 +2423,41 @@
       reportSync(error);
       return false;
     }
-    if (screenNow === "home") renderHome(); if (screenNow === "drafts") renderDrafts();
-    if (screenNow === "reports") renderReports();
+    refreshLists();
+    expireCloud();
+    return true;
+  }
+
+  /* Mostra o app com a conta (do Firebase ou a guardada no aparelho). */
+  function showAccount(account) {
+    user = account;
+    $("user-name").textContent = account.admin ? "ADM" : account.login;
+    $("user-chip").hidden = false;
+    paintSync();
+  }
+
+  /* Abrir o app com a conta salva no aparelho, sem esperar o Firebase (funciona sem internet).
+     Os relatórios, rascunhos e fotos já estão no aparelho. */
+  function enterSaved() {
+    const saved = load(KEY_ACCOUNT, null);
+    if (!saved || !saved.uid || saved.uid !== load(KEY_OWNER, null)) return false;
+    showAccount(saved);
+    go("home");
     return true;
   }
 
   async function onLogin(account) {
+    cloudAuthed = true;
+    store(KEY_ACCOUNT, { uid: account.uid, login: account.login, admin: Boolean(account.admin) });
+    if (user && user.uid === account.uid) {
+      // já estava aberto com a conta salva: só liga a nuvem, sem mudar a tela
+      showAccount(account);
+      flush();
+      const ok = await reconnect();
+      if (!ok && navigator.onLine) toast("Problema na nuvem: toque na bolinha ao lado do seu nome");
+      cleanPhotos();
+      return;
+    }
     const owner = load(KEY_OWNER, null);
     if (owner && owner !== account.uid) {
       // outra pessoa entrou neste aparelho: limpa a cópia local da conta anterior
@@ -2182,11 +2470,8 @@
       listDrafts().forEach(item => setPending("d:" + item.id, true));
     }
     store(KEY_OWNER, account.uid);
-    user = account;
     draft = null; shift = null; block = null; parada = null; adminLine = null;
-    $("user-name").textContent = account.admin ? "ADM" : account.login;
-    $("user-chip").hidden = false;
-    paintSync();
+    showAccount(account);
     go("home");
     // 1) teste rápido no servidor; 2) enviar e baixar em paralelo (um não trava o outro)
     flush();
@@ -2195,7 +2480,10 @@
     cleanPhotos();
   }
 
-  function onLogout() {
+  /* forget = saiu de propósito (botão Sair): esquece a conta do aparelho. */
+  function onLogout(forget) {
+    if (forget !== false) forgetAccount();
+    cloudAuthed = false;
     stopOccWatch();
     stopWatching();
     if (unwatchCadastro) { try { unwatchCadastro(); } catch (error) { /* já parado */ } unwatchCadastro = null; }
@@ -2207,6 +2495,9 @@
     draft = null; shift = null; block = null; parada = null; adminLine = null;
     $("user-chip").hidden = true;
     $("login-pass").value = "";
+    const saved = load(KEY_ACCOUNT, null);
+    if (saved && saved.login && saved.login !== "ADM") $("login-user").value = saved.login;
+    paintSync();
     go("login");
   }
 
@@ -2247,15 +2538,26 @@
       loginState("Entrar", false);
     }
   });
+  function forgetAccount() { forget(KEY_ACCOUNT); }
   $("logout").addEventListener("click", async () => {
     const count = Object.keys(load(KEY_PENDING, {})).length;
     if (count && !confirm("Ainda há " + count + " item(ns) sem enviar para a nuvem. Sair mesmo assim? Eles continuam guardados neste aparelho.")) return;
-    if (window.Cloud) await Cloud.signOut();
+    if (!count && !confirm("Sair da conta? Para entrar de novo vai precisar da senha (e de internet).")) return;
+    forgetAccount();
+    if (window.Cloud) { try { await Cloud.signOut(); } catch (error) { /* sem internet */ } }
+    if (user) onLogout(true); // sem Firebase carregado (sem internet): sai direto
   });
 
   function startCloud() {
     loginState("Entrar", false);
-    Cloud.onUser(account => (account ? onLogin(account) : (onLogout(), loginState("Entrar", false))));
+    Cloud.onUser(account => {
+      if (account) { onLogin(account); return; }
+      cloudAuthed = false;
+      // sem internet e com a conta salva: continua usando o aparelho
+      if (user && !navigator.onLine && load(KEY_ACCOUNT, null)) { paintSync(); return; }
+      if (user) onLogout(false);
+      loginState("Entrar", false);
+    });
   }
 
   /* ---------- Cadastro das linhas vindo da nuvem (todos) ----------
@@ -3822,12 +4124,34 @@
   migrateOldDrafts();
   go("login");
   loginState("Conectando…", true);
+  enterSaved(); // conta salva: entra direto, mesmo sem internet
   if (window.Cloud) startCloud();
   else window.addEventListener("cloud-ready", startCloud, { once: true });
   setTimeout(() => {
-    if (!window.Cloud) {
+    if (!window.Cloud && !user) {
       loginState("Entrar", false);
-      loginError("Não foi possível conectar ao servidor. Verifique a internet e recarregue a página.");
+      loginError(navigator.onLine
+        ? "Não foi possível conectar ao servidor. Verifique a internet e recarregue a página."
+        : "Sem internet. O primeiro acesso precisa de internet; depois o app abre sozinho, mesmo sem conexão.");
     }
   }, 12000);
+
+  /* App instalável e que abre sem internet (sw.js guarda os arquivos no celular). */
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(error => console.warn("[App] offline", error)));
+  }
+  let installPrompt = null;
+  window.addEventListener("beforeinstallprompt", event => {
+    event.preventDefault();
+    installPrompt = event;
+    $("home-install").hidden = false;
+  });
+  $("install-app").addEventListener("click", async () => {
+    if (!installPrompt) return;
+    installPrompt.prompt();
+    try { await installPrompt.userChoice; } catch (error) { /* fechou */ }
+    installPrompt = null;
+    $("home-install").hidden = true;
+  });
+  window.addEventListener("appinstalled", () => { $("home-install").hidden = true; toast("App instalado na tela inicial"); });
 })();

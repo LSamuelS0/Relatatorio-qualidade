@@ -6,7 +6,14 @@ Aplicativo web simples para montar relatórios de produção e qualidade. Atende
 
 **[Clique aqui para abrir o Relatório da Qualidade](https://lsamuels0.github.io/Relatatorio-qualidade/)**
 
-O aplicativo pode ser acessado diretamente pelo celular ou computador, sem precisar instalar nada.
+O aplicativo pode ser acessado diretamente pelo celular ou computador, sem precisar instalar nada. No celular dá para tocar em **Instalar no celular** (ou "Adicionar à tela inicial") para abrir como aplicativo.
+
+## Novidades da versão 7 (17/11/2026)
+
+- **Entra sozinho e funciona sem internet:** depois do primeiro login, o celular guarda a conta e abre direto, mesmo sem conexão, com os relatórios, rascunhos e fotos. O que for feito sem internet vai para a nuvem quando a conexão voltar (aí aparece no computador).
+- **Nuvem por 7 dias:** relatórios e rascunhos ficam no Firebase por 7 dias e depois são apagados de lá sozinhos. No aparelho continuam, com a marca **"Salvo somente neste dispositivo"** e o botão **Salvar na Nuvem** (mais 7 dias).
+- **Corretor de texto:** nas caixas de texto, o app mostra as palavras sem acento ou escritas errado (MAQUINA → MÁQUINA) e corrige com um toque.
+- Tela "O que você vai registrar?" organizada em grupos (Relatórios para o Meixin · Acompanhamento da linha).
 
 ## Como abrir localmente
 
@@ -40,7 +47,10 @@ O aplicativo pode ser acessado diretamente pelo celular ou computador, sem preci
 - `index.html`: estrutura da interface.
 - `styles.css`: aparência e adaptação para telas menores.
 - `data.js`: cadastro inicial das máquinas e peças da Injetora e da Estamparia.
-- `app.js`: seleções, montagem do relatório, cópia e compartilhamento.
+- `app.js`: seleções, montagem do relatório, cópia e compartilhamento, sincronização.
+- `cloud.js`: conexão com o Firebase.
+- `corretor.js`: corretor de texto (acentos e palavras erradas), sem internet.
+- `sw.js`, `manifest.webmanifest`, `icons/`: app instalável que abre sem internet.
 
 ## Cadastro inicial e regras importantes
 

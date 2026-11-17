@@ -426,3 +426,59 @@ h1,h2,p{margin:0}
 .change-row.add .change-tag{background:#DCEFE4;color:#14513B}
 .change-row.remove .change-tag{background:#FBE2DE;color:#9B2A1E}
 .change-row.edit .change-tag{background:#FFF0DD;color:#8A4200}
+
+/* ===== Versão 7 (17/11/2026): sem internet, nuvem por 7 dias, corretor, organização ===== */
+:root{--blue:#1F5FA8;--blue-soft:#E4EEF9;--red:#B42318;--red-soft:#FDECEA}
+
+/* Faixa "sem internet" logo abaixo do topo */
+.net-banner{display:flex;align-items:center;gap:8px;padding:9px 14px;background:#38433E;color:#fff;font-size:13px;font-weight:600;line-height:1.35}
+.net-banner svg{width:18px;height:18px;flex:none}
+.net-banner span{max-width:580px}
+
+/* Títulos de seção (agrupam os blocos) */
+.section-label{display:flex;align-items:center;gap:7px;font-size:12.5px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:6px 0 -6px}
+.section-label svg{width:16px;height:16px;color:var(--green)}
+.screen > .section-label:first-of-type{margin-top:2px}
+
+/* Blocos: toque mais claro e acabamento */
+.tile,.big-card,.row-card,.report-item{transition:transform .08s ease,box-shadow .15s ease,border-color .15s ease}
+.tile:active,.row-card:active,.report-item:active{transform:scale(.985)}
+.tile{box-shadow:0 1px 0 rgba(23,33,29,.04)}
+@media (hover:hover){
+  .tile:hover,.big-card:hover{box-shadow:0 6px 18px -10px rgba(29,107,79,.55)}
+  .row-card:hover,.report-item:hover{border-color:var(--line-strong)}
+}
+.tiles .tile{min-height:118px}
+/* Acompanhamento da linha em azul (diferente dos relatórios) */
+.tiles-occ .tile{border-color:var(--blue)}
+.tiles-occ .tile-icon{background:var(--blue-soft);color:var(--blue)}
+/* "Em breve": discreto, não compete com o que já funciona */
+.soon-card{border-style:dashed}
+.soon-card .row-icon,.soon-card .chev{color:var(--off)}
+.soon-card .row-text strong{color:var(--off)}
+
+/* Instalar no celular */
+.install-card{border-color:var(--green);background:linear-gradient(0deg,var(--green-soft),var(--green-soft)) padding-box}
+
+/* Nuvem por 7 dias */
+.tag-local{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;margin-top:3px;padding:2px 8px 2px 6px;border-radius:999px;background:var(--orange-soft);color:var(--orange-ink);font-size:11.5px;font-weight:800}
+.tag-local svg{width:13px;height:13px}
+.cloud-note{display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;padding:12px;border-radius:14px;background:var(--orange-soft);border:2px solid #F3D3AE}
+.cloud-note-icon{width:38px;height:38px;border-radius:11px;background:#fff;color:var(--orange-ink);display:grid;place-items:center}
+.cloud-note-text{display:flex;flex-direction:column;gap:2px}
+.cloud-note-text strong{font-size:14px;color:var(--orange-ink)}
+.cloud-note-text small{font-size:12.5px;color:#6B4A22}
+.cloud-note .btn{grid-column:1 / -1;width:100%;min-height:46px}
+.cloud-until{font-size:12.5px;color:var(--muted);margin:-4px 0 0}
+.draft-cloud{align-self:flex-end;margin:-4px 0 4px}
+
+/* Corretor de texto */
+.spell-bar{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:-1px;padding:8px;border-radius:12px;background:#FFF8E6;border:1.5px solid #F0D58A}
+.spell-head{display:flex;align-items:center;gap:5px;font-size:12.5px;font-weight:800;color:#7A5A00;margin-right:2px}
+.spell-head svg{width:16px;height:16px}
+.spell-chip{min-height:36px;padding:0 10px;border-radius:10px;border:1.5px solid #E6C25A;background:#fff;font-size:13.5px;text-transform:none}
+.spell-chip s{color:#9A8A60;text-decoration-thickness:1.5px}
+.spell-chip strong{color:var(--green-dark);font-weight:800}
+.spell-all{display:inline-flex;align-items:center;gap:5px;min-height:36px;padding:0 12px;border-radius:10px;border:0;background:var(--green);color:#fff;font-size:13.5px;font-weight:800}
+.spell-all svg{width:16px;height:16px}
+.field .spell-bar + *{margin-top:2px}

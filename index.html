@@ -8,7 +8,13 @@
   <title>Relatório da Qualidade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
-  <link rel="stylesheet" href="styles.css?v=6.03">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icons/icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Qualidade">
+  <link rel="stylesheet" href="styles.css?v=7.00">
 </head>
 <body>
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
@@ -40,6 +46,10 @@
       <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9.5 17h-19z"/><path d="M12 10v4.5"/><path d="M12 17.5v.5"/></symbol>
       <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 20V10"/><path d="M10 20V4"/><path d="M16 20v-7"/><path d="M22 20H2"/></symbol>
       <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+      <symbol id="i-cloud" viewBox="0 0 24 24"><path d="M7 18a4.5 4.5 0 0 1-.6-9A6 6 0 0 1 18 9.5a4 4 0 0 1-.5 8.5z"/><path d="M12 16v-5"/><path d="M9.5 13l2.5-2.5 2.5 2.5"/></symbol>
+      <symbol id="i-phone" viewBox="0 0 24 24"><rect x="7" y="2.5" width="10" height="19" rx="2"/><path d="M11 18.5h2"/></symbol>
+      <symbol id="i-wifi-off" viewBox="0 0 24 24"><path d="M3 3l18 18"/><path d="M8.5 16.5a5 5 0 0 1 7 0"/><path d="M5 12.6a10 10 0 0 1 5.2-2.5M14 10.2a10 10 0 0 1 5 2.4"/><path d="M2 8.8a15 15 0 0 1 4.3-2.6M10.5 5.1A15 15 0 0 1 22 8.8"/><path d="M12 20h.01"/></symbol>
+      <symbol id="i-spell" viewBox="0 0 24 24"><path d="M4 16l4-10 4 10"/><path d="M5.5 12.5h5"/><path d="M13 15l3 3 5-6"/></symbol>
     </defs>
   </svg>
 
@@ -56,6 +66,9 @@
       </div>
     </div>
   </header>
+  <div class="net-banner" id="net-banner" role="status" hidden>
+    <svg><use href="#i-wifi-off"/></svg><span id="net-banner-text">Sem internet.</span>
+  </div>
 
   <main id="app" class="app">
 
@@ -120,6 +133,14 @@
             <svg class="chev"><use href="#i-next"/></svg>
           </button>
         </div>
+      </div>
+
+      <div class="home-reports" id="home-install" hidden>
+        <button class="row-card install-card" type="button" id="install-app">
+          <svg class="row-icon"><use href="#i-phone"/></svg>
+          <span class="row-text"><strong>Instalar no celular</strong><small>Abre como aplicativo, direto da tela inicial, mesmo sem internet</small></span>
+          <svg class="chev"><use href="#i-next"/></svg>
+        </button>
       </div>
 
       <div class="home-reports" id="home-admin" hidden>
@@ -314,6 +335,7 @@
       <button class="back" type="button" data-go="home"><svg><use href="#i-back"/></svg>Voltar</button>
       <p class="eyebrow" data-line-upper>INJETORA</p>
       <h1 class="title">O que você vai registrar?</h1>
+      <h2 class="section-label"><svg><use href="#i-file"/></svg>Relatórios para o Meixin</h2>
       <div class="tiles">
         <button class="tile" type="button" id="start-turno">
           <span class="tile-icon"><svg><use href="#i-sun"/></svg></span>
@@ -331,6 +353,9 @@
           <span class="tile-icon"><svg><use href="#i-stop"/></svg></span>
           <strong>Parada de máquina</strong>
         </button>
+      </div>
+      <h2 class="section-label"><svg><use href="#i-chart"/></svg>Acompanhamento da linha</h2>
+      <div class="tiles tiles-occ">
         <button class="tile" type="button" id="start-ocorrencia">
           <span class="tile-icon"><svg><use href="#i-alert"/></svg></span>
           <strong>Lançar ocorrência</strong>
@@ -339,12 +364,12 @@
           <span class="tile-icon"><svg><use href="#i-chart"/></svg></span>
           <strong>Ocorrências do dia</strong>
         </button>
-        <button class="tile" type="button" data-go="audit">
-          <span class="tile-icon"><svg><use href="#i-shield"/></svg></span>
-          <strong>Auditoria 6M</strong>
-          <small>em breve</small>
-        </button>
       </div>
+      <button class="row-card soon-card" type="button" data-go="audit">
+        <svg class="row-icon"><use href="#i-shield"/></svg>
+        <span class="row-text"><strong>Auditoria 6M</strong><small>Em breve</small></span>
+        <svg class="chev"><use href="#i-next"/></svg>
+      </button>
     </section>
 
     <!-- 3. Máquinas -->
@@ -399,21 +424,21 @@
 
       <label class="field" for="f-relatorio">
         <span class="field-label">📌 Relatório <small>报告</small></span>
-        <textarea autocapitalize="characters" spellcheck="false" id="f-relatorio" data-field="relatorio" rows="5" placeholder="- COMO FOI O TURNO?"></textarea>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-relatorio" data-spell data-field="relatorio" rows="5" placeholder="- COMO FOI O TURNO?"></textarea>
       </label>
       <label class="field" for="f-atencao">
         <span class="field-label">⚠️ Pontos de atenção <small>注意事项</small></span>
-        <textarea autocapitalize="characters" spellcheck="false" id="f-atencao" data-field="atencao" rows="4" placeholder="- O QUE O PRÓXIMO TURNO PRECISA OBSERVAR?"></textarea>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-atencao" data-spell data-field="atencao" rows="4" placeholder="- O QUE O PRÓXIMO TURNO PRECISA OBSERVAR?"></textarea>
       </label>
       <label class="field" for="f-pendencias">
         <span class="field-label">🚨 Pendências <small>待处理问题</small></span>
-        <textarea autocapitalize="characters" spellcheck="false" id="f-pendencias" data-field="pendencias" rows="4" placeholder="- O QUE FICOU PARA RESOLVER?"></textarea>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-pendencias" data-spell data-field="pendencias" rows="4" placeholder="- O QUE FICOU PARA RESOLVER?"></textarea>
       </label>
       <div class="field">
         <label class="field-label" for="f-bloqueio">🛑 Status de bloqueio <small>封锁状态</small></label>
         <button class="btn btn-outline" type="button" id="pull-block"><svg><use href="#i-download"/></svg>Puxar último bloqueio</button>
         <p class="muted small" id="block-source" hidden></p>
-        <textarea autocapitalize="characters" spellcheck="false" id="f-bloqueio" data-field="bloqueio" rows="5" placeholder="- MÁQUINAS OU PEÇAS BLOQUEADAS E A SITUAÇÃO DE CADA UMA"></textarea>
+        <textarea autocapitalize="characters" spellcheck="false" id="f-bloqueio" data-spell data-field="bloqueio" rows="5" placeholder="- MÁQUINAS OU PEÇAS BLOQUEADAS E A SITUAÇÃO DE CADA UMA"></textarea>
       </div>
       <label class="field" for="f-marcacoes">
         <span class="field-label">Marque o @ dos colaboradores envolvidos no processo</span>
@@ -467,15 +492,15 @@
       </div>
       <label class="field" for="b-motivo">
         <span class="field-label">Motivo <small>问题描述</small></span>
-        <textarea id="b-motivo" data-bfield="motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- O QUE ESTÁ ERRADO NA PEÇA?"></textarea>
+        <textarea id="b-motivo" data-spell data-bfield="motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- O QUE ESTÁ ERRADO NA PEÇA?"></textarea>
       </label>
       <label class="field" for="b-quantidade">
         <span class="field-label">Quantidade <small>数量</small></span>
-        <input class="text-input" id="b-quantidade" data-bfield="quantidade" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="EX.: 120 PÇS">
+        <input class="text-input" id="b-quantidade" data-spell data-bfield="quantidade" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="EX.: 120 PÇS">
       </label>
       <label class="field" for="b-responsavel">
         <span class="field-label">Responsável <small>责任部门</small></span>
-        <input class="text-input" id="b-responsavel" data-bfield="responsavel" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="SETOR RESPONSÁVEL">
+        <input class="text-input" id="b-responsavel" data-spell data-bfield="responsavel" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="SETOR RESPONSÁVEL">
       </label>
       <div class="field">
         <span class="field-label">Criticidade <small>关键性</small></span>
@@ -496,7 +521,7 @@
       </div>
       <label class="field" for="b-posicao">
         <span class="field-label">Posição <small>物料所在位置</small></span>
-        <input class="text-input" id="b-posicao" data-bfield="posicao" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ONDE O MATERIAL ESTÁ">
+        <input class="text-input" id="b-posicao" data-spell data-bfield="posicao" autocapitalize="characters" autocomplete="off" spellcheck="false" placeholder="ONDE O MATERIAL ESTÁ">
       </label>
       <label class="field" for="b-helpChain">
         <span class="field-label">Help chain <small>帮助链</small></span>
@@ -576,7 +601,7 @@
       </div>
       <label class="field" for="p-motivo">
         <span class="field-label">Motivo <small>问题描述</small></span>
-        <textarea id="p-motivo" data-pfield="motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- POR QUE A MÁQUINA PAROU?"></textarea>
+        <textarea id="p-motivo" data-spell data-pfield="motivo" autocapitalize="characters" spellcheck="false" rows="3" placeholder="- POR QUE A MÁQUINA PAROU?"></textarea>
       </label>
       <div class="field">
         <span class="field-label">Solicitante <small>请求者</small></span>
@@ -668,17 +693,17 @@
       <div class="field" id="occ-problem-field" hidden>
         <span class="field-label" id="occ-problem-label">Qual é o problema?</span>
         <div class="choice-list" id="occ-problems" role="radiogroup" aria-label="Problema"></div>
-        <input class="text-input" id="occ-problem-text" autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="DESCREVA O PROBLEMA">
+        <input class="text-input" id="occ-problem-text" data-spell autocomplete="off" spellcheck="false" autocapitalize="characters" placeholder="DESCREVA O PROBLEMA">
       </div>
 
       <label class="field" for="occ-solution" id="occ-solution-field">
         <span class="field-label">Solução <small>解决方案 · se ainda não tem, sai "EM ANÁLISE"</small></span>
-        <textarea id="occ-solution" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- O QUE FOI FEITO?"></textarea>
+        <textarea id="occ-solution" data-spell autocapitalize="characters" spellcheck="false" rows="2" placeholder="- O QUE FOI FEITO?"></textarea>
       </label>
 
       <label class="field" for="occ-obs" id="occ-obs-field">
         <span class="field-label">Observações <small>备注 · opcional</small></span>
-        <textarea id="occ-obs" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- ALGO A MAIS?"></textarea>
+        <textarea id="occ-obs" data-spell autocapitalize="characters" spellcheck="false" rows="2" placeholder="- ALGO A MAIS?"></textarea>
       </label>
 
       <div class="photo-slot field" id="occ-photos-field">
@@ -771,11 +796,11 @@
         </div>
         <label class="field" for="ov-solution" id="ov-solution-field">
           <span class="field-label">Solução <small>解决方案 · vazio = "EM ANÁLISE"</small></span>
-          <textarea id="ov-solution" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- O QUE FOI FEITO?"></textarea>
+          <textarea id="ov-solution" data-spell autocapitalize="characters" spellcheck="false" rows="2" placeholder="- O QUE FOI FEITO?"></textarea>
         </label>
         <label class="field" for="ov-obs">
           <span class="field-label">Observações <small>备注</small></span>
-          <textarea id="ov-obs" autocapitalize="characters" spellcheck="false" rows="2" placeholder="- ALGO A MAIS?"></textarea>
+          <textarea id="ov-obs" data-spell autocapitalize="characters" spellcheck="false" rows="2" placeholder="- ALGO A MAIS?"></textarea>
         </label>
         <div class="photo-slot field">
           <span class="field-label">📷 Fotos <small>opcional · quantas quiser</small></span>
@@ -820,12 +845,18 @@
     <section class="screen screen-reports" id="screen-reports" data-screen="reports" hidden>
       <button class="back" type="button" data-go="home"><svg><use href="#i-back"/></svg>Voltar</button>
       <h1 class="title">Meus relatórios</h1>
-      <p class="muted small" id="reports-note">Guardados neste aparelho.</p>
+      <p class="muted small" id="reports-note">Ficam neste aparelho e na nuvem por 7 dias.</p>
       <div class="reports-layout">
         <div id="report-list" class="report-list"></div>
         <div class="report-view" id="report-view" hidden>
           <h2 id="view-title">Relatório</h2>
           <p class="muted" id="view-sub"></p>
+          <div class="cloud-note" id="view-cloud" hidden>
+            <span class="cloud-note-icon"><svg><use href="#i-phone"/></svg></span>
+            <span class="cloud-note-text"><strong>Salvo somente neste dispositivo</strong><small id="view-cloud-sub">Passou de 7 dias e saiu da nuvem. Para abrir no computador, salve na nuvem de novo.</small></span>
+            <button class="btn btn-primary btn-small" type="button" id="view-cloud-save"><svg><use href="#i-cloud"/></svg>Salvar na Nuvem</button>
+          </div>
+          <p class="cloud-until" id="view-cloud-until" hidden></p>
           <pre class="report-text" id="view-text" tabindex="0"></pre>
           <div class="photo-blocks" id="view-photos" hidden></div>
           <div class="actions-row">
@@ -960,8 +991,9 @@
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
-  <script src="data.js?v=6.03"></script>
-  <script src="app.js?v=6.03"></script>
-  <script type="module" src="cloud.js?v=6.03"></script>
+  <script src="data.js?v=7.00"></script>
+  <script src="corretor.js?v=7.00"></script>
+  <script src="app.js?v=7.00"></script>
+  <script type="module" src="cloud.js?v=7.00"></script>
 </body>
 </html>

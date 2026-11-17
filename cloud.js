@@ -6,6 +6,8 @@
    Banco (Firestore):
      relatorios/{id}   relatório salvo     (owner = uid de quem fez)
      rascunhos/{id}    rascunho            (owner = uid)
+                       os dois ficam 7 dias (cloudUntil / expireAt); depois o app apaga daqui
+                       e a cópia fica só no aparelho ("Salvo somente neste dispositivo")
      fotos/{id}        foto em base64      (owner = uid; 1 foto por documento)
      compartilhado/ultimoBloqueio   último Status de bloqueio da troca de turno
                                     (qualquer pessoa logada lê e grava)
@@ -106,7 +108,11 @@ const Cloud = {
   /* Relatórios e rascunhos: um documento por item, com o dono. */
   async put(kind, item) {
     const owner = needUser();
-    await setDoc(doc(db, kind, String(item.id)), clean({ ...item, owner }));
+    const data = clean({ ...item, owner });
+    delete data.localOnly;
+    // expireAt (data): prazo de 7 dias na nuvem; serve também para a "política de TTL" do Firestore, se ligada
+    if (item.cloudUntil) data.expireAt = new Date(item.cloudUntil);
+    await setDoc(doc(db, kind, String(item.id)), data);
   },
   async remove(kind, id) {
     needUser();

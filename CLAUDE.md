@@ -39,9 +39,39 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `app.js` | Navegação entre telas, rascunho, salvar no aparelho, sincronização com a nuvem, texto, copiar/enviar, validação do cadastro |
 | `cloud.js` | Conexão com o Firebase (login, relatórios, rascunhos, fotos); expõe `window.Cloud` |
 | `firestore.rules` | Regras de acesso do banco — colar no Firebase → Firestore → Regras |
+| `corretor.js` | Corretor de texto (acentos e palavras erradas), sem internet; expõe `window.Corretor` |
+| `sw.js` | Service worker: guarda os arquivos no celular para o app abrir sem internet |
+| `manifest.webmanifest`, `icons/` | App instalável ("Instalar no celular" / tela inicial) |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=6.03`. Ao mudar `styles.css`, `data.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache.
+Versão atual dos arquivos: `?v=7.00`. Ao mudar `styles.css`, `data.js`, `corretor.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache. Ao acrescentar ou renomear arquivos do app, atualize a lista `SHELL` e aumente `CACHE` no `sw.js`.
+
+## Versão 7 (17/11/2026, pedido do dono)
+
+### Login salvo e uso sem internet
+- Depois do primeiro login, a conta fica salva no aparelho (`rq.account.v1`). Ao abrir, o app **entra sozinho** (`enterSaved()`), sem esperar o Firebase e mesmo sem internet, e mostra os relatórios, rascunhos e fotos que estão no aparelho.
+- O `sw.js` guarda os arquivos do app e do Firebase (gstatic) no celular: o site abre sem internet depois do primeiro acesso. Arquivos do app: internet primeiro (até 6 s) e, sem resposta, a cópia guardada.
+- Sem internet dá para criar e salvar relatórios normalmente; tudo entra na fila de envio e vai para o Firebase quando a conexão voltar (só então aparece no computador). Faixa escura no topo: "Sem internet. Tudo fica salvo no celular…".
+- `cloudAuthed`: só envia/baixa depois que o Firebase confirma o login. Se a sessão do Firebase se perder (raro), ao voltar a internet o app pede a senha de novo, com a matrícula já preenchida; os dados do aparelho continuam.
+- **Sair** esquece a conta salva (pede confirmação, porque para entrar de novo precisa de senha e internet).
+- No Android aparece o cartão **Instalar no celular** na tela inicial (abre como aplicativo).
+
+### Nuvem por 7 dias ("Salvo somente neste dispositivo")
+- Relatórios e rascunhos ficam no Firebase por **7 dias a partir do primeiro envio** (`cloudUntil` no item; na nuvem também `expireAt`, tipo data). Os salvos antes desta regra contam a partir de 17/11/2026 (`CLOUD_START`) — ou seja, saem da nuvem em 24/11/2026.
+- `expireCloud()` (ao conectar, ao voltar para o app e a cada 30 min): apaga da nuvem o que passou do prazo e as fotos dele (as que nenhum outro item na nuvem usa); a cópia do aparelho fica com `localOnly: true`. A conta ADM também limpa o que passou do prazo nas contas dos outros (assim some da nuvem mesmo de quem não abre o app).
+- Item `localOnly`: lista mostra a marca laranja **"Salvo somente neste dispositivo"**; ao abrir o relatório aparece o quadro com **Salvar na Nuvem** (rascunhos: botão embaixo do rascunho). Salvar na Nuvem = `saveToCloud()`: novo prazo de 7 dias, envia de novo (fotos junto).
+- Item `localOnly` não é enviado ao ser editado (só pelo botão). Apagar um `localOnly` apaga só do aparelho.
+- Outro aparelho da mesma conta: quando o item some da nuvem por prazo vencido, a cópia dele também vira `localOnly` (não some). Se sumiu antes do prazo, foi apagado de propósito → some.
+- Ocorrências **não** entram nessa regra (são do acompanhamento da linha).
+- **Não precisou de regra nova no Firebase.** Opcional: ligar a "política de TTL" do Firestore no campo `expireAt` das coleções `relatorios` e `rascunhos` (o app já apaga sozinho; a TTL só serve de reserva).
+
+### Corretor de texto (`corretor.js`)
+- Caixas com `data-spell` (Relatório, Pontos de atenção, Pendências, Status de bloqueio, Motivo, Quantidade, Responsável, Posição, problema/solução/observações das ocorrências) mostram embaixo uma faixa amarela "Corrigir?" com as palavras a trocar (`MAQUINA → MÁQUINA`). Tocar troca uma; **Corrigir tudo** troca todas. **Nada é trocado sozinho.**
+- A palavra que ainda está sendo digitada fica de fora até a pessoa terminar (espaço, vírgula etc.). Ignora `@marcações`, códigos e palavras com número. Não é aplicado em marcações e help chain (nomes).
+- Fontes: `ERROS` (palavras escritas errado), `ACENTOS` (palavras que só existem com acento) e regras de terminação (-CAO→-ÇÃO, -AVEL→-ÁVEL, -ENCIA→-ÊNCIA, -ARIO→-ÁRIO, -ICIO→-ÍCIO…). Palavras que existem com e sem acento (ESTA/ESTÁ, E/É) ficam de fora de propósito. Para acrescentar palavra: colocar a forma certa em `ACENTOS` ou `ERRADO=CERTO` em `ERROS`.
+
+### Organização visual
+- "O que você vai registrar?" em grupos: **Relatórios para o Meixin** (verde: Funcionamento, Troca de turno, Bloqueio, Parada) e **Acompanhamento da linha** (azul: Lançar ocorrência, Ocorrências do dia); Auditoria 6M virou um cartão discreto "Em breve".
 
 ## Linhas de produção
 
@@ -316,6 +346,7 @@ Objetivo: registrar os problemas da linha ao longo do dia para acompanhar quais 
 - **Bolinha ao lado do usuário:** verde = tudo na nuvem; laranja = enviando; cinza = sem internet; **vermelha = a nuvem recusou ou não respondeu** (tocar mostra o motivo, ex.: regras não publicadas `permission-denied`, banco não criado `not-found`, servidor mudo `timeout`). Ao entrar, o app faz um teste no servidor (`Cloud.ping()`), e envio e download rodam separados, com limite de tempo (`withTimeout`), para um não travar o outro. Tocar na bolinha vermelha refaz o teste e o download (`reconnect()`): se o erro já foi resolvido (ex.: regras publicadas depois), ela volta a ficar verde sem recarregar a página. Regras novas no Firebase levam até ~1 min para valer.
 - **Troca de pessoa no mesmo aparelho:** `rq.owner.v1` guarda o dono da cópia local; se outra conta entrar, a cópia local da anterior é limpa. Na primeira entrada, o que foi feito antes do login vai para a conta que entrou.
 - **Cadastro das linhas:** `cadastro/injetora` e `cadastro/estamparia` (máquinas, itens e `extraParts`), todos leem e só o ADM grava (a regra `cadastro/{doc}` já cobre os dois). O app aplica ao entrar e em tempo real (`watchCadastro` e `watchConfig("estamparia")` → `applyCadastro(cad, linha)`), com cópia no aparelho (`rq.cadastro.v1` e `rq.cadastro.est.v1`). Sem nada na nuvem, vale o `data.js`.
+- **Login salvo, sem internet e nuvem por 7 dias:** ver "Versão 7" acima.
 - **Ainda não feito:** tela do administrador para ver os relatórios de todos (hoje: pelo painel do Firebase), criar contas pelo app, e apagar da nuvem fotos que não são mais usadas (só são apagadas do aparelho). Redefinir senha de outra pessoa só pelo painel do Firebase (pelo app exigiria o plano Blaze).
 
 ## Regras obrigatórias
