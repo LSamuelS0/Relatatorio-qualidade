@@ -45,6 +45,9 @@
   }
 
   const LINE_SOURCE = {};
+  /* Nomes antigos que saíram do cadastro (corrigidos pelo dono). Num cadastro publicado antes da
+     correção, as peças com esses nomes são trocadas pelas do data.js na mesma máquina. */
+  const OLD_ITEM = /^Chapa do Gabinete (550|580|601|640)( (com|sem) Canaleta)?$/; // 19/11/2026: é Branco/Titânio
   function applyCadastro(cad, line) {
     line = LINES[line] ? line : "injetora";
     const target = LINES[line];
@@ -54,6 +57,18 @@
     Object.keys(target.items).forEach(key => delete target.items[key]);
     Object.assign(target.items, clone(source.items));
     if (source !== cad || line !== "estamparia") return finishCadastro(line);
+    // Nomes corrigidos depois de publicados: troca pelas peças certas do data.js
+    target.machines.forEach(machine => {
+      if (!Array.isArray(machine.items) || !machine.items.some(name => OLD_ITEM.test(name))) return;
+      const from = BASE.estamparia.machines.find(other => other.id === machine.id);
+      const fresh = from ? from.items.filter(name => !machine.items.includes(name)) : [];
+      const at = machine.items.findIndex(name => OLD_ITEM.test(name));
+      const kept = machine.items.filter(name => !OLD_ITEM.test(name));
+      kept.splice(at, 0, ...fresh);
+      machine.items = kept;
+      fresh.forEach(name => { if (!target.items[name]) target.items[name] = clone(BASE.estamparia.items[name] || [null]); });
+    });
+    Object.keys(target.items).forEach(name => { if (OLD_ITEM.test(name)) delete target.items[name]; });
     // Cadastro publicado antes de 19/11/2026 não tem as peças do Cesto Interno: completa com as do data.js
     // nas Linhas do Cesto que ainda estão sem peças (o ADM pode tirar depois, pelo painel).
     const base = BASE.estamparia;

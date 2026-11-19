@@ -44,7 +44,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `manifest.webmanifest`, `icons/` | App instalável ("Instalar no celular" / tela inicial) |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=7.00` (`app.js` e `data.js`: `?v=7.02`). Ao mudar `styles.css`, `data.js`, `corretor.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache. Ao acrescentar ou renomear arquivos do app, atualize a lista `SHELL` e aumente `CACHE` no `sw.js`.
+Versão atual dos arquivos: `?v=7.00` (`app.js` e `data.js`: `?v=7.03`). Ao mudar `styles.css`, `data.js`, `corretor.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache. Ao acrescentar ou renomear arquivos do app, atualize a lista `SHELL` e aumente `CACHE` no `sw.js`.
 
 ## Versão 7 (17/11/2026, pedido do dono)
 
@@ -238,11 +238,12 @@ Máquinas com nome (não número). Cada uma tem `id` fixo (não mudar: os relat�
 | Balancer | Balancer 05–06 (`BAL05`, `BAL06`) | Balancer 550 · 580 · 601 · 640 |
 | Linhas dos cestos | Linha do Cesto 01 (manual), 02 (automática), 03 (automática) (`CES01`–`CES03`) | Cesto Interno 550 · 580 · 601 · 640, cada um **com** e **sem Canaleta** (8 itens, as três linhas iguais; `CESTO_INTERNO` no `data.js`) |
 | Prensas | Prensa Progressiva (`PROG`) | Chapa Inox 550 · 580 com Canaleta · 580 sem Canaleta · 601 com Canaleta · 601 sem Canaleta · 640 |
-| Prensas | Prensa Transfer (`TRANS`) | Chapa do Gabinete 550 · 580 com/sem Canaleta · 601 com/sem Canaleta · 640 |
+| Prensas | Prensa Transfer (`TRANS`) | Chapa do Gabinete 550 Branco · 580 Branco · 580 Titânio · 601 Branco · 601 Titânio · 640 Branco |
 | Prensas | Linha do Gabinete (`GAB`) | Gabinete 550 Branco · 580 Branco · 580 Titânio · 601 Branco · 601 Titânio · 640 Branco |
 | Prensas | Prensa 80/110 (`P80`) | Placa de Conexão Superior 640 · Placa de Conexão Inferior 640 |
 
 - Regra da vírgula vale aqui também: cada modelo/variante é um item separado.
+- **Variações (confirmado pelo dono em 19/11/2026):** **Cesto Interno** e **Chapa Inox** variam **com/sem Canaleta**; **Chapa do Gabinete** e **Gabinete** variam pela cor **Branco/Titânio** (Chapa do Gabinete não tem canaleta — estava errado e foi corrigido). Num cadastro publicado antes da correção, o `applyCadastro()` troca as Chapas do Gabinete antigas (`OLD_ITEM`) pelas do `data.js`; rascunhos com a peça antiga voltam essa máquina para "MÁQUINA PARADA".
 - **Linhas do Cesto (19/11/2026, pedido do dono):** nomes corrigidos (01 é a manual; 02 e 03 são automáticas) e peças do Cesto Interno cadastradas. Como o cadastro publicado pelo ADM na nuvem substitui o `data.js`, o `applyCadastro()` sempre usa os nomes das Linhas do Cesto do `data.js` e, se o cadastro publicado ainda não tiver nenhuma peça do Cesto Interno, completa as Linhas do Cesto sem peças com as do `data.js`. Depois o ADM pode tirar/pôr pelo painel normalmente. Relatórios e ocorrências já salvos mantêm o nome antigo no texto.
 - Balancer: mesmos códigos da Injetora (Ring Up + Ring Down); Balancer 640 sem código. As outras peças da Estamparia ainda não têm código (`null`).
 - **Peças do Bloqueio compartilhadas (16/11/2026):** "Escolher produto" lista as peças **das duas linhas** (Injetora: catálogo da CTQ + peças sem código; Estamparia: peças cadastradas, com código quando houver), primeiro as da linha do bloqueio; as da outra linha mostram o nome dela ao lado do código (ex.: "… · Estamparia"). Motivo: bloqueio numa linha pode ser de peça que vem da outra.

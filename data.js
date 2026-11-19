@@ -183,12 +183,13 @@ window.QUALITY_REPORT_DATA = {
       "Chapa Inox 601 sem Canaleta": [null],
       "Chapa Inox 640": [null],
 
-      "Chapa do Gabinete 550": [null],
-      "Chapa do Gabinete 580 com Canaleta": [null],
-      "Chapa do Gabinete 580 sem Canaleta": [null],
-      "Chapa do Gabinete 601 com Canaleta": [null],
-      "Chapa do Gabinete 601 sem Canaleta": [null],
-      "Chapa do Gabinete 640": [null],
+      // Chapa do Gabinete: varia pela cor (Branco/Titânio), igual ao Gabinete; não tem canaleta (dono, 19/11/2026)
+      "Chapa do Gabinete 550 Branco": [null],
+      "Chapa do Gabinete 580 Branco": [null],
+      "Chapa do Gabinete 580 Titânio": [null],
+      "Chapa do Gabinete 601 Branco": [null],
+      "Chapa do Gabinete 601 Titânio": [null],
+      "Chapa do Gabinete 640 Branco": [null],
 
       "Gabinete 550 Branco": [null],
       "Gabinete 580 Branco": [null],
@@ -225,7 +226,7 @@ window.QUALITY_REPORT_DATA = {
       { id: "PROG", name: "Prensa Progressiva", badge: "PG", group: "Prensas",
         items: ["Chapa Inox 550", "Chapa Inox 580 com Canaleta", "Chapa Inox 580 sem Canaleta", "Chapa Inox 601 com Canaleta", "Chapa Inox 601 sem Canaleta", "Chapa Inox 640"] },
       { id: "TRANS", name: "Prensa Transfer", badge: "TR", group: "Prensas",
-        items: ["Chapa do Gabinete 550", "Chapa do Gabinete 580 com Canaleta", "Chapa do Gabinete 580 sem Canaleta", "Chapa do Gabinete 601 com Canaleta", "Chapa do Gabinete 601 sem Canaleta", "Chapa do Gabinete 640"] },
+        items: ["Chapa do Gabinete 550 Branco", "Chapa do Gabinete 580 Branco", "Chapa do Gabinete 580 Titânio", "Chapa do Gabinete 601 Branco", "Chapa do Gabinete 601 Titânio", "Chapa do Gabinete 640 Branco"] },
       { id: "GAB", name: "Linha do Gabinete", badge: "GB", group: "Prensas",
         items: ["Gabinete 550 Branco", "Gabinete 580 Branco", "Gabinete 580 Titânio", "Gabinete 601 Branco", "Gabinete 601 Titânio", "Gabinete 640 Branco"] },
       { id: "P80", name: "Prensa 80/110", badge: "80", group: "Prensas",
