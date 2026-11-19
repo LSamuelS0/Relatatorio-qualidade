@@ -344,8 +344,10 @@
       M.lista,
       ""
     ].filter((text, index) => !(index === 1 && !text.trim()));
-    machinesOf(line).forEach(machine => {
+    machinesOf(line).forEach((machine, index) => {
       // Injetora: "Máquina 7: ..." · Estamparia: o nome da máquina ("Balancer 01: ...")
+      // linha em branco entre uma máquina e outra (pedido do dono, 19/11/2026)
+      if (index > 0) lines.push("");
       const name = machine.name || M.maquina + " " + machine.id;
       lines.push(name + ": " + (report.selections[machine.id] || STOPPED));
     });

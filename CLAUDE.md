@@ -44,7 +44,7 @@ Público: pessoas com muito e com pouco contato com computador. A interface prec
 | `manifest.webmanifest`, `icons/` | App instalável ("Instalar no celular" / tela inicial) |
 | `README.md` | Apresentação do projeto |
 
-Versão atual dos arquivos: `?v=7.00`. Ao mudar `styles.css`, `data.js`, `corretor.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache. Ao acrescentar ou renomear arquivos do app, atualize a lista `SHELL` e aumente `CACHE` no `sw.js`.
+Versão atual dos arquivos: `?v=7.00` (`app.js`: `?v=7.01`). Ao mudar `styles.css`, `data.js`, `corretor.js` ou `app.js`, aumente o `?v=` nas linhas que os carregam no `index.html`; sem isso o celular pode continuar usando a versão antiga guardada em cache. Ao acrescentar ou renomear arquivos do app, atualize a lista `SHELL` e aumente `CACHE` no `sw.js`.
 
 ## Versão 7 (17/11/2026, pedido do dono)
 
@@ -131,9 +131,15 @@ Máquinas paradas: <qtd>
 MÁQUINAS QUE ESTÃO RODANDO NESTE MOMENTO:
 
 Máquina 1: <peça ou situação>
+
+Máquina 2: <peça ou situação>
+
 ...
+
 Máquina 19: <peça ou situação>
 ```
+
+- **Linha em branco entre uma máquina e outra** na lista (pedido do dono em 19/11/2026), nas duas linhas (Injetora e Estamparia).
 
 ## Máscara: Troca de turno (Alinhamento PQC Injetora)
 
