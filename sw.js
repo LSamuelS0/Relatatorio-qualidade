@@ -10,7 +10,7 @@
      relatórios no próprio aparelho e envia quando a internet voltar.
    Ao mudar a lista de arquivos, aumente CACHE.
    ===================================================================== */
-const CACHE = "rq-app-v7";
+const CACHE = "rq-app-v7b";
 const SHELL = [
   "./",
   "./index.html",

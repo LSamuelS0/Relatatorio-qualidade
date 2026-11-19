@@ -22,6 +22,10 @@
    Modelo 640: em desenvolvimento, sem código na CTQ. Aparece só onde foi
    confirmado (code: null).
    ===================================================================== */
+/* Peças das Linhas do Cesto 01–03 (as três rodam as mesmas). */
+const CESTO_INTERNO = ["550", "580", "601", "640"]
+  .flatMap(model => ["com", "sem"].map(kind => "Cesto Interno " + model + " " + kind + " Canaleta"));
+
 window.QUALITY_REPORT_DATA = {
   parts: [
     // ---- Modelo 550 ----
@@ -163,7 +167,7 @@ window.QUALITY_REPORT_DATA = {
      - badge: o que vai no quadradinho da máquina
      - group: título do grupo na lista de máquinas
      Balancer: mesmos códigos já cadastrados (Ring Up + Ring Down). 640 sem código.
-     Linhas dos cestos: peças ainda não informadas pelo dono (o ADM adiciona).
+     Linhas dos cestos 01–03: Cesto Interno 550 · 580 · 601 · 640, cada um com e sem canaleta (19/11/2026).
      ===================================================================== */
   estamparia: {
     items: {
@@ -194,7 +198,17 @@ window.QUALITY_REPORT_DATA = {
       "Gabinete 640 Branco": [null],
 
       "Placa de Conexão Superior 640": [null],
-      "Placa de Conexão Inferior 640": [null]
+      "Placa de Conexão Inferior 640": [null],
+
+      // Linhas do Cesto 01–03 (pedido do dono, 19/11/2026): cada modelo com e sem canaleta
+      "Cesto Interno 550 com Canaleta": [null],
+      "Cesto Interno 550 sem Canaleta": [null],
+      "Cesto Interno 580 com Canaleta": [null],
+      "Cesto Interno 580 sem Canaleta": [null],
+      "Cesto Interno 601 com Canaleta": [null],
+      "Cesto Interno 601 sem Canaleta": [null],
+      "Cesto Interno 640 com Canaleta": [null],
+      "Cesto Interno 640 sem Canaleta": [null]
     },
     machines: [
       { id: "BAL01", name: "Balancer 01", badge: "01", group: "Balancer", items: ["Balancer 580", "Balancer 601"] },
@@ -204,9 +218,9 @@ window.QUALITY_REPORT_DATA = {
       { id: "BAL05", name: "Balancer 05", badge: "05", group: "Balancer", items: ["Balancer 550", "Balancer 580", "Balancer 601", "Balancer 640"] },
       { id: "BAL06", name: "Balancer 06", badge: "06", group: "Balancer", items: ["Balancer 550", "Balancer 580", "Balancer 601", "Balancer 640"] },
 
-      { id: "CES01", name: "Linha do Cesto 01 (automática)", badge: "01", group: "Linhas dos cestos", items: [] },
-      { id: "CES02", name: "Linha do Cesto 02 (manual)", badge: "02", group: "Linhas dos cestos", items: [] },
-      { id: "CES03", name: "Linha do Cesto 03 (automática)", badge: "03", group: "Linhas dos cestos", items: [] },
+      { id: "CES01", name: "Linha do Cesto 01 (manual)", badge: "01", group: "Linhas dos cestos", items: CESTO_INTERNO },
+      { id: "CES02", name: "Linha do Cesto 02 (automática)", badge: "02", group: "Linhas dos cestos", items: CESTO_INTERNO },
+      { id: "CES03", name: "Linha do Cesto 03 (automática)", badge: "03", group: "Linhas dos cestos", items: CESTO_INTERNO },
 
       { id: "PROG", name: "Prensa Progressiva", badge: "PG", group: "Prensas",
         items: ["Chapa Inox 550", "Chapa Inox 580 com Canaleta", "Chapa Inox 580 sem Canaleta", "Chapa Inox 601 com Canaleta", "Chapa Inox 601 sem Canaleta", "Chapa Inox 640"] },

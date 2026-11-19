@@ -44,13 +44,34 @@
     return clone({ machines: machinesOf(line), items: itemsOf(line), extraParts: EXTRA[line] || [] });
   }
 
+  const LINE_SOURCE = {};
   function applyCadastro(cad, line) {
     line = LINES[line] ? line : "injetora";
     const target = LINES[line];
     const source = cad && Array.isArray(cad.machines) && cad.items ? cad : { machines: BASE[line].machines, items: BASE[line].items, extraParts: [] };
+    LINE_SOURCE[line] = source;
     target.machines.splice(0, target.machines.length, ...clone(source.machines));
     Object.keys(target.items).forEach(key => delete target.items[key]);
     Object.assign(target.items, clone(source.items));
+    if (source !== cad || line !== "estamparia") return finishCadastro(line);
+    // Cadastro publicado antes de 19/11/2026 não tem as peças do Cesto Interno: completa com as do data.js
+    // nas Linhas do Cesto que ainda estão sem peças (o ADM pode tirar depois, pelo painel).
+    const base = BASE.estamparia;
+    const known = new Set(Object.keys(cad.items)); // peças que já estavam no cadastro publicado
+    target.machines.forEach(machine => {
+      const from = base.machines.find(other => other.id === machine.id);
+      if (!/^CES/.test(machine.id) || !from) return;
+      machine.name = from.name; // nome certo (01 manual, 02 e 03 automáticas — corrigido em 19/11/2026)
+      if ((machine.items || []).length) return;
+      if (from.items.some(name => known.has(name))) return; // o ADM já mexeu nessas peças
+      machine.items = from.items.slice();
+      from.items.forEach(name => { if (!target.items[name]) target.items[name] = clone(base.items[name] || [null]); });
+    });
+    finishCadastro(line);
+  }
+
+  function finishCadastro(line) {
+    const source = LINE_SOURCE[line];
     EXTRA[line] = clone(source.extraParts || []).filter(part => part && part.code);
     DATA.parts.splice(0, DATA.parts.length, ...clone(BASE.parts));
     EXTRA.injetora.concat(EXTRA.estamparia).forEach(part => {
